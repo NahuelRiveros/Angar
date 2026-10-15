@@ -50,13 +50,20 @@ const router = Router();
 /**
  * 🔥 HEALTH CHECK (SIN AUTH)
  */
-router.get("/health", async (_req, res) => {
+// Render y el aviso de "despertando el servidor" la consultan seguido: por defecto
+// NO toca la base, para que la base pueda suspenderse. `?bd=1` también prueba la base.
+router.get("/health", async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  if (req.query.bd !== "1") {
+    return res.json({ ok: true, mensaje: "Servidor funcionando", base_de_datos: "sin_revisar" });
+  }
   try {
     await sequelize.query("SELECT 1");
 
     return res.json({
       ok: true,
       mensaje: "Servidor y base funcionando",
+      base_de_datos: "ok",
     });
   } catch (error) {
     return res.status(500).json({

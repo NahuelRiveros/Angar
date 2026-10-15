@@ -76,6 +76,7 @@ No hay package.json raíz ni workspaces; cada paquete instala sus dependencias.
 | Reglas unitarias | `npm --prefix servidor test` |
 | Integración PostgreSQL | `npm --prefix servidor run test:integration` |
 | Navegador | `npm --prefix frontend run test:e2e` |
+| Revisar los `.env` (solo nombres, sin valores) | `npm --prefix servidor run env:verificar` (lo corre el usuario; lee sus `.env`) |
 
 Un solo test: `node --test --test-name-pattern="carrito" servidor/tests/ux_rules.test.mjs`;
 en Playwright, `npm --prefix frontend run test:e2e -- --project=desktop -g "texto del test"`

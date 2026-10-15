@@ -1,5 +1,13 @@
 import "dotenv/config.js";
 
+// El panel de Render guarda el valor tal cual: si se pega con comillas o espacios
+// ("https://…"), quedarían como parte del texto. dotenv ya los quita en el .env local.
+export const limpiarValor = (valor) =>
+  typeof valor === "string" ? valor.trim().replace(/^(["'])(.*)\1$/, "$2").trim() : valor;
+
+// Se limpia process.env (no solo `env`) porque sequelize.js lee DB_SCHEMA directo.
+for (const [clave, valor] of Object.entries(process.env)) process.env[clave] = limpiarValor(valor);
+
 const esProduccion = process.env.NODE_ENV === "production";
 
 /**

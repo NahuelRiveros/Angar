@@ -8,7 +8,7 @@ import path from "path";
 import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 import routes from "./routes/index.js";
-import { env } from "./configuracion_servidor/env.js";
+import { env, limpiarValor } from "./configuracion_servidor/env.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -26,12 +26,23 @@ const CORS_DEV = [
   "http://localhost:3001", "http://localhost:4000",
 ];
 
-const corsOrigin = env.CORS_ORIGIN
-  ? env.CORS_ORIGIN.split(",").map((s) => s.trim())
-  : CORS_DEV;
+// El navegador manda el origen sin "/" final ni comillas: se normaliza cada
+// dirección para que un error al copiarla en Render no bloquee la tienda.
+export function parsearOrigenes(valor) {
+  return (valor ?? "")
+    .split(",")
+    .map((s) => limpiarValor(s).replace(/\/+$/, ""))
+    .filter(Boolean);
+}
+
+const origenesConfigurados = parsearOrigenes(env.CORS_ORIGIN);
+const corsOrigin = origenesConfigurados.length ? origenesConfigurados : CORS_DEV;
 
 export function createApp() {
   const app = express();
+  // A la vista en los logs de Render: si la tienda no puede usar la API, lo primero es mirar esto.
+  if (env.NODE_ENV !== "test") console.log(`🌐 Orígenes permitidos (CORS_ORIGIN): ${corsOrigin.join(", ")}`);
+  const rechazados = new Set();
 
   app.use(helmet());
 
@@ -48,7 +59,14 @@ export function createApp() {
       // Permitir requests sin origin (Postman, curl, mobile apps)
       if (!origin) return callback(null, true);
       if (corsOrigin.includes(origin)) return callback(null, true);
-      callback(new Error(`CORS: origen no permitido — ${origin}`));
+      // Una vez por dirección: el navegador solo dice "CORS"; acá queda cuál fue y qué corregir.
+      if (!rechazados.has(origin)) {
+        rechazados.add(origin);
+        console.warn(`⚠️  Pedido desde ${origin} rechazado: no está en CORS_ORIGIN (${corsOrigin.join(", ")}).`);
+      }
+      const error = new Error(`CORS: origen no permitido — ${origin}`);
+      error.codigo = "CORS_NO_PERMITIDO";
+      callback(error);
     },
     credentials: true,
   }));
@@ -97,6 +115,13 @@ export function createApp() {
         ok: false,
         codigo: "JSON_INVALIDO",
         mensaje: "Body JSON inválido",
+      });
+    }
+    if (err?.codigo === "CORS_NO_PERMITIDO") {
+      return res.status(403).json({
+        ok: false,
+        codigo: err.codigo,
+        mensaje: "Este sitio no tiene permiso para usar la API",
       });
     }
     console.error(err);

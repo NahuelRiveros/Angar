@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test tests/ux_rules.test.mjs",
+    "test": "node --test tests/ux_rules.test.mjs tests/despliegue.test.mjs",
+    "env:verificar": "node ../scripts/verificar_env.mjs",
     "test:integration": "node --test tests/checkout.integration.mjs",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js"
