@@ -2,11 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import dotenv from "dotenv";
-// Siempre localhost y un schema nuevo. Nunca ejecuta bootstrap ni usa Neon.
+// Siempre localhost y un schema nuevo. Nunca ejecuta bootstrap ni usa la base remota.
 dotenv.config({ quiet: true });
 process.env.NODE_ENV = "test";
-process.env.NEON_DATABASE_URL = "";
-process.env.NEON_DATABASE_URL_MIGRACION = "";
+process.env.BD_URL = "";
 process.env.DB_HOST = "127.0.0.1";
 process.env.DB_SSL = "false";
 const ownedSchema = "codex_ux_test_" + randomUUID().replaceAll("-", "");

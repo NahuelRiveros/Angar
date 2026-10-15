@@ -6,7 +6,41 @@
       "PowerShell(& \"C:\\\\Program Files\\\\PostgreSQL\\\\15\\\\bin\\\\pg_dump.exe\" --version 2>$null)",
       "PowerShell(& \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\pg_dump.exe\" --version 2>$null)",
       "Bash(grep -i -E \"whatsapp|twilio|meta|baileys|wa-js\" package.json)",
-      "Bash(grep -i -E \"whatsapp|twilio\" -r src --include=*.js -l)"
+      "Bash(grep -i -E \"whatsapp|twilio\" -r src --include=*.js -l)",
+      "Bash(npm --prefix frontend run lint)",
+      "Bash(npm --prefix frontend run build)",
+      "Bash(npm --prefix frontend run test:e2e)",
+      "Bash(npm --prefix servidor test)",
+      "Bash(npm run lint)",
+      "Bash(npm run build)",
+      "Bash(npm test)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./**/.env)",
+      "Read(./.env.local)",
+      "Read(./**/.env.local)",
+      "Read(./.env.production)",
+      "Read(./**/.env.production)",
+      "Read(./.env.test)",
+      "Read(./**/.env.test)",
+      "Read(./DEPLOY-ENV.txt)",
+      "Bash(node servidor/scripts/*)",
+      "Bash(node scripts/*)"
+    ],
+    "ask": [
+      "Bash(git push*)",
+      "Bash(git commit*)",
+      "Bash(npm --prefix servidor run dev)",
+      "Bash(npm --prefix servidor start)",
+      "Bash(node servidor/src/server.js)",
+      "Bash(node src/server.js)",
+      "Bash(npm start)",
+      "Bash(npm --prefix servidor run test:integration)"
     ]
   }
 }

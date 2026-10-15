@@ -1,36 +1,48 @@
-# CLAUDE.md
+# Frontend de DistribuCG
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Leer primero `../CLAUDE.md`. Este archivo complementa la guía raíz.
 
-## Commands
+## Comandos (desde frontend)
 
-```bash
-npm run dev       # start Vite dev server
-npm run build     # production build
-npm run preview   # preview the production build locally
-npm run lint      # ESLint over the whole project
-```
+`npm run dev`, `npm run lint`, `npm run build`, `npm run preview`,
+`npm run test:e2e`. No hay runner de tests unitarios frontend configurado.
+Playwright usa `tests/browser/`, API simulada y Vite en el puerto 4178;
+ver `playwright.config.js`. No requiere el backend ni una base de datos.
 
-There is no test runner configured in this package. Copy `.env.example` to `.env` before running dev — it must define `VITE_API_URL` (defaults to `http://localhost:3001/api` in dev, `https://dynamic-gym.onrender.com/api` in prod if unset). The backend lives in the sibling `servidor/` directory and must be running for API calls to work.
+## Arquitectura real
 
-## Architecture
+- `src/app/router.jsx` reúne las rutas de `src/app/routes/`.
+- `src/modules/eccomerce_distribuidora/` contiene catálogo, administración, perfil,
+  carrito, pedidos y sus APIs. Mantener el identificador `eccomerce_distribuidora` tal como está.
+- `src/controls/ui/` contiene primitivas reutilizables. `controls/carrito/` y
+  `controls/pedidos/` reciben datos/adapters; no acoplarlos a endpoints del rubro.
+- `src/hooks/` es para hooks compartidos. Buscar también los del módulo antes de duplicar.
+- `src/api/http.js` adjunta el token salvo `publicAccess`; ante 401 elimina el token
+  y emite `auth:expired` excepto para login. Preservar el retorno interno seguro
+  de `controls/acceso/return_to.js`.
+- `src/auth/auth_context.jsx` maneja sesión; `controls/acceso/protected_route.jsx`
+  controla acceso visual. El backend debe verificar los permisos por separado.
 
-This is the React frontend of "Moovs", a multi-module gym/kinesiology management SaaS. It's a Vite + React 19 SPA using React Router (data-router style, `src/app/router.jsx`), TanStack Query for server state, react-hook-form + zod for forms, Tailwind v4, and axios.
+## Configuración y diseño
 
-**Auth flow**: `src/auth/auth_context.jsx` (`AuthProvider`/`useAuth`) holds the logged-in user and the enabled-modules map. On mount, if a JWT exists in `localStorage` (key from `authConfig.storageKey`), it calls `/auth/me` and `/modulos/estado`. All API calls go through the shared axios instance in `src/api/http.js`, which attaches the bearer token on every request and, on a 401 response, clears the token and hard-redirects to `/login`. API modules (`src/api/*_api.js`) are thin wrappers around `http` — one file per backend resource, each function just does an axios call and returns `r.data`.
+Los archivos raíz `client_config.js`, `gate_config.js` y `order_config.js` se comparten
+con el backend. No duplicar sus valores en pantallas.
+Identidad, colores y contenidos en `src/config/brand_config.js`, `theme_config.js`,
+`home_config.js` y `storefront_config.js`; navegación en `config/navbar_config/`.
+Reutilizar tokens CSS y controles antes de agregar estilos o componentes.
+El skill de diseño está en `.agents/skills/frontend-design/` y también en
+`../.claude/skills/frontend-design/` para Claude. Aplicarlo respetando la marca existente.
 
-**Routing & access control**: All routes are registered in `src/app/router.jsx`, each wrapped in `<AppLayout>` and, where restricted, `<ProtectedRoute roles={[...]}>` (`src/components/acceso/protected_route.jsx`). `ProtectedRoute` redirects to `/login` if unauthenticated, or to `/` if the user's `roles` array doesn't intersect the required roles. Known roles (generic, reusable across verticals): `super_admin` (system/licensing), `admin` (business owner), `staff` (generic employee), `profesional` (restricted-access specialist — currently used by kinesiología, reusable by any future module needing "access only to my own assigned clients").
+## Datos y reglas de negocio
 
-**Business modules toggle**: The gym (`gym`) and kinesiology (`kinesiologia`) modules can be enabled/disabled per installation from `/super-admin/modulos`, backed by the `modulo_negocio` table on the backend (also gated server-side via `requireModuloHabilitado`, so hiding a module in the UI is not the only enforcement). `AuthContext` fetches this once as `modulosHabilitados`; `src/config/modulos_config.js` exposes `moduloHabilitado(modulo, modulosHabilitados)` to filter UI items tagged with `modulo: "gym" | "kinesiologia"` (used in `navbar_config.js`, `footer_config.jsx`). Items without a `modulo` tag are always shown.
+Leer `../docs/distribuidora-pedidos.md` para carrito, snapshots, estados y cobros.
+El catálogo puede ser público según configuración; enviar y gestionar tienen permisos propios.
+Los pedidos no descuentan stock y los cobros son registros manuales de dinero recibido.
+Conservar reintentos idempotentes y errores dentro del flujo de la acción.
+Usar React Hook Form y Zod para formularios, TanStack Query donde corresponda,
+y el adapter existente para persistencia del carrito.
+Cubrir carga, error, vacío, teclado y anchos de 320, 390 y 1440 px.
 
-**White-label / theming**: `src/config/brand_config.js` defines per-client identity (name, tagline, fonts, color palette) inside a `clientes` map; `clienteActivo` selects the active one, exported as `brandConfig`. `src/index.css` is the single source of truth for design tokens (`--kt-*` colors, `--radius-*`, `--shadow-*`, `--z-*`, `--duration-*`), re-exposed through Tailwind's `@theme` block so both new utility classes (`bg-primary`) and legacy ones (`bg-slate-600`, `text-gray-400`) resolve to the same brand palette. To re-skin the app for a new client, edit `brand_config.js` and `index.css` only — components should not hardcode colors.
-
-**Config-driven UI**: Several cross-cutting UI pieces are declared in `src/config/*` rather than hardcoded in components: `navbar_config.js` (nav items + role/module gating), `footer_config.jsx`, `home_config.js`/`home_iconos.js` (editable homepage content), `audio_config.js` (kiosk check-in sounds), `auth_config.js` (auth endpoints + register form field list). Check these before adding a nav item, footer link, or form field — they're often declarative rather than JSX.
-
-**Directory layout under `src/`**: `api/` (backend calls), `app/` (router + query client setup), `auth/` (auth context — not to be confused with `components/acceso/`, which holds UI: route guard + login/register success modals), `components/` (shared UI, organized `ui/`-primitives-vs-domain — see below), `pages/` (route screens, with `admin/`, `alumnos/`, `estadisticas/`, `super_admin/`, `ventas/` subfolders mirroring the route tree), `hooks/`, `utils/`, `config/`. `sin_usar/` subfolders (e.g. under `pages/admin/kinesiologia/`, `utils/`, and `components/kinesiologia/`) hold dead/parked code — not wired into the router, don't build on top of them without checking first. `pages/_scaffold/` holds copy-paste templates for new CRUD pages (also not wired into the router).
-
-**`components/` structure**: `ui/` — generic, reusable, no business logic (`input_field.jsx`, `select_field.jsx`, `textarea_field.jsx`, `submit_button.jsx`, `form_error.jsx`, `icono_picker.jsx`, `data_grid.jsx`, `confirm_dialog.jsx`). Everything else is grouped by **domain**, not by UI pattern: `stock/`, `planes/`, `pagos/`, `kinesiologia/`, `staff/`, `kiosk/`, `acceso/`, `suscripcion/`, `sistema/`, `alertas/`, `home/`, `brand/`. `layout/` holds the app shell (`app_layout.jsx`, `footer.jsx`) plus `layout/navbar/` for the navbar family. When adding a new shared component: if it's a generic primitive with no domain knowledge, it goes in `ui/`; if it's specific to one feature (a form modal, a domain-specific banner), it goes in (or gets a new) domain folder — don't add it back to a flat `modal/`-style bucket.
-
-**Naming convention**: files and most identifiers are `snake_case.jsx`/`snake_case.js` even for React components (e.g. `home_page.jsx`, `input_field.jsx`) — follow this over the more common camelCase/PascalCase React convention when adding files.
-
-**Deployment**: builds to `dist/`, deployed on Render (see `vercel.json`/env comments) with the frontend and backend served from the same origin in production (`VITE_API_URL=/api`).
+`VITE_API_URL` controla la API. El fallback actual de producción en `src/api/http.js`
+todavía apunta a dynamic-gym; verificar la configuración efectiva antes de un despliegue.
+No asumir mismo origen ni modificar ese destino durante tareas de documentación.

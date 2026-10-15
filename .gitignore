@@ -1,2 +1,7 @@
 # Notas locales con secretos de despliegue — nunca a git
 DEPLOY-ENV.txt
+
+# Estado local de Claude; instrucciones y skills se versionan
+.claude/settings.local.json
+.claude/worktrees/
+.claude/scheduled_tasks.lock

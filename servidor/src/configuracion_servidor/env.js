@@ -25,11 +25,9 @@ export const env = {
   PORT:     process.env.PORT || 3001,
   NODE_ENV: process.env.NODE_ENV || "development",
 
-  // ── Base de datos (Neon en producción, Postgres local en dev) ────
-  // NEON_DATABASE_URL_MIGRACION: si está seteada, tiene prioridad (útil para
-  // migrar a otra base de Neon sin downtime — una vez verificado, renombrá a
-  // NEON_DATABASE_URL y borrá esta).
-  NEON_DATABASE_URL: process.env.NEON_DATABASE_URL_MIGRACION || process.env.NEON_DATABASE_URL || "",
+  // ── Base de datos (Supabase en producción, Postgres local en dev) ──
+  // BD_URL: connection string completo; si queda vacío se usan las DB_* sueltas.
+  BD_URL:       process.env.BD_URL || "",
   DB_HOST:      process.env.DB_HOST      || "localhost",
   DB_PORT:      Number(process.env.DB_PORT || 5432),
   DB_NAME:      process.env.DB_NAME      || "dynamicgym",

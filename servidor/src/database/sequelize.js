@@ -1,8 +1,12 @@
 import { Sequelize } from "sequelize";
 import { env } from "../configuracion_servidor/env.js";
 
-export const DB_SCHEMA = process.env.DB_SCHEMA || "kinetica";
-if (!/^[a-z][a-z0-9_]*$/.test(DB_SCHEMA)) throw new Error("DB_SCHEMA inválido");
+// gc_dist en producción, gc_dist_test para pruebas. Solo minúsculas: el
+// search_path de abajo va sin comillas y Postgres pasaría mayúsculas a minúsculas.
+export const DB_SCHEMA = process.env.DB_SCHEMA || "gc_dist_test";
+if (!/^[a-z][a-z0-9_]*$/.test(DB_SCHEMA)) {
+  throw new Error(`DB_SCHEMA inválido ("${DB_SCHEMA}"): usar solo minúsculas, números y _ (ej. gc_dist)`);
+}
 
 // Neon pooler no soporta search_path como parámetro de startup.
 // Se establece vía afterConnect para compatibilidad con pooler y conexión directa.
@@ -49,8 +53,8 @@ const baseConfig = {
   },
 };
 
-export const sequelize = env.NEON_DATABASE_URL
-  ? new Sequelize(env.NEON_DATABASE_URL, baseConfig)
+export const sequelize = env.BD_URL
+  ? new Sequelize(env.BD_URL, baseConfig)
   : new Sequelize(env.DB_NAME, env.DB_USER, env.DB_PASS, {
       ...baseConfig,
       host: env.DB_HOST,
