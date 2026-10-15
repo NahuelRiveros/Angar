@@ -13,7 +13,8 @@ const loginLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}:${req.body?.usuario || req.body?.email || ""}`,
+  // En minúsculas: cambiar mayúsculas no tiene que dar 10 intentos nuevos para la misma cuenta.
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}:${String(req.body?.identificador || req.body?.email || "").trim().toLowerCase()}`,
   message: { ok: false, codigo: "DEMASIADOS_INTENTOS", mensaje: "Demasiados intentos. Intentá en 15 minutos." },
 });
 

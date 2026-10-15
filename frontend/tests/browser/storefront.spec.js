@@ -92,6 +92,29 @@ test("el cliente conserva carrito al registrarse y confirma la cantidad guardada
   expect(api.submitted[0].expectedItems[0].cantidad).toBe(12);
   await noOverflow(page);
 });
+test("inicia sesión con nombre de usuario y muestra el error de credenciales", async ({ page }) => {
+  await mockApi(page);
+  const enviados = [];
+  let rechazar = true;
+  await page.route("**/api/auth/login", async (route) => {
+    enviados.push(route.request().postDataJSON());
+    if (rechazar) {
+      rechazar = false;
+      return route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ ok: false, codigo: "CREDENCIALES_INVALIDAS", mensaje: "Email, usuario o contraseña incorrectos" }) });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, token: "mock-session" }) });
+  });
+  await page.goto("/login");
+  await page.getByLabel(/^Email o usuario/).fill("ana.cliente");
+  await page.getByLabel(/^Contraseña/).fill("mala");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await expect(page.getByText("Email, usuario o contraseña incorrectos")).toBeVisible();
+  await noOverflow(page);
+  await page.getByLabel(/^Contraseña/).fill("Clave1234");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await expect(page).toHaveURL(/distribuidora\/catalogo/);
+  expect(enviados).toEqual([{ identificador: "ana.cliente", password: "mala" }, { identificador: "ana.cliente", password: "Clave1234" }]);
+});
 test("cantidades rápidas en varias líneas conservan el último cambio", async ({ page }) => {
   const row = { item_id: 50, producto_id: 1, variedad_id: 11, cantidad: 1, nombre: "Arroz largo fino", variante: "1 kg", precio: 1200, precio_al_agregar: 1200, stock_disponible: 200, activo: true, variante_disponible: true };
   const api = await mockApi(page, [row, { ...row, item_id: 51, producto_id: 2, variedad_id: 12, nombre: "Fideos" }]);

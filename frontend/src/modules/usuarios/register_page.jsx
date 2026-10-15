@@ -23,7 +23,7 @@ export default function RegisterPage() {
       setError("");
       try {
         if (!created) { await http.post(authConfig.endpoints.register, { nombre, apellido, email, password }); setCreated(true); }
-        await login({ email, password });
+        await login({ identificador: email, password });
       } catch (e) { setError(e.response?.data?.mensaje || "No se pudo continuar. Si tu cuenta ya fue creada, ingresá con tu email."); }
     })}>
       <div className="grid gap-3 sm:grid-cols-2">

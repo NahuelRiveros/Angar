@@ -1,6 +1,7 @@
 ﻿import bcrypt from "bcrypt";
 import { randomBytes } from "node:crypto";
 import { passwordVersion } from "../common/auth_tokens.js";
+import { clasificarIdentificador } from "../common/nombre_usuario.js";
 import { clientConfig } from "../../../../client_config.js";
 import jwt from "jsonwebtoken";
 import { env } from "../../configuracion_servidor/env.js";
@@ -20,32 +21,40 @@ function crearToken({ usuario_id, persona_id, roles, contrasena }) {
   });
 }
 
-export async function login({ email, password }) {
-  const emailNorm = safeStr(email).toLowerCase();
+const CREDENCIALES_INVALIDAS = { ok: false, codigo: "CREDENCIALES_INVALIDAS", mensaje: "Email, usuario o contraseña incorrectos" };
+
+/** Busca persona y usuario por email o por nombre de usuario. */
+async function buscarCuenta(identificador) {
+  const { tipo, valor, valido } = clasificarIdentificador(identificador);
+  if (tipo === "email") {
+    const persona = await Persona.findOne({ where: { email: valor } });
+    const usuario = persona ? await Usuario.findOne({ where: { persona_id: persona.id } }) : null;
+    return { persona, usuario };
+  }
+  if (!valido) return { persona: null, usuario: null };
+  const usuario = await Usuario.findOne({ where: { nombre_usuario: valor } });
+  const persona = usuario ? await Persona.findByPk(usuario.persona_id) : null;
+  return { persona, usuario };
+}
+
+export async function login({ identificador, password }) {
   const pass = String(password ?? "");
 
-  const persona = await Persona.findOne({ where: { email: emailNorm } });
-  if (!persona) {
-    return { ok: false, codigo: "CREDENCIALES_INVALIDAS", mensaje: "Email o contraseña incorrectos" };
-  }
+  const { persona, usuario } = await buscarCuenta(identificador);
+  if (!persona) return CREDENCIALES_INVALIDAS;
 
-  const usuario = await Usuario.findOne({ where: { persona_id: persona.id } });
   if (!usuario) {
     return { ok: false, codigo: "SIN_USUARIO", mensaje: "La persona no tiene usuario habilitado" };
   }
 
-  if (usuario.eliminado_en) {
-    return { ok: false, codigo: "CREDENCIALES_INVALIDAS", mensaje: "Email o contraseña incorrectos" };
-  }
+  if (usuario.eliminado_en) return CREDENCIALES_INVALIDAS;
 
   if (usuario.activo === false) {
     return { ok: false, codigo: "USUARIO_INACTIVO", mensaje: "Usuario inactivo" };
   }
 
   const valido = await bcrypt.compare(pass, usuario.contrasena ?? "");
-  if (!valido) {
-    return { ok: false, codigo: "CREDENCIALES_INVALIDAS", mensaje: "Email o contraseña incorrectos" };
-  }
+  if (!valido) return CREDENCIALES_INVALIDAS;
 
   const rolesRows = await usuario.getRoles({
     attributes: ["codigo"],
@@ -69,6 +78,7 @@ export async function login({ email, password }) {
       nombre: persona.nombre,
       apellido: persona.apellido,
       email: persona.email,
+      nombre_usuario: usuario.nombre_usuario,
       roles,
     },
   };

@@ -122,7 +122,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       });
       try {
         const url = "http://127.0.0.1:" + server.address().port + "/notas";
-        const token = (await login({ email: "ana@example.test", password: "Clave1234" })).token;
+        const token = (await login({ identificador: "ana@example.test", password: "Clave1234" })).token;
         const headers = { Authorization: "Bearer " + token, "Content-Type": "application/json" };
         assert.equal((await fetch(url + "/todas")).status, 401);
         assert.equal((await fetch(url + "/todas", { headers })).status, 403);
@@ -146,8 +146,21 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       const token = createResetToken(user, env.JWT_SECRET, 20);
       await resetPassword(token, "NuevaClave123");
       await assert.rejects(resetPassword(token, "OtraClave456"), /enlace/);
-      assert.equal((await login({ email: "ana@example.test", password: "NuevaClave123" })).ok, true);
-      assert.equal((await login({ email: "ana@example.test", password: "Clave1234" })).ok, false);
+      assert.equal((await login({ identificador: "ana@example.test", password: "NuevaClave123" })).ok, true);
+      assert.equal((await login({ identificador: "ana@example.test", password: "Clave1234" })).ok, false);
+    });
+    await t.test("login con email o nombre de usuario, sin distinguir mayúsculas", async () => {
+      await models.Usuario.update({ nombre_usuario: "ana.prueba" }, { where: { id } });
+      const porUsuario = await login({ identificador: " Ana.Prueba ", password: "NuevaClave123" });
+      assert.equal(porUsuario.ok, true);
+      assert.equal(porUsuario.usuario.nombre_usuario, "ana.prueba");
+      assert.equal((await login({ identificador: "ANA@EXAMPLE.TEST", password: "NuevaClave123" })).ok, true);
+      for (const identificador of ["ana.prueba", "otro.usuario", "a b", ""]) {
+        const r = await login({ identificador, password: identificador === "ana.prueba" ? "mala" : "NuevaClave123" });
+        assert.equal(r.codigo, "CREDENCIALES_INVALIDAS", identificador);
+      }
+      const otra = await registrarCliente({ nombre: "Beto", apellido: "Prueba", email: "beto@example.test", password: "Clave1234" });
+      await assert.rejects(models.Usuario.update({ nombre_usuario: "ana.prueba" }, { where: { id: otra.usuario_id } }));
     });
   } finally {
     if (created) {

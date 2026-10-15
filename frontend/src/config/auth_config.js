@@ -6,7 +6,7 @@ export const authConfig = {
   defaultDestination: projectModules.eccomerce_distribuidora ? "/distribuidora/catalogo" : "/",
   logoutDestination: "/",
   endpoints: { login: "/auth/login", me: "/auth/me", logout: "/auth/logout", register: "/auth/register", forgot: "/auth/forgot-password", reset: "/auth/reset-password" },
-  loginCampos: { emailLabel: "Email", passwordLabel: "Contraseña", botonLabel: "Ingresar" },
+  loginCampos: { identificadorLabel: "Email o usuario", passwordLabel: "Contraseña", botonLabel: "Ingresar" },
   texts: { title: "Iniciar sesión", subtitle: tienda ? "Ingresá para enviar y consultar tus pedidos." : "Ingresá con tu cuenta para continuar.", registerTitle: "Crear cuenta", registerSubtitle: "Completá tus datos para continuar." },
 };
 export const registroConfig = { titulo: authConfig.texts.registerTitle, subtitulo: authConfig.texts.registerSubtitle, botonLabel: "Crear cuenta", redirigirA: authConfig.defaultDestination };

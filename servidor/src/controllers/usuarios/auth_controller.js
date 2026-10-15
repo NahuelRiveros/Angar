@@ -2,8 +2,9 @@
 
 export async function loginController(req, res) {
   try {
-    const { email, password } = req.body ?? {};
-    const result = await login({ email, password });
+    // `email` se sigue aceptando mientras Vercel publica la web nueva (manda `identificador`).
+    const { identificador, email, password } = req.body ?? {};
+    const result = await login({ identificador: identificador ?? email, password });
     return result.ok ? res.json(result) : res.status(401).json(result);
   } catch (error) {
     console.error("loginController:", error);

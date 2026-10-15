@@ -5,6 +5,14 @@ import { validQuantity, validateSnapshot } from "../src/services/common/cart_rul
 import { safeReturnTo } from "../../frontend/src/controls/acceso/return_to.js";
 import { readGuestCart, mergeGuestItems } from "../../frontend/src/controls/carrito/guest_storage.js";
 import { filtrarNavbarPorRol } from "../../frontend/src/controls/layout/navbar/navbar_permissions.js";
+import { clasificarIdentificador, esNombreUsuarioValido } from "../src/services/common/nombre_usuario.js";
+
+test("login distingue email de nombre de usuario y valida el usuario sin consultar la base", () => {
+  assert.deepEqual(clasificarIdentificador("  Ana@Example.TEST "), { tipo: "email", valor: "ana@example.test" });
+  assert.deepEqual(clasificarIdentificador("Juan.Perez_1"), { tipo: "usuario", valor: "juan.perez_1", valido: true });
+  for (const malo of ["ab", "a".repeat(31), "con espacio", "ñandú", "", null]) assert.equal(esNombreUsuarioValido(malo), false, String(malo));
+  for (const bueno of ["abc", "juan-p", "a".repeat(30)]) assert.equal(esNombreUsuarioValido(bueno), true, bueno);
+});
 test("redirecciones internas conservan filtros y rechazan otros orígenes y login", () => {
   assert.equal(safeReturnTo("/distribuidora/catalogo?q=arroz"), "/distribuidora/catalogo?q=arroz");
   for (const path of ["https://evil.test", "//evil.test", "/\\evil.test", "/login", "/register?returnTo=x"]) assert.equal(safeReturnTo(path), "/");

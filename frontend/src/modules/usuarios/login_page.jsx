@@ -20,7 +20,7 @@ export default function LoginPage() {
       setError("");
       try { await login(values); } catch (e) { setError(e.response?.data?.mensaje || e.message || "No se pudo ingresar"); }
     })}>
-      <InputField name="email" label="Email" type="email" autoComplete="username" placeholder="tu@email.com" register={register} required error={errors.email?.message} />
+      <InputField name="identificador" label={authConfig.loginCampos.identificadorLabel} type="text" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="tu@email.com o tu usuario" register={register} required error={errors.identificador?.message} />
       <InputField name="password" label="Contraseña" type="password" autoComplete="current-password" minLength={1} register={register} required showPasswordToggle error={errors.password?.message} />
       <Link to={authLink("/forgot-password", destination)} className="inline-block py-2 text-sm font-semibold text-(--kt-teal-700)">Olvidé mi contraseña</Link>
       <FormError message={error} />
