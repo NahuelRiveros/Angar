@@ -28,19 +28,22 @@ export function AuthProvider({ children }) {
     }
     return () => { active = false; window.removeEventListener("auth:expired", expired); };
   }, [cargarModulos]);
-  const login = useCallback(async (payload) => {
-    const r = await http.post(authConfig.endpoints.login, payload);
+  // Login con contraseña y con Google terminan igual: token guardado, perfil y módulos cargados.
+  const iniciarSesion = useCallback(async (endpoint, payload) => {
+    const r = await http.post(endpoint, payload);
     if (!r.data?.token) throw new Error("No pudimos iniciar la sesión.");
     localStorage.setItem(authConfig.storageKey, r.data.token);
     try { await cargarMe(); await cargarModulos(); }
     catch (e) { localStorage.removeItem(authConfig.storageKey); setUsuario(null); throw e; }
     return r.data;
   }, [cargarMe, cargarModulos]);
+  const login = useCallback((payload) => iniciarSesion(authConfig.endpoints.login, payload), [iniciarSesion]);
+  const loginConGoogle = useCallback((credencial) => iniciarSesion(authConfig.endpoints.google, { credencial }), [iniciarSesion]);
   const logout = useCallback(async () => {
     try { await http.post(authConfig.endpoints.logout); } catch { /* La sesión local se cierra aunque no haya conexión. */ }
     finally { localStorage.removeItem(authConfig.storageKey); setUsuario(null); setModulosHabilitados(null); }
   }, []);
-  const value = useMemo(() => ({ usuario, cargando, isAuth: !!usuario, modulosHabilitados, login, logout, recargarUsuario: cargarMe }), [usuario, cargando, modulosHabilitados, login, logout, cargarMe]);
+  const value = useMemo(() => ({ usuario, cargando, isAuth: !!usuario, modulosHabilitados, login, loginConGoogle, logout, recargarUsuario: cargarMe }), [usuario, cargando, modulosHabilitados, login, loginConGoogle, logout, cargarMe]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 export function useAuth() { const context = useContext(AuthContext); if (!context) throw new Error("Falta AuthProvider"); return context; }

@@ -1,4 +1,4 @@
-﻿import { login, registrarCliente, obtenerPerfil } from "../../services/usuarios/auth_service.js";
+﻿import { login, loginConGoogle, registrarCliente, obtenerPerfil } from "../../services/usuarios/auth_service.js";
 
 export async function loginController(req, res) {
   try {
@@ -14,12 +14,24 @@ export async function loginController(req, res) {
 
 export async function registerController(req, res) {
   try {
-    const { nombre, apellido, email, password } = req.body ?? {};
-    const result = await registrarCliente({ nombre, apellido, email, password });
+    const { nombre, apellido, email, password, nombre_usuario } = req.body ?? {};
+    const result = await registrarCliente({ nombre, apellido, email, password, nombre_usuario });
     return result.ok ? res.status(201).json(result) : res.status(400).json(result);
   } catch (error) {
     console.error("registerController:", error);
     return res.status(500).json({ ok: false, codigo: "ERROR_REGISTRO", mensaje: "No se pudo completar el registro" });
+  }
+}
+
+const ESTADO_GOOGLE = { GOOGLE_NO_CONFIGURADO: 503, REGISTRO_DESHABILITADO: 403 };
+
+export async function googleController(req, res) {
+  try {
+    const result = await loginConGoogle({ credencial: req.body?.credencial });
+    return res.status(result.ok ? 200 : ESTADO_GOOGLE[result.codigo] ?? 401).json(result);
+  } catch (error) {
+    console.error("googleController:", error);
+    return res.status(500).json({ ok: false, codigo: "ERROR_LOGIN", mensaje: "No se pudo ingresar con Google" });
   }
 }
 

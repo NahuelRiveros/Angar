@@ -1,6 +1,13 @@
 import { test, expect } from "@playwright/test";
 const product = { id: 1, nombre: "Arroz largo fino", marca: "Marca de prueba", categoria: { id: 1, nombre: "Almacén" }, variedades: [{ id: 11, nombre: "Paquete 1 kg", precio: 1200, controla_stock: true, cantidad: 200, iva_porcentaje: 21 }] };
+// Reemplaza el script de Google: el botón falso entrega una credencial de prueba, sin internet.
+const GOOGLE_FALSO = `window.google = { accounts: { id: {
+  initialize(config) { window.__google = config; },
+  renderButton(el) { const b = document.createElement("button"); b.type = "button"; b.textContent = "Continuar con Google";
+    b.onclick = () => window.__google.callback({ credential: "credencial-de-prueba" }); el.replaceChildren(b); },
+} } };`;
 async function mockApi(page, initialCart = []) {
+  await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: GOOGLE_FALSO }));
   let cart = initialCart;
   const updates = [];
   let submitted = [];
@@ -114,6 +121,61 @@ test("inicia sesión con nombre de usuario y muestra el error de credenciales", 
   await page.getByRole("button", { name: "Ingresar" }).click();
   await expect(page).toHaveURL(/distribuidora\/catalogo/);
   expect(enviados).toEqual([{ identificador: "ana.cliente", password: "mala" }, { identificador: "ana.cliente", password: "Clave1234" }]);
+});
+test("registro con usuario opcional muestra si ya está en uso y valida el formato", async ({ page }) => {
+  await mockApi(page);
+  const registros = [];
+  await page.route("**/api/auth/register", async (route) => {
+    const body = route.request().postDataJSON();
+    registros.push(body);
+    const repetido = body.nombre_usuario === "ana";
+    await route.fulfill({ status: repetido ? 400 : 201, contentType: "application/json", body: JSON.stringify(repetido ? { ok: false, codigo: "NOMBRE_USUARIO_DUPLICADO", mensaje: "Ese usuario ya está en uso. Probá con otro." } : { ok: true }) });
+  });
+  await page.goto("/register");
+  await page.getByLabel(/^Nombre/).fill("Ana");
+  await page.getByLabel(/^Apellido/).fill("Cliente");
+  await page.getByLabel(/^Email/).fill("ana@example.test");
+  await page.getByLabel(/^Usuario/).fill("ana cliente");
+  await page.getByLabel(/^Contraseña/).fill("Clave1234");
+  await page.getByLabel(/^Confirmar contraseña/).fill("Clave1234");
+  await page.getByRole("button", { name: "Crear cuenta y continuar" }).click();
+  await expect(page.getByText("Solo se permiten letras, números, punto, guion y guion bajo")).toBeVisible();
+  expect(registros).toHaveLength(0);
+  await page.getByLabel(/^Usuario/).fill("ana");
+  await page.getByRole("button", { name: "Crear cuenta y continuar" }).click();
+  await expect(page.getByText("Ese usuario ya está en uso. Probá con otro.")).toBeVisible();
+  await noOverflow(page);
+  await page.getByLabel(/^Usuario/).fill("Ana.Cliente");
+  await page.getByRole("button", { name: "Crear cuenta y continuar" }).click();
+  await expect(page).toHaveURL(/distribuidora\/catalogo/);
+  expect(registros.map((r) => r.nombre_usuario)).toEqual(["ana", "Ana.Cliente"]);
+});
+test("continuar con Google envía la credencial, muestra errores y si Google no carga ofrece reintentar", async ({ page }) => {
+  await mockApi(page);
+  const enviados = [];
+  let rechazar = true;
+  await page.route("**/api/auth/google", async (route) => {
+    enviados.push(route.request().postDataJSON());
+    if (rechazar) {
+      rechazar = false;
+      return route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ ok: false, codigo: "GOOGLE_EMAIL_NO_VERIFICADO", mensaje: "Tu cuenta de Google no tiene el email verificado. Ingresá con email y contraseña." }) });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, token: "mock-session" }) });
+  });
+  let googleCaido = true;
+  await page.route("https://accounts.google.com/gsi/client", (route) => {
+    if (googleCaido) { googleCaido = false; return route.abort(); }
+    return route.fallback();
+  });
+  await page.goto("/login");
+  await expect(page.getByText("No pudimos cargar el botón de Google")).toBeVisible();
+  await page.getByRole("button", { name: "Reintentar" }).click();
+  await page.getByRole("button", { name: "Continuar con Google" }).click();
+  await expect(page.getByText("Tu cuenta de Google no tiene el email verificado")).toBeVisible();
+  await noOverflow(page);
+  await page.getByRole("button", { name: "Continuar con Google" }).click();
+  await expect(page).toHaveURL(/distribuidora\/catalogo/);
+  expect(enviados).toEqual([{ credencial: "credencial-de-prueba" }, { credencial: "credencial-de-prueba" }]);
 });
 test("cantidades rápidas en varias líneas conservan el último cambio", async ({ page }) => {
   const row = { item_id: 50, producto_id: 1, variedad_id: 11, cantidad: 1, nombre: "Arroz largo fino", variante: "1 kg", precio: 1200, precio_al_agregar: 1200, stock_disponible: 200, activo: true, variante_disponible: true };

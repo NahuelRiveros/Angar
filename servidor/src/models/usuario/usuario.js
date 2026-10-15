@@ -18,6 +18,9 @@ export const Usuario = defineModel("Usuario", {
   // (reglas en services/common/nombre_usuario.js).
   nombre_usuario: { type: DataTypes.STRING(30), allowNull: true, unique: true },
 
+  // "sub" de Google: fijo aunque la persona cambie el email de su cuenta de Google.
+  google_id:     { type: DataTypes.STRING(255), allowNull: true, unique: true },
+
   // Hash bcrypt — nunca almacenar texto plano
   contrasena:    { type: DataTypes.STRING(255), allowNull: false },
   activo:        { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },

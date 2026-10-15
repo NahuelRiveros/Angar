@@ -93,6 +93,11 @@ export const env = {
   CLOUDINARY_API_KEY:    requerirEnProd("CLOUDINARY_API_KEY"),
   CLOUDINARY_API_SECRET: requerirEnProd("CLOUDINARY_API_SECRET"),
 
+  // ── Google (botón "Continuar con Google") ───────────────────────
+  // Client ID público de Google Cloud (el mismo que VITE_GOOGLE_CLIENT_ID).
+  // Vacío = ingreso con Google deshabilitado. No se usa el client secret.
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
+
   // ── Seed: usuario super admin ────────────────────────────────────
   SUPERADMIN_NOMBRE:   process.env.SUPERADMIN_NOMBRE   || "",
   SUPERADMIN_APELLIDO: process.env.SUPERADMIN_APELLIDO || "",

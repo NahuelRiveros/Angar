@@ -6,13 +6,14 @@ import dotenv from "dotenv";
 dotenv.config({ quiet: true });
 process.env.NODE_ENV = "test";
 process.env.BD_URL = "";
+process.env.GOOGLE_CLIENT_ID = "cliente-de-prueba";
 process.env.DB_HOST = "127.0.0.1";
 process.env.DB_SSL = "false";
 const ownedSchema = "codex_ux_test_" + randomUUID().replaceAll("-", "");
 process.env.DB_SCHEMA = ownedSchema;
 const { sequelize, DB_SCHEMA } = await import("../src/database/sequelize.js");
 const models = await import("../src/models/index.js");
-const { registrarCliente, login } = await import("../src/services/usuarios/auth_service.js");
+const { registrarCliente, login, loginConGoogle } = await import("../src/services/usuarios/auth_service.js");
 const { obtenerCarrito, agregarItem, fusionarCarrito, actualizarCantidad } = await import("../src/services/distribuidora/carrito_distribuidora_service.js");
 const { crearNotaPedido, cambiarEstado, registrarPago, anularPago, listarTodas } = await import("../src/services/distribuidora/nota_pedido_service.js");
 const { createResetToken } = await import("../src/services/common/auth_tokens.js");
@@ -161,6 +162,63 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       }
       const otra = await registrarCliente({ nombre: "Beto", apellido: "Prueba", email: "beto@example.test", password: "Clave1234" });
       await assert.rejects(models.Usuario.update({ nombre_usuario: "ana.prueba" }, { where: { id: otra.usuario_id } }));
+    });
+    await t.test("registro con usuario opcional: guarda en minúsculas, rechaza repetido e inválido", async () => {
+      const base = { nombre: "Caro", apellido: "Prueba", password: "Clave1234" };
+      const conUsuario = await registrarCliente({ ...base, email: "caro@example.test", nombre_usuario: " Caro.P " });
+      assert.equal(conUsuario.ok, true);
+      assert.equal((await models.Usuario.findByPk(conUsuario.usuario_id)).nombre_usuario, "caro.p");
+      assert.equal((await login({ identificador: "caro.p", password: "Clave1234" })).ok, true);
+
+      const sinUsuario = await registrarCliente({ ...base, email: "dani@example.test", nombre_usuario: "  " });
+      assert.equal(sinUsuario.ok, true);
+      assert.equal((await models.Usuario.findByPk(sinUsuario.usuario_id)).nombre_usuario, null);
+
+      const repetido = await registrarCliente({ ...base, email: "eli@example.test", nombre_usuario: "CARO.P" });
+      assert.equal(repetido.codigo, "NOMBRE_USUARIO_DUPLICADO");
+      assert.equal(await models.Persona.count({ where: { email: "eli@example.test" } }), 0);
+      assert.equal((await registrarCliente({ ...base, email: "fede@example.test", nombre_usuario: "con espacio" })).codigo, "NOMBRE_USUARIO_INVALIDO");
+
+      // Simultáneos con el mismo usuario: uno se crea y el otro recibe el mensaje, sin error 500.
+      const [a, b] = await Promise.all([
+        registrarCliente({ ...base, email: "gabi@example.test", nombre_usuario: "mismo" }),
+        registrarCliente({ ...base, email: "hugo@example.test", nombre_usuario: "mismo" }),
+      ]);
+      assert.deepEqual([a.ok, b.ok].sort(), [false, true]);
+      assert.equal([a, b].find((r) => !r.ok).codigo, "NOMBRE_USUARIO_DUPLICADO");
+      assert.equal(await models.Usuario.count({ where: { nombre_usuario: "mismo" } }), 1);
+    });
+    await t.test("Google: crea cliente, vincula por email verificado y rechaza credenciales dudosas", async () => {
+      const google = (datos) => ({ verificar: async () => ({ email_verificado: true, nombre: "Gise", apellido: "Google", ...datos }) });
+
+      // Cuenta nueva: cliente con rol, sin contraseña conocida; la segunda vez entra a la misma.
+      const nueva = await loginConGoogle({ credencial: "x" }, google({ google_id: "g-nueva", email: "Gise@Example.TEST" }));
+      assert.equal(nueva.ok, true);
+      assert.deepEqual(nueva.usuario.roles, ["cliente"]);
+      assert.equal(nueva.usuario.email, "gise@example.test");
+      const otraVez = await loginConGoogle({ credencial: "x" }, google({ google_id: "g-nueva", email: "gise.nuevo@example.test" }));
+      assert.equal(otraVez.usuario.usuario_id, nueva.usuario.usuario_id);
+      assert.equal(await models.Persona.count({ where: { email: "gise.nuevo@example.test" } }), 0);
+
+      // Email que ya tenía cuenta con contraseña: se vincula y la contraseña sigue funcionando.
+      const vinculada = await loginConGoogle({ credencial: "x" }, google({ google_id: "g-caro", email: "caro@example.test" }));
+      assert.equal(vinculada.ok, true);
+      assert.equal((await models.Usuario.findByPk(vinculada.usuario.usuario_id)).google_id, "g-caro");
+      assert.equal((await login({ identificador: "caro@example.test", password: "Clave1234" })).ok, true);
+      const otraCuenta = await loginConGoogle({ credencial: "x" }, google({ google_id: "g-intruso", email: "caro@example.test" }));
+      assert.equal(otraCuenta.codigo, "GOOGLE_OTRA_CUENTA");
+
+      const sinVerificar = await loginConGoogle({ credencial: "x" }, google({ google_id: "g-dani", email: "dani@example.test", email_verificado: false }));
+      assert.equal(sinVerificar.codigo, "GOOGLE_EMAIL_NO_VERIFICADO");
+      assert.equal((await models.Usuario.findOne({ include: [{ model: models.Persona, as: "persona", where: { email: "dani@example.test" } }] })).google_id, null);
+      const invalida = await loginConGoogle({ credencial: "x" }, { verificar: async () => { throw new Error("firma inválida"); } });
+      assert.equal(invalida.codigo, "GOOGLE_INVALIDO");
+
+      // Doble clic: dos pedidos simultáneos crean una sola cuenta.
+      const [a, b] = await Promise.all([1, 2].map(() => loginConGoogle({ credencial: "x" }, google({ google_id: "g-doble", email: "doble@example.test" }))));
+      assert.equal(a.ok && b.ok, true);
+      assert.equal(a.usuario.usuario_id, b.usuario.usuario_id);
+      assert.equal(await models.Persona.count({ where: { email: "doble@example.test" } }), 1);
     });
   } finally {
     if (created) {

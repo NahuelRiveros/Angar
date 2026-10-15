@@ -1,7 +1,7 @@
 import { forgotPasswordController, secureResetPasswordController } from "../../controllers/usuarios/password_recovery_controller.js";
 import { Router } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
-import { loginController, registerController, meController, logoutController } from "../../controllers/usuarios/auth_controller.js";
+import { loginController, googleController, registerController, meController, logoutController } from "../../controllers/usuarios/auth_controller.js";
 import { requireAuth } from "../../middleware/auth_middleware.js";
 import { seedAdmin, seedStaff } from "../../controllers/usuarios/auth_seed_controller.js";
 import { env } from "../../configuracion_servidor/env.js";
@@ -65,6 +65,7 @@ authRouter.post("/reset-password", resetLimiter, secureResetPasswordController);
 authRouter.post("/seed-admin", requireSeedToken, seedAdmin);
 authRouter.post("/seed-staff", requireSeedToken, seedStaff);
 authRouter.post("/login", loginLimiter, loginController);
+authRouter.post("/google", loginLimiter, googleController);
 authRouter.post("/register", registerLimiter, registerController);
 authRouter.get("/me", requireAuth, meController);
 authRouter.post("/logout", requireAuth, logoutController);
