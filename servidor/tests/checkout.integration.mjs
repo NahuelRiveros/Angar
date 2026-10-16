@@ -19,6 +19,7 @@ const { crearNotaPedido, cambiarEstado, registrarPago, anularPago, listarTodas }
 const { createResetToken } = await import("../src/services/common/auth_tokens.js");
 const { resetPassword } = await import("../src/services/usuarios/password_recovery_service.js");
 const { env } = await import("../src/configuracion_servidor/env.js");
+const { guardarPerfil, obtenerPerfil } = await import("../src/services/distribuidora/perfil_cliente_service.js");
 test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia y recuperación", async (t) => {
   let created = false;
   try {
@@ -34,7 +35,12 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
     const registration = await registrarCliente({ nombre: "Ana", apellido: "Prueba", email: "ana@example.test", password: "Clave1234" });
     assert.equal(registration.ok, true);
     const id = registration.usuario_id;
-    await models.PerfilClienteDistribuidora.create({ usuario_id: id, cuit: "20-12345678-9", direccion: "Prueba 123", provincia: "Buenos Aires", localidad: "La Plata" });
+    // Recién registrada no puede pedir: le faltan celular y datos de entrega.
+    assert.equal((await obtenerPerfil(id)).completo, false);
+    const datosAna = { nombre: "Ana", apellido: "Prueba", celular: "11 2345-6789", cuit: "20-12345678-9", razon_social: null, condicion_iva: null, direccion: "Prueba 123", provincia: "Buenos Aires", departamento: null, localidad: "La Plata", codigo_postal: null };
+    const guardado = await guardarPerfil(id, datosAna);
+    assert.equal(guardado.completo, true);
+    assert.equal((await models.Persona.findOne({ where: { email: "ana@example.test" } })).celular, "11 2345-6789");
     const category = await models.CategoriaDistribuidora.create({ nombre: "Almacén", slug: "almacen" });
     const product = await models.ProductoDistribuidora.create({ categoria_id: category.id, nombre: "Arroz" });
     const variant = await models.VariedadDistribuidora.create({ producto_id: product.id, nombre: "1 kg", precio: 100, controla_stock: true, cantidad: 100 });
@@ -219,6 +225,19 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       assert.equal(a.ok && b.ok, true);
       assert.equal(a.usuario.usuario_id, b.usuario.usuario_id);
       assert.equal(await models.Persona.count({ where: { email: "doble@example.test" } }), 1);
+    });
+    await t.test("sin apellido (cuenta de Google) el pedido se frena hasta completar los datos", async () => {
+      const persona = await models.Persona.findOne({ where: { email: "ana@example.test" } });
+      await persona.update({ apellido: "" });
+      assert.equal((await obtenerPerfil(id)).completo, false);
+      await agregarItem(id, payload);
+      await assert.rejects(crearNotaPedido(id, { key: randomUUID(), expectedItems: await obtenerCarrito(id) }), /Completá tus datos/);
+      const completo = await guardarPerfil(id, { ...datosAna, apellido: "Google", celular: "+54 9 221 456-7890" });
+      assert.equal(completo.completo, true);
+      assert.equal(completo.apellido, "Google");
+      assert.equal(completo.cuit, "20-12345678-9");
+      const nota = await crearNotaPedido(id, { key: randomUUID(), expectedItems: await obtenerCarrito(id) });
+      assert.ok(nota.id);
     });
   } finally {
     if (created) {

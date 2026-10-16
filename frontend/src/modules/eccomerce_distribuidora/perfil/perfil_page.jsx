@@ -18,6 +18,9 @@ import PerfilCampos from "./perfil_campos.jsx";
 export default function PerfilPage() {
   const toast = useToast();
   const [cargando, setCargando] = useState(true);
+  const [nombre, setNombre] = useState("");
+  const [apellido, setApellido] = useState("");
+  const [celular, setCelular] = useState("");
   const [cuit, setCuit] = useState("");
   const [razonSocial, setRazonSocial] = useState("");
   const [condicionIva, setCondicionIva] = useState("");
@@ -32,7 +35,10 @@ export default function PerfilPage() {
   useEffect(() => {
     getMiPerfil()
       .then((p) => {
-        if (!p) return; // todavía no lo completó — el form arranca vacío
+        if (!p) return;
+        setNombre(p.nombre ?? "");
+        setApellido(p.apellido ?? "");
+        setCelular(p.celular ?? "");
         setCuit(p.cuit ?? "");
         setRazonSocial(p.razon_social ?? "");
         setCondicionIva(p.condicion_iva ?? "");
@@ -48,14 +54,15 @@ export default function PerfilPage() {
 
   async function submit(e) {
     e.preventDefault();
-    if (!cuit.trim() || !direccion.trim() || !provincia || !localidad.trim()) {
-      setError("Completá CUIT, dirección, provincia y localidad");
+    if (!nombre.trim() || !apellido.trim() || !celular.trim() || !cuit.trim() || !direccion.trim() || !provincia || !localidad.trim()) {
+      setError("Completá nombre, apellido, celular, CUIT, dirección, provincia y localidad");
       return;
     }
     setError("");
     setGuardando(true);
     try {
       const r = await guardarMiPerfil({
+        nombre: nombre.trim(), apellido: apellido.trim(), celular: celular.trim(),
         cuit: cuit.trim(), razon_social: razonSocial.trim() || null, condicion_iva: condicionIva || null,
         direccion: direccion.trim(), provincia, departamento: departamento || null,
         localidad: localidad.trim(), codigo_postal: codigoPostal.trim() || null,
@@ -88,7 +95,7 @@ export default function PerfilPage() {
           </div>
           <div>
             <h1 className="kt-display text-2xl font-bold text-(--kt-ink)">Mi perfil</h1>
-            <p className="text-sm text-(--kt-ink-soft)">Datos de facturación y entrega para tus pedidos.</p>
+            <p className="text-sm text-(--kt-ink-soft)">Tus datos de contacto, facturación y entrega para los pedidos.</p>
           </div>
         </div>
 
@@ -96,6 +103,9 @@ export default function PerfilPage() {
           <ErrorBanner message={error} />
 
           <PerfilCampos
+            nombre={nombre} setNombre={setNombre}
+            apellido={apellido} setApellido={setApellido}
+            celular={celular} setCelular={setCelular}
             cuit={cuit} setCuit={setCuit}
             razonSocial={razonSocial} setRazonSocial={setRazonSocial}
             condicionIva={condicionIva} setCondicionIva={setCondicionIva}

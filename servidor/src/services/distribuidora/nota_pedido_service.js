@@ -55,7 +55,7 @@ export async function crearNotaPedido(usuario_id, { notas = null, expectedItems,
   if (notas != null && (typeof notas !== "string" || notas.length > 2000)) throw cartError("Las notas pueden tener hasta 2000 caracteres.");
   return withCart(usuario_id, async (carrito, t) => idempotent(usuario_id, "order:" + key, { notas, expectedItems }, t, async () => {
     const perfil = await obtenerPerfil(usuario_id);
-    if (!perfilCompleto(perfil)) throw cartError("Completá tus datos de entrega.", 400, "PERFIL_INCOMPLETO");
+    if (!perfilCompleto(perfil)) throw cartError("Completá tus datos (nombre, apellido, celular y entrega) antes de enviar el pedido.", 400, "PERFIL_INCOMPLETO");
     // Bloquear precios y disponibilidad hasta completar el snapshot. El pedido no reserva stock.
     const raw = await CarritoDistribuidoraItem.findAll({ where: { carrito_id: carrito.id }, transaction: t });
     const productIds = [...new Set(raw.map((i) => i.producto_id))].sort((a,b) => a-b);
@@ -114,7 +114,7 @@ export async function listarTodas({ q, estado, estado_pago, pagina, por_pagina }
     include: [
       { model: NotaPedidoItem, as: "items" }, INCLUDE_PAGOS,
       { model: NotaPedidoEstadoLog, as: "historial_estados", separate: true, order: [["fecha", "ASC"], ["id", "ASC"]], include: [{ model: Usuario, as: "autor", attributes: ["id"], include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido"] }] }] },
-      { model: Usuario, as: "usuario", attributes: ["id"], include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido", "email"] }] },
+      { model: Usuario, as: "usuario", attributes: ["id"], include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido", "email", "celular"] }] },
     ],
   });
   return { data: result.rows, ...armarPaginacion({ page, limit, total: result.count }) };
@@ -127,7 +127,7 @@ export async function obtenerDetalle(id) {
       { model: NotaPedidoItem, as: "items" },
       {
         model: Usuario, as: "usuario", attributes: ["id"],
-        include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido", "email"] }],
+        include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido", "email", "celular"] }],
       },
     ],
   });

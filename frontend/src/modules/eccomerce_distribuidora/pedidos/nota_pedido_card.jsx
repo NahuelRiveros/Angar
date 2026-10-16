@@ -42,7 +42,7 @@ export default function NotaPedidoCard({ nota, operatorId, onCambiarEstado, onRe
     <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)} className="flex w-full flex-col gap-3 p-4 text-left hover:bg-slate-50 sm:flex-row sm:justify-between">
       <div className="min-w-0">
         <h2 className="font-bold">Pedido #{nota.id} · {person(nota.usuario)}</h2>
-        <p className="break-all text-sm text-slate-500">{nota.usuario?.persona?.email}</p>
+        <p className="break-all text-sm text-slate-500">{nota.usuario?.persona?.email}{nota.usuario?.persona?.celular && <> · Cel. {nota.usuario.persona.celular}</>}</p>
         <p className="text-xs text-slate-500">{date(nota.fecha_alta)}</p>
         <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold">{open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{open ? "Ocultar detalle" : "Ver detalle y gestionar"}</span>
       </div>

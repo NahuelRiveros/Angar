@@ -6,6 +6,24 @@ import { safeReturnTo } from "../../frontend/src/controls/acceso/return_to.js";
 import { readGuestCart, mergeGuestItems } from "../../frontend/src/controls/carrito/guest_storage.js";
 import { filtrarNavbarPorRol } from "../../frontend/src/controls/layout/navbar/navbar_permissions.js";
 import { clasificarIdentificador, esNombreUsuarioValido } from "../src/services/common/nombre_usuario.js";
+import { celularValido, datosClienteCompletos, validarDatosCliente } from "../src/services/common/datos_cliente.js";
+
+test("primer pedido exige nombre, apellido, celular y datos de entrega", () => {
+  const completos = { nombre: "Gise", apellido: "Google", celular: "11 2345-6789", cuit: "20-12345678-9", direccion: "Calle 1", provincia: "Buenos Aires", localidad: "La Plata" };
+  assert.equal(datosClienteCompletos(completos), true);
+  assert.equal(datosClienteCompletos({ ...completos, apellido: "" }), false, "cuenta de Google sin apellido");
+  assert.equal(datosClienteCompletos({ ...completos, celular: null }), false);
+  for (const bueno of ["11 2345-6789", "+54 9 11 2345-6789", "(0221) 456-7890"]) assert.equal(celularValido(bueno), true, bueno);
+  for (const malo of ["1234567", "11-2345-abcd", "", "1".repeat(16)]) assert.equal(celularValido(malo), false, malo);
+
+  const { datos } = validarDatosCliente({ ...completos, nombre: "  Gise ", razon_social: "  ", extra: "ignorado" });
+  assert.equal(datos.nombre, "Gise");
+  assert.equal(datos.razon_social, null);
+  assert.equal("extra" in datos, false);
+  assert.match(validarDatosCliente({ ...completos, apellido: " " }).error, /nombre y apellido/);
+  assert.match(validarDatosCliente({ ...completos, celular: "123" }).error, /celular/);
+  assert.match(validarDatosCliente({ ...completos, cuit: "" }).error, /CUIT/);
+});
 
 test("login distingue email de nombre de usuario y valida el usuario sin consultar la base", () => {
   assert.deepEqual(clasificarIdentificador("  Ana@Example.TEST "), { tipo: "email", valor: "ana@example.test" });

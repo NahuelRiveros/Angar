@@ -36,6 +36,9 @@ function unicosPorNombre(lista) {
  * 1 a 1 con localidad, así que no sale de ningún catálogo.
  */
 export default function PerfilCampos({
+  nombre, setNombre,
+  apellido, setApellido,
+  celular, setCelular,
   cuit, setCuit,
   razonSocial, setRazonSocial,
   condicionIva, setCondicionIva,
@@ -87,6 +90,24 @@ export default function PerfilCampos({
 
   return (
     <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <InputField
+          label="Nombre" required hideMessage autoComplete="given-name"
+          value={nombre} onChange={(e) => setNombre(e.target.value)}
+        />
+        <InputField
+          label="Apellido" required hideMessage autoComplete="family-name"
+          value={apellido} onChange={(e) => setApellido(e.target.value)}
+        />
+      </div>
+
+      <InputField
+        label="Celular" required hideMessage type="tel" inputMode="tel" autoComplete="tel"
+        tooltip="Con código de área, sin 0 ni 15. Lo usamos para coordinar la entrega."
+        value={celular} onChange={(e) => setCelular(e.target.value)}
+        placeholder="Ej: 11 2345-6789"
+      />
+
       <div className="grid grid-cols-2 gap-3">
         <InputField
           label="CUIT" required hideMessage

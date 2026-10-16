@@ -31,7 +31,8 @@ export default function NotaPedidoPage() {
   const [error, setError] = useState("");
   const [sent, setSent] = useState(null);
   const profile = useQuery({ queryKey: ["delivery-profile", usuario?.usuario_id], queryFn: getMiPerfil, enabled: isAuth });
-  const complete = !!(profile.data?.cuit && profile.data?.direccion && profile.data?.provincia && profile.data?.localidad);
+  // El servidor decide si alcanza para pedir (misma regla que al enviar la nota).
+  const complete = profile.data?.completo === true;
   const blocked = cart.items.some((i) => !i.activo || !i.variante_disponible || i.stock_disponible != null && i.cantidad > i.stock_disponible);
   const act = (operation) => operation.catch(() => {}); // El contexto muestra el error persistente.
   async function prepare() {
@@ -92,7 +93,8 @@ export default function NotaPedidoPage() {
         <textarea id="order-notes" value={notes} maxLength={2000} disabled={busy || !!attempt} onChange={(e) => { setNotes(e.target.value); sessionStorage.setItem(notesKey, e.target.value); }} rows={3} className="w-full rounded-xl border border-(--kt-border) p-3 text-sm" placeholder="Ejemplo: horario para recibir la entrega" />
         {isAuth && <div className="space-y-2 border-t border-(--kt-border) pt-3"><h3 className="text-sm font-bold">Entrega</h3>
           {profile.isPending ? <p className="text-sm">Cargando datos…</p> : profile.isError ? <button onClick={() => profile.refetch()} className="text-sm underline">No se pudieron cargar tus datos. Reintentar</button>
-            : <><p className="text-sm text-slate-600">{complete ? `${profile.data.direccion}, ${profile.data.localidad}, ${profile.data.provincia}` : "Completá tus datos antes de enviar."}</p>
+            : <>{complete && <p className="text-sm font-semibold">{profile.data.nombre} {profile.data.apellido} · {profile.data.celular}</p>}
+              <p className="text-sm text-slate-600">{complete ? `${profile.data.direccion}, ${profile.data.localidad}, ${profile.data.provincia}` : "Completá tus datos antes de enviar."}</p>
               <button type="button" disabled={busy} onClick={() => setEditProfile(true)} className="min-h-11 text-sm font-semibold underline">{complete ? "Editar datos" : "Completar datos"}</button></>}
         </div>}
         {blocked && <p role="alert" className="text-sm text-rose-700">Revisá los productos sin disponibilidad antes de continuar.</p>}

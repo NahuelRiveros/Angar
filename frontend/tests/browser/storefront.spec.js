@@ -35,7 +35,7 @@ async function mockApi(page, initialCart = []) {
       const id = Number(path.split("/").at(-1));
       cart = cart.map((i) => i.item_id === id ? ({ ...i, cantidad: body.cantidad }) : i); data = { ok: true, data: cart };
     } else if (path.startsWith("/distribuidora/carrito/items/") && method === "DELETE") { cart = cart.filter((i) => i.item_id !== Number(path.split("/").at(-1))); data = { ok: true, data: cart }; }
-    else if (path === "/distribuidora/mi-perfil") data = { ok: true, data: { cuit: "20-12345678-9", direccion: "Av. Prueba 123", provincia: "Buenos Aires", localidad: "La Plata" } };
+    else if (path === "/distribuidora/mi-perfil") data = { ok: true, data: { nombre: "Ana", apellido: "Cliente", celular: "11 2345-6789", cuit: "20-12345678-9", direccion: "Av. Prueba 123", provincia: "Buenos Aires", localidad: "La Plata", completo: true } };
     else if (path === "/distribuidora/notas-pedido" && method === "POST") { submitted.push(body); cart = []; data = { ok: true, data: { id: 123, total: body.expectedItems[0].cantidad * 1200 } }; }
     else if (path === "/home/config") data = { ok: true, textos: {}, pilares: [], contactos: [] };
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(data) });
@@ -176,6 +176,41 @@ test("continuar con Google envía la credencial, muestra errores y si Google no 
   await page.getByRole("button", { name: "Continuar con Google" }).click();
   await expect(page).toHaveURL(/distribuidora\/catalogo/);
   expect(enviados).toEqual([{ credencial: "credencial-de-prueba" }, { credencial: "credencial-de-prueba" }]);
+});
+test("cliente de Google sin apellido completa sus datos en el primer pedido", async ({ page }) => {
+  await mockApi(page, [{ producto_id: 1, variedad_id: 11, cantidad: 2, item_id: 50, nombre: product.nombre, variante: "Paquete 1 kg", precio: 1200, precio_al_agregar: 1200, stock_disponible: 200, activo: true, variante_disponible: true }]);
+  await page.addInitScript(() => localStorage.setItem("token", "mock-session"));
+  const guardados = [];
+  let perfil = { nombre: "Gise", apellido: "", celular: "", cuit: null, direccion: null, provincia: null, localidad: null, completo: false };
+  await page.route("**/api/distribuidora/mi-perfil", async (route) => {
+    if (route.request().method() === "PUT") {
+      const body = route.request().postDataJSON();
+      guardados.push(body);
+      perfil = { ...body, completo: true };
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, data: perfil }) });
+  });
+  await page.route("**/api/ubicacion/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, data: [{ id: 6, nombre: "Buenos Aires" }] }) }));
+  await page.goto("/distribuidora/carrito");
+  await expect(page.getByText("Completá tus datos antes de enviar.")).toBeVisible();
+  await page.getByRole("button", { name: "Continuar con el pedido" }).click();
+  const modal = page.getByRole("dialog");
+  await expect(modal.getByRole("heading", { name: "Tus datos para el pedido" })).toBeVisible();
+  await expect(modal.getByLabel(/^Nombre/)).toHaveValue("Gise");
+  await modal.getByRole("button", { name: "Guardar datos" }).click();
+  // Con datos faltantes no se guarda nada y el formulario sigue abierto.
+  await expect(modal).toBeVisible();
+  expect(guardados).toHaveLength(0);
+  await modal.getByLabel(/^Apellido/).fill("Google");
+  await modal.getByLabel(/^Celular/).fill("11 2345-6789");
+  await modal.getByLabel(/^CUIT/).fill("20-12345678-9");
+  await modal.getByLabel(/^Dirección/).fill("Calle 1 234");
+  await modal.getByLabel(/^Provincia/).selectOption("Buenos Aires");
+  await modal.getByLabel(/^Localidad/).selectOption("Buenos Aires");
+  await noOverflow(page);
+  await modal.getByRole("button", { name: "Guardar datos" }).click();
+  await expect(page.getByText("Gise Google · 11 2345-6789")).toBeVisible();
+  expect(guardados[0]).toMatchObject({ nombre: "Gise", apellido: "Google", celular: "11 2345-6789", cuit: "20-12345678-9", provincia: "Buenos Aires" });
 });
 test("cantidades rápidas en varias líneas conservan el último cambio", async ({ page }) => {
   const row = { item_id: 50, producto_id: 1, variedad_id: 11, cantidad: 1, nombre: "Arroz largo fino", variante: "1 kg", precio: 1200, precio_al_agregar: 1200, stock_disponible: 200, activo: true, variante_disponible: true };

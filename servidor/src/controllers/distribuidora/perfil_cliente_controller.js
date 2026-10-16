@@ -1,4 +1,5 @@
 import { obtenerPerfil, guardarPerfil } from "../../services/distribuidora/perfil_cliente_service.js";
+import { validarDatosCliente } from "../../services/common/datos_cliente.js";
 
 export async function obtenerMiPerfilController(req, res) {
   try {
@@ -11,15 +12,9 @@ export async function obtenerMiPerfilController(req, res) {
 
 export async function guardarMiPerfilController(req, res) {
   try {
-    const { cuit, razon_social, condicion_iva, direccion, provincia, departamento, localidad, codigo_postal } = req.body ?? {};
-    if (!cuit?.trim() || !direccion?.trim() || !provincia?.trim() || !localidad?.trim()) {
-      return res.status(400).json({ ok: false, mensaje: "cuit, direccion, provincia y localidad son requeridos" });
-    }
-    const perfil = await guardarPerfil(req.user.usuario_id, {
-      cuit: cuit.trim(), razon_social: razon_social?.trim() || null, condicion_iva: condicion_iva || null,
-      direccion: direccion.trim(), provincia: provincia.trim(), departamento: departamento?.trim() || null,
-      localidad: localidad.trim(), codigo_postal: codigo_postal?.trim() || null,
-    });
+    const { datos, error } = validarDatosCliente(req.body ?? {});
+    if (error) return res.status(400).json({ ok: false, codigo: "DATOS_INVALIDOS", mensaje: error });
+    const perfil = await guardarPerfil(req.user.usuario_id, datos);
     return res.json({ ok: true, mensaje: "Perfil guardado correctamente", data: perfil });
   } catch (error) {
     console.error("Error al guardar perfil de cliente:", error);
