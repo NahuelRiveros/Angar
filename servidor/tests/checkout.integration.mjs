@@ -25,6 +25,8 @@ const { obtenerResumenPanel } = await import("../src/services/distribuidora/pane
 const productos = await import("../src/services/distribuidora/producto_distribuidora_service.js");
 const { armarListaCarga } = await import("../src/services/distribuidora/lista_carga_service.js");
 const { validarVariedad } = await import("../src/services/common/articulo_rules.js");
+const categoriasSrv = await import("../src/services/distribuidora/catalogos_distribuidora_service.js");
+const marcasSrv = await import("../src/services/distribuidora/marcas_distribuidora_service.js");
 test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia y recuperación", async (t) => {
   let created = false;
   try {
@@ -33,7 +35,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
     assert.match(DB_SCHEMA, /^codex_ux_test_[a-f0-9]{32}$/);
     await sequelize.query('CREATE SCHEMA "' + DB_SCHEMA + '"');
     created = true;
-    for (const name of ["ModuloNegocio", "Sexo", "TipoDocumento", "TipoPersona", "Persona", "Usuario", "Rol", "UsuarioRol", "CategoriaDistribuidora", "ProductoDistribuidora", "VariedadDistribuidora", "CarritoDistribuidora", "CarritoDistribuidoraItem", "NotaPedido", "NotaPedidoEstadoLog", "NotaPedidoPago", "NotaPedidoItem", "PerfilClienteDistribuidora", "OperacionCarrito"]) await models[name].sync();
+    for (const name of ["ModuloNegocio", "Sexo", "TipoDocumento", "TipoPersona", "Persona", "Usuario", "Rol", "UsuarioRol", "CategoriaDistribuidora", "MarcaDistribuidora", "MarcaCategoriaDistribuidora", "ProductoDistribuidora", "VariedadDistribuidora", "CarritoDistribuidora", "CarritoDistribuidoraItem", "NotaPedido", "NotaPedidoEstadoLog", "NotaPedidoPago", "NotaPedidoItem", "PerfilClienteDistribuidora", "OperacionCarrito"]) await models[name].sync();
     await models.ModuloNegocio.create({ codigo: "eccomerce_distribuidora", descripcion: "Distribuidora", habilitado: true });
     await models.TipoDocumento.create({ descripcion: "DNI" });
     await models.Rol.create({ codigo: "cliente", descripcion: "Cliente" });
@@ -266,7 +268,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
     await t.test("panel: resumen por rol, ventas en hora de Argentina y presentaciones sin stock", async () => {
       // 14/03/2030 23:30 en Argentina = 15/03 02:30 UTC: "hoy" sigue siendo el 14.
       const ahora = new Date("2030-03-15T02:30:00Z");
-      const antes = await obtenerResumenPanel(["staff"], { ahora });
+      const antes = await obtenerResumenPanel(["admin"], { ahora });
       const base = { usuario_id: id, estado_pago: "pendiente", monto_pagado: 0, cuit: "20-12345678-9", direccion: "Prueba 123", provincia: "Buenos Aires", localidad: "La Plata", fecha_mod: ahora };
       await models.NotaPedido.bulkCreate([
         { ...base, estado: "pendiente", total: 100, fecha_alta: new Date("2030-03-14T12:00:00Z") },  // hoy
@@ -282,7 +284,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
         { producto_id: producto.id, nombre: "Vieja", precio: 5, controla_stock: true, cantidad: 0, fecha_baja: "2030-01-01" },
       ]);
 
-      const { pedidos, stock } = await obtenerResumenPanel(["staff"], { ahora });
+      const { pedidos, stock } = await obtenerResumenPanel(["admin"], { ahora });
       assert.deepEqual(pedidos.ventas, { hoy: { pedidos: 2, monto: 150 }, mes: { pedidos: 3, monto: 180 } });
       assert.equal(pedidos.por_estado.pendiente - antes.pedidos.por_estado.pendiente, 2);
       assert.equal(pedidos.por_estado.en_curso - antes.pedidos.por_estado.en_curso, 1);
@@ -297,6 +299,16 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       const vendedor = await obtenerResumenPanel(["vendedor"], { ahora });
       assert.ok(vendedor.pedidos);
       assert.equal(vendedor.stock, null);
+      // Montos solo para admin/super_admin: staff y vendedor ven cantidades, no dinero.
+      for (const roles of [["vendedor"], ["staff"]]) {
+        const { pedidos: sinMontos } = await obtenerResumenPanel(roles, { ahora });
+        assert.equal(sinMontos.por_cobrar, null);
+        assert.equal(sinMontos.ventas, null);
+        assert.equal(sinMontos.por_estado.pendiente, pedidos.por_estado.pendiente);
+      }
+      const superAdmin = await obtenerResumenPanel(["super_admin"], { ahora });
+      assert.deepEqual(superAdmin.pedidos.ventas, pedidos.ventas);
+      assert.equal(superAdmin.stock, null);
       assert.deepEqual(await obtenerResumenPanel(["cliente"], { ahora }), { pedidos: null, stock: null });
     });
     await t.test("artículos: ficha con bultos, filtros de gestión y fecha de cambio de precio", async () => {
@@ -357,6 +369,103 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       assert.deepEqual([fila("002982").cantidad, fila("002982").bultos, fila("002982").sueltos], [26, 2, 2]);
       assert.deepEqual([fila("002967").cantidad, fila("002967").bultos, fila("002967").sueltos], [9, 0, 9]);
       assert.equal(lista.totales.unidades, 35);
+    });
+    await t.test("familias y categorías: dos niveles, mover en lote y fusionar sin perder artículos", async () => {
+      const C = models.CategoriaDistribuidora;
+      const crear = (nombre, padre_id = null) => categoriasSrv.crearCategoria({ nombre, slug: "t-" + nombre.toLowerCase().replace(/W+/g, "-") + "-" + (padre_id ?? 0), padre_id });
+      const comestibles = await crear("Comestibles QA");
+      const almacen = await crear("Almacen QA");
+      const galletitas = await crear("Galletitas QA", almacen.id);
+      const galletitasCom = await crear("Galletitas QA", comestibles.id);
+      const arroz = await crear("Arroz QA", comestibles.id);
+      const fideos = await crear("Fideos QA", comestibles.id);
+      const articulo = (categoria_id, nombre) => models.ProductoDistribuidora.create({ categoria_id, nombre });
+      await Promise.all([articulo(galletitas.id, "Pepitos QA"), articulo(galletitasCom.id, "Oreo QA"), articulo(arroz.id, "Gallo QA"), articulo(comestibles.id, "Suelto QA")]);
+
+      // Nunca un tercer nivel, ni una familia con categorías convertida en categoría.
+      await assert.rejects(crear("Dulces QA", galletitas.id), { codigo: "CATEGORIA_INVALIDA" });
+      await assert.rejects(categoriasSrv.actualizarCategoria(almacen.id, { nombre: almacen.nombre, slug: almacen.slug, padre_id: comestibles.id }), { codigo: "CATEGORIA_INVALIDA" });
+
+      // Mover en lote: rechaza nombres repetidos en el destino y destinos que no son familia.
+      await assert.rejects(categoriasSrv.moverCategorias([galletitasCom.id, arroz.id], almacen.id), /Galletitas QA/);
+      await assert.rejects(categoriasSrv.moverCategorias([fideos.id], galletitas.id), { codigo: "CATEGORIA_INVALIDA" });
+      assert.deepEqual(await categoriasSrv.moverCategorias([fideos.id], almacen.id), { ok: true, movidas: 1 });
+      assert.equal((await C.findByPk(fideos.id)).padre_id, almacen.id);
+
+      // Familia en familia: las de igual nombre se unen, el resto se muestra en el destino, y ningún artículo se pierde.
+      await assert.rejects(categoriasSrv.fusionarCategoria(comestibles.id, galletitas.id), { codigo: "CATEGORIA_INVALIDA" });
+      const r = await categoriasSrv.fusionarCategoria(comestibles.id, almacen.id);
+      assert.deepEqual(r, { ok: true, productos_movidos: 2, categorias_movidas: 1, categorias_fusionadas: 1 });
+      assert.equal(await C.findByPk(comestibles.id), null);
+      assert.equal(await C.findByPk(galletitasCom.id), null);
+      assert.equal((await C.findByPk(arroz.id)).padre_id, almacen.id);
+      const enGalletitas = await models.ProductoDistribuidora.findAll({ where: { categoria_id: galletitas.id }, order: [["nombre", "ASC"]] });
+      assert.deepEqual(enGalletitas.map((p) => p.nombre), ["Oreo QA", "Pepitos QA"]);
+      assert.equal(await models.ProductoDistribuidora.count({ where: { categoria_id: almacen.id, nombre: "Suelto QA" } }), 1);
+
+      // Categoría en categoría: pasan sus artículos y se borra.
+      assert.equal((await categoriasSrv.fusionarCategoria(arroz.id, galletitas.id)).productos_movidos, 1);
+      assert.equal(await models.ProductoDistribuidora.count({ where: { categoria_id: galletitas.id } }), 3);
+    });
+    await t.test("marcas: datos viejos migran a la tabla, se ofrecen por familia o categoría y se unifican", async () => {
+      const C = models.CategoriaDistribuidora;
+      const fam = await C.create({ nombre: "Marcas QA", slug: "marcas-qa" });
+      const galle = await C.create({ nombre: "Galle QA", slug: "marcas-qa-galle", padre_id: fam.id });
+      const fideos = await C.create({ nombre: "Fideos QA", slug: "marcas-qa-fideos", padre_id: fam.id });
+      const otraFam = await C.create({ nombre: "Otra Fam QA", slug: "marcas-qa-otra" });
+
+      // Artículos con marca solo en texto (antes de la tabla): el bootstrap los migra uniendo repetidas.
+      const crear = (nombre, marca, categoria_id = galle.id, extra = {}) => models.ProductoDistribuidora.create({ categoria_id, nombre, marca, ...extra });
+      await crear("A QA", "BAGLEY QA");
+      await crear("B QA", "Bagley Qa");
+      await crear("C QA", "bagley  qa", galle.id, { activo: false });
+      await crear("D QA", "Lucchetti Qa", fideos.id);
+      const migracion = await marcasSrv.sincronizarMarcasLegado();
+      assert.equal(migracion.articulos >= 4, true);
+      assert.deepEqual(await marcasSrv.sincronizarMarcasLegado(), { marcas: 0, articulos: 0 }); // idempotente
+      const resumen = (await marcasSrv.resumenMarcas({ q: "qa", por_pagina: 100 })).marcas.filter((m) => m.nombre.endsWith("Qa"));
+      const bagley = resumen.find((m) => m.nombre === "Bagley Qa");
+      assert.deepEqual([bagley.articulos, bagley.activos, bagley.categorias.map((c) => c.ruta)], [3, 2, ["Marcas QA › Galle QA"]]);
+      assert.equal(resumen.filter((m) => m.nombre.toLowerCase().startsWith("bagley")).length, 1);
+      assert.equal((await models.ProductoDistribuidora.findOne({ where: { nombre: "C QA" } })).marca, "Bagley Qa");
+      // Pantalla Marcas paginada: filtro por familia, estado y orden por cantidad de artículos.
+      const pagina = await marcasSrv.resumenMarcas({ categoria: fam.id, orden: "articulos", por_pagina: 1 });
+      assert.deepEqual([pagina.marcas[0].nombre, pagina.pagination.total, pagina.pagination.totalPages], ["Bagley Qa", 2, 2]);
+      assert.deepEqual((await marcasSrv.resumenMarcas({ q: "lucche", estado: "sin_articulos" })).marcas, []);
+      assert.ok(pagina.totales.marcas >= 2);
+
+      // La ficha ve las marcas de su categoría y de su familia, no las de una categoría hermana.
+      const nombres = async (categoria) => (await marcasSrv.listarMarcas({ categoria })).map((m) => m.nombre).filter((n) => n.endsWith("Qa"));
+      assert.deepEqual(await nombres(galle.id), ["Bagley Qa"]);
+      assert.deepEqual(await nombres(fideos.id), ["Lucchetti Qa"]);
+      assert.deepEqual(await nombres(fam.id), ["Bagley Qa", "Lucchetti Qa"]); // la familia ve las de sus categorías
+      const arcor = await marcasSrv.crearMarca({ nombre: "arcor qa", categorias: [fam.id] });
+      assert.equal(arcor.nombre, "Arcor Qa");
+      assert.deepEqual(await nombres(fideos.id), ["Arcor Qa", "Lucchetti Qa"]); // asociada a la familia entera
+      await assert.rejects(marcasSrv.crearMarca({ nombre: "ARCOR-QA", categorias: [fam.id] }), { codigo: "MARCA_EXISTE" });
+      await assert.rejects(marcasSrv.crearMarca({ nombre: "Sin lugar Qa", categorias: [] }), { codigo: "MARCA_INVALIDA" });
+
+      // No se puede quitar una categoría donde la marca tiene artículos; renombrar actualiza la copia de texto.
+      await assert.rejects(marcasSrv.actualizarMarca(bagley.id, { nombre: "Bagley Qa", categorias: [otraFam.id] }), /Galle QA/);
+      await marcasSrv.actualizarMarca(bagley.id, { nombre: "Bagley SA Qa", categorias: [galle.id, otraFam.id] });
+      assert.equal((await models.ProductoDistribuidora.findOne({ where: { nombre: "A QA" } })).marca, "Bagley SA Qa");
+
+      // Guardar un artículo con marca_id en otra categoría la asocia ahí; unificar pasa artículos y lugares.
+      const conId = await productos.crearProducto({ categoria_id: fideos.id, nombre: "E QA", marca_id: bagley.id });
+      assert.equal(conId.marca, "Bagley SA Qa");
+      assert.ok((await nombres(fideos.id)).includes("Bagley SA Qa"));
+      const lucchetti = resumen.find((m) => m.nombre === "Lucchetti Qa");
+      const r = await marcasSrv.unificarMarcas([lucchetti.id], bagley.id);
+      assert.deepEqual([r.ok, r.articulos], [true, 1]);
+      assert.equal(await models.MarcaDistribuidora.findByPk(lucchetti.id), null);
+      assert.equal((await models.ProductoDistribuidora.findOne({ where: { nombre: "D QA" } })).marca_id, bagley.id);
+      await assert.rejects(marcasSrv.eliminarMarca(bagley.id), { codigo: "MARCA_INVALIDA" }); // tiene artículos
+      assert.deepEqual(await marcasSrv.eliminarMarca(arcor.id), { ok: true });
+
+      // Fusionar categorías arrastra dónde se ofrece cada marca.
+      await categoriasSrv.fusionarCategoria(otraFam.id, fam.id);
+      const asociadas = await models.MarcaCategoriaDistribuidora.findAll({ where: { marca_id: bagley.id }, raw: true });
+      assert.ok(asociadas.some((a) => a.categoria_id === fam.id));
     });
   } finally {
     if (created) {

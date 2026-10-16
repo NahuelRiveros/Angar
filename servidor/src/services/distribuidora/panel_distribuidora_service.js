@@ -5,20 +5,24 @@ import { orderConfig } from "../../../../order_config.js";
 const ZONA_HORARIA = "America/Argentina/Buenos_Aires";
 export const ROLES_PANEL_PEDIDOS = orderConfig.managementRoles;
 export const ROLES_PANEL_STOCK = ["admin", "staff"];
-export const ROLES_PANEL = [...new Set([...ROLES_PANEL_PEDIDOS, ...ROLES_PANEL_STOCK])];
+// Montos (ventas y saldo por cobrar): solo los dueños del negocio, nunca staff ni vendedor.
+export const ROLES_PANEL_FINANZAS = ["admin", "super_admin"];
+export const ROLES_PANEL = [...new Set([...ROLES_PANEL_PEDIDOS, ...ROLES_PANEL_STOCK, ...ROLES_PANEL_FINANZAS])];
 
 const tieneRol = (roles, permitidos) => roles.some((rol) => permitidos.includes(rol));
 const consulta = (sql, replacements) => sequelize.query(sql, { replacements, type: QueryTypes.SELECT });
 
-async function resumenPedidos(ahora) {
+async function resumenPedidos(ahora, { finanzas }) {
   // "Hoy" y "este mes" se cuentan en hora de Argentina, no en la del servidor (Render usa UTC).
   // `unidad` es siempre una constante de acá ('day' o 'month'), nunca un dato del usuario.
   const inicio = (unidad) => `(date_trunc('${unidad}', CAST(:ahora AS timestamptz) AT TIME ZONE :zona) AT TIME ZONE :zona)`;
+  // Sin permiso de finanzas ni se consultan los montos: no viajan en la respuesta.
+  const sinFinanzas = Promise.resolve([null]);
   const [porEstado, [cobro], [ventas], ultimos] = await Promise.all([
     consulta("SELECT estado, count(*)::int AS cantidad FROM nota_pedido GROUP BY estado"),
-    consulta(`SELECT coalesce(sum(total - monto_pagado), 0) AS saldo, count(*)::int AS pedidos
+    !finanzas ? sinFinanzas : consulta(`SELECT coalesce(sum(total - monto_pagado), 0) AS saldo, count(*)::int AS pedidos
       FROM nota_pedido WHERE estado <> 'cancelada' AND estado_pago <> 'pagado'`),
-    consulta(`SELECT
+    !finanzas ? sinFinanzas : consulta(`SELECT
         count(*) FILTER (WHERE fecha_alta >= ${inicio("day")})::int AS pedidos_hoy,
         coalesce(sum(total) FILTER (WHERE fecha_alta >= ${inicio("day")}), 0) AS monto_hoy,
         count(*)::int AS pedidos_mes,
@@ -36,8 +40,8 @@ async function resumenPedidos(ahora) {
   const cantidades = Object.fromEntries(porEstado.map((fila) => [fila.estado, fila.cantidad]));
   return {
     por_estado: Object.fromEntries(Object.keys(orderConfig.states).map((estado) => [estado, cantidades[estado] ?? 0])),
-    por_cobrar: { saldo: Number(cobro.saldo), pedidos: cobro.pedidos },
-    ventas: {
+    por_cobrar: cobro && { saldo: Number(cobro.saldo), pedidos: cobro.pedidos },
+    ventas: ventas && {
       hoy: { pedidos: ventas.pedidos_hoy, monto: Number(ventas.monto_hoy) },
       mes: { pedidos: ventas.pedidos_mes, monto: Number(ventas.monto_mes) },
     },
@@ -65,11 +69,13 @@ async function resumenStock() {
 
 /**
  * Dashboard del panel en un solo pedido. Cada sección se calcula solo si el rol
- * la puede ver: un vendedor no recibe el stock, un staff de catálogo sí.
+ * la puede ver: un vendedor no recibe el stock, un staff de catálogo sí, y
+ * por_cobrar/ventas llegan en null salvo para ROLES_PANEL_FINANZAS.
  */
 export async function obtenerResumenPanel(roles = [], { ahora = new Date() } = {}) {
+  const finanzas = tieneRol(roles, ROLES_PANEL_FINANZAS);
   const [pedidos, stock] = await Promise.all([
-    tieneRol(roles, ROLES_PANEL_PEDIDOS) ? resumenPedidos(ahora.toISOString()) : null,
+    finanzas || tieneRol(roles, ROLES_PANEL_PEDIDOS) ? resumenPedidos(ahora.toISOString(), { finanzas }) : null,
     tieneRol(roles, ROLES_PANEL_STOCK) ? resumenStock() : null,
   ]);
   return { pedidos, stock };

@@ -7,6 +7,9 @@ import { readGuestCart, mergeGuestItems } from "../../frontend/src/controls/carr
 import { filtrarNavbarPorRol } from "../../frontend/src/controls/layout/navbar/navbar_permissions.js";
 import { clasificarIdentificador, esNombreUsuarioValido } from "../src/services/common/nombre_usuario.js";
 import { celularValido, datosClienteCompletos, validarDatosCliente } from "../src/services/common/datos_cliente.js";
+import { normalizeRows } from "../src/services/distribuidora/importacion/normalize.js";
+import { formatearNombre } from "../src/services/common/formato_nombre.js";
+import { indexarCategorias, construirOpcionesCategoria } from "../../frontend/src/modules/eccomerce_distribuidora/utils/categoria_jerarquia.js";
 
 test("primer pedido exige nombre, apellido, celular y datos de entrega", () => {
   const completos = { nombre: "Gise", apellido: "Google", celular: "11 2345-6789", cuit: "20-12345678-9", direccion: "Calle 1", provincia: "Buenos Aires", localidad: "La Plata" };
@@ -76,7 +79,7 @@ test("panel de gestión: cada rol ve solo sus secciones y el cliente no entra", 
 
   assert.deepEqual(Object.keys(menu(["staff"])), ["inicio", "distribuidora"]);
   assert.deepEqual(menu(["vendedor"]).distribuidora, ["/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
-  assert.deepEqual(menu(["staff"]).distribuidora, ["/distribuidora/admin/productos", "/distribuidora/admin/categorias", "/distribuidora/admin/importar", "/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
+  assert.deepEqual(menu(["staff"]).distribuidora, ["/distribuidora/admin/productos", "/distribuidora/admin/categorias", "/distribuidora/admin/marcas", "/distribuidora/admin/importar", "/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
   assert.ok(menu(["admin"]).admin.includes("/admin/staffManager"));
   assert.deepEqual(Object.keys(menu(["super_admin"])), ["inicio", "sistema"]);
   assert.deepEqual(menu(["cliente"]), {});
@@ -118,4 +121,51 @@ test("lista de carga acepta ids de pedidos válidos y limita la cantidad", async
   assert.deepEqual(leerIdsPedidos("12, 15,15,x,-3,0"), [12, 15]);
   assert.throws(() => leerIdsPedidos(""), /al menos un pedido/);
   assert.throws(() => leerIdsPedidos(Array.from({ length: MAX_PEDIDOS_LISTA_CARGA + 1 }, (_, i) => i + 1).join(",")), /hasta/);
+});
+
+test("familias y categorías: la importación aplana a dos niveles y el índice arma rutas y totales", () => {
+  const parsed = { columns: [{ key: "c" }, { key: "n" }, { key: "p" }, { key: "cat" }], rows: [
+    { number: 2, values: ["1", "Pepitos", "100", "Almacén > Galletitas > Dulces"] },
+    { number: 3, values: ["2", "Arroz", "50", "Almacén>Arroz"] },
+    { number: 4, values: ["3", "Largo", "50", "Almacén > Galletitas > " + "x".repeat(80)] },
+  ] };
+  const filas = normalizeRows(parsed, { cod_ref: "c", producto_nombre: "n", precio: "p", categoria: "cat" }, { decimal: "comma", identity: "sku", mode: "upsert", category: "" });
+  assert.equal(filas[0].value.categoria, "Almacén > Galletitas - Dulces");
+  assert.equal(filas[1].value.categoria, "Almacén > Arroz");
+  assert.equal(filas[2].action, "error");
+
+  const categorias = [
+    { id: 1, nombre: "Almacén", padre_id: null, cantidad_productos: 2 },
+    { id: 2, nombre: "Galletitas", padre_id: 1, cantidad_productos: 5 },
+    { id: 3, nombre: "Dulces", padre_id: 2, cantidad_productos: 1 }, // nivel heredado
+    { id: 4, nombre: "Limpieza", padre_id: null, cantidad_productos: 0 },
+  ];
+  const indice = indexarCategorias(categorias);
+  assert.deepEqual(indice.familias.map((f) => f.id), [1, 4]);
+  assert.equal(indice.rutaDe.get(3), "Almacén › Galletitas › Dulces");
+  assert.equal(indice.familiaDe.get(3), 1);
+  assert.equal(indice.totalDe.get(1), 8);
+  assert.deepEqual(indice.categoriasDe.get(1).map((c) => c.id), [2, 3]);
+  assert.deepEqual(construirOpcionesCategoria(categorias, { soloFamilias: true }).map((o) => o.label), ["Almacén", "Limpieza"]);
+  assert.equal(construirOpcionesCategoria(categorias)[1].label, "Almacén › Galletitas");
+});
+
+test("nombres del catálogo: mayúscula por palabra sin romper códigos, unidades ni palabras cortas", () => {
+  const casos = {
+    "pan dulce": "Pan Dulce",
+    "9 de oro agridulce 20x200g": "9 de Oro Agridulce 20x200g",
+    "lavandina X5 12x1 lts": "Lavandina X5 12x1 lts",
+    "leche UHT descremada": "Leche UHT Descremada",
+    "PAN DULCE": "Pan Dulce",                    // todo en mayúsculas: se normaliza
+    "JABON LUX X3 125G": "Jabon Lux X3 125g",
+    "  de   la huerta ": "De la Huerta",         // la primera palabra siempre va en mayúscula
+    "la serenísima": "La Serenísima",
+  };
+  for (const [entrada, esperado] of Object.entries(casos)) assert.equal(formatearNombre(entrada), esperado, entrada);
+  assert.equal(formatearNombre(""), "");
+  assert.equal(formatearNombre(null), "");
+
+  const parsed = { columns: [{ key: "c" }, { key: "n" }, { key: "p" }, { key: "m" }, { key: "cat" }], rows: [{ number: 2, values: ["1", "ARROZ LARGO FINO 1KG", "50", "gallo", "almacen > arroz"] }] };
+  const [fila] = normalizeRows(parsed, { cod_ref: "c", producto_nombre: "n", precio: "p", marca: "m", categoria: "cat" }, { decimal: "comma", identity: "sku", mode: "upsert", category: "" });
+  assert.deepEqual([fila.value.producto_nombre, fila.value.marca, fila.value.categoria], ["Arroz Largo Fino 1kg", "Gallo", "Almacen > Arroz"]);
 });

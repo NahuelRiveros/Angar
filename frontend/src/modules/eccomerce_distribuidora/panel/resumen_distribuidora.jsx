@@ -10,7 +10,7 @@ import AdminEmptyState from "../../../controls/ui/admin_empty_state.jsx";
 import { getResumenPanel } from "../api/panel_api.js";
 
 // Mismos roles que el servidor (panel_distribuidora_service.js): el resto no pide el resumen.
-const ROLES_RESUMEN = [...new Set([...orderConfig.managementRoles, "admin", "staff"])];
+const ROLES_RESUMEN = [...new Set([...orderConfig.managementRoles, "admin", "staff", "super_admin"])];
 const fecha = (valor) => new Date(valor).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
 const RUTA_NOTAS = "/distribuidora/admin/notas-pedido";
 
@@ -22,7 +22,7 @@ function Pedidos({ pedidos }) {
   const { por_estado, por_cobrar, ventas, ultimos } = pedidos;
   return (
     <section aria-labelledby="panel-pedidos" className="space-y-4">
-      <h2 id="panel-pedidos" className="text-lg font-bold text-(--kt-ink)">Pedidos y cobros</h2>
+      <h2 id="panel-pedidos" className="text-lg font-bold text-(--kt-ink)">{por_cobrar ? "Pedidos y cobros" : "Pedidos"}</h2>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <TarjetaEnlace to={`${RUTA_NOTAS}?estado=pendiente`}>
           <AdminStatCard icon={ClipboardList} iconBg="bg-amber-50" iconColor="text-amber-700" label={`${ESTADOS.pendiente?.label ?? "Recibidos"} (para atender)`} value={por_estado.pendiente ?? 0} sub="Ver pedidos recibidos" />
@@ -30,11 +30,16 @@ function Pedidos({ pedidos }) {
         <TarjetaEnlace to={`${RUTA_NOTAS}?estado=en_curso`}>
           <AdminStatCard icon={Timer} iconBg="bg-blue-50" iconColor="text-blue-700" label={ESTADOS.en_curso?.label ?? "En preparación"} value={por_estado.en_curso ?? 0} sub="Ver pedidos en preparación" />
         </TarjetaEnlace>
-        <TarjetaEnlace to={RUTA_NOTAS}>
-          <AdminStatCard icon={Wallet} iconBg="bg-rose-50" iconColor="text-rose-700" label="Saldo por cobrar" value={money(por_cobrar.saldo)} sub={`${por_cobrar.pedidos} pedido(s) con cobro pendiente o parcial`} />
-        </TarjetaEnlace>
-        <AdminStatCard icon={TrendingUp} iconBg="bg-emerald-50" iconColor="text-emerald-700" label="Ventas de hoy" value={money(ventas.hoy.monto)}
-          sub={`${ventas.hoy.pedidos} pedido(s) hoy · Mes: ${money(ventas.mes.monto)} en ${ventas.mes.pedidos} pedido(s)`} />
+        {/* Los montos solo llegan para admin y super_admin; el resto ve únicamente cantidades. */}
+        {por_cobrar && (
+          <TarjetaEnlace to={RUTA_NOTAS}>
+            <AdminStatCard icon={Wallet} iconBg="bg-rose-50" iconColor="text-rose-700" label="Saldo por cobrar" value={money(por_cobrar.saldo)} sub={`${por_cobrar.pedidos} pedido(s) con cobro pendiente o parcial`} />
+          </TarjetaEnlace>
+        )}
+        {ventas && (
+          <AdminStatCard icon={TrendingUp} iconBg="bg-emerald-50" iconColor="text-emerald-700" label="Ventas de hoy" value={money(ventas.hoy.monto)}
+            sub={`${ventas.hoy.pedidos} pedido(s) hoy · Mes: ${money(ventas.mes.monto)} en ${ventas.mes.pedidos} pedido(s)`} />
+        )}
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">

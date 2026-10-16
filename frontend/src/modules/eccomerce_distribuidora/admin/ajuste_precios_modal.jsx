@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, DollarSign } from "lucide-react";
 import InputField from "../../../controls/ui/input_field.jsx";
-import SelectField from "../../../controls/ui/select_field.jsx";
+import ComboboxField from "../../../controls/ui/combobox_field.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import { ajustarPreciosMasivo } from "../api/producto_distribuidora_api.js";
 
@@ -75,12 +75,13 @@ export default function AjustePreciosModal({ productoFijo, opcionesCategoria, on
               )}
 
               {!productoFijo && alcance === "categoria" && (
-                <SelectField
-                  label="Categoría"
+                <ComboboxField
+                  label="Familia o categoría"
+                  required
                   options={opcionesCategoria}
                   value={categoriaId}
-                  onChange={(e) => setCategoriaId(e.target.value)}
-                  helperText="Incluye también las subcategorías de la que elijas."
+                  onChange={setCategoriaId}
+                  helperText="Si elegís una familia, incluye todas sus categorías."
                 />
               )}
 

@@ -1,6 +1,6 @@
 import {
   listarProductos, obtenerProductoPorId, crearProductoConVariedad, actualizarProductoConVariedad, cambiarEstadoProducto, eliminarProducto,
-  ajustarPreciosMasivo, listarMarcas,
+  ajustarPreciosMasivo,
 } from "../../services/distribuidora/producto_distribuidora_service.js";
 import { validarVariedad, FILTROS_STOCK } from "../../services/common/articulo_rules.js";
 
@@ -54,6 +54,7 @@ export async function crearProductoController(req, res) {
     const producto = await crearProductoConVariedad(req.body, datos);
     return res.status(201).json({ ok: true, mensaje: "Producto creado correctamente", data: producto });
   } catch (error) {
+    if (error.codigo === "MARCA_INVALIDA") return res.status(400).json({ ok: false, codigo: error.codigo, mensaje: error.message });
     if (error.name === "SequelizeUniqueConstraintError") {
       return res.status(409).json({ ok: false, mensaje: "Ya existe un producto con ese nombre en esta categoría" });
     }
@@ -73,6 +74,7 @@ export async function actualizarProductoController(req, res) {
     if (!producto) return res.status(404).json({ ok: false, mensaje: "Producto no encontrado" });
     return res.json({ ok: true, mensaje: "Producto actualizado correctamente", data: producto });
   } catch (error) {
+    if (error.codigo === "MARCA_INVALIDA") return res.status(400).json({ ok: false, codigo: error.codigo, mensaje: error.message });
     if (error.name === "SequelizeUniqueConstraintError") {
       return res.status(409).json({ ok: false, mensaje: "Ya existe un producto con ese nombre en esta categoría" });
     }
@@ -119,14 +121,5 @@ export async function ajustarPreciosMasivoController(req, res) {
   } catch (error) {
     console.error("Error al ajustar precios masivamente:", error);
     return res.status(error.status ?? 500).json({ ok: false, mensaje: error.status ? error.message : "Error interno al ajustar los precios" });
-  }
-}
-
-export async function listarMarcasController(_req, res) {
-  try {
-    return res.json({ ok: true, data: await listarMarcas() });
-  } catch (error) {
-    console.error("Error al listar marcas:", error);
-    return res.status(500).json({ ok: false, mensaje: "Error interno al listar las marcas" });
   }
 }

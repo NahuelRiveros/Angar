@@ -221,6 +221,8 @@ const RESUMEN_PANEL = {
   },
   stock: { sin_stock: 6, productos_activos: 40, ejemplos_sin_stock: [{ id: 11, producto: "Arroz largo fino", presentacion: "Paquete 1 kg" }] },
 };
+// Así responde el servidor a staff y vendedor: cantidades sí, montos no.
+const PEDIDOS_SIN_MONTOS = { ...RESUMEN_PANEL.pedidos, por_cobrar: null, ventas: null };
 async function entrarComo(page, roles, resumen = RESUMEN_PANEL) {
   await mockApi(page);
   await page.addInitScript(() => localStorage.setItem("token", "mock-session"));
@@ -235,7 +237,7 @@ async function menuPanel(page) {
   return page.getByRole("navigation", { name: "Menú del panel" });
 }
 test("staff entra al panel desde el navbar y ve dashboard y menú de su rol", async ({ page }, info) => {
-  await entrarComo(page, ["staff"]);
+  await entrarComo(page, ["staff"], { ...RESUMEN_PANEL, pedidos: PEDIDOS_SIN_MONTOS });
   await page.goto("/");
   if (info.project.name === "desktop") {
     await expect(page.getByRole("button", { name: /Distribuidora · Gestión/ })).toHaveCount(0);
@@ -243,7 +245,8 @@ test("staff entra al panel desde el navbar y ve dashboard y menú de su rol", as
   } else await page.goto("/panel");
   await expect(page).toHaveURL(/\/panel$/);
   await expect(page.getByRole("heading", { name: "Hola, Eva" })).toBeVisible();
-  await expect(page.getByText("$ 4.500,00")).toBeVisible();
+  await expect(page.getByText("Saldo por cobrar")).toHaveCount(0); // montos solo para admin/super_admin
+  await expect(page.getByText("Ventas de hoy")).toHaveCount(0);
   await expect(page.getByText("6 presentación(es) sin stock")).toBeVisible();
   await expect(page.getByText("Pedido #123 · Ana Cliente")).toBeVisible();
   await expect(page.getByRole("contentinfo")).toHaveCount(0); // sin el footer de la tienda
@@ -258,9 +261,10 @@ test("staff entra al panel desde el navbar y ve dashboard y menú de su rol", as
   await expect(page.getByRole("dialog", { name: "Menú del panel" })).toHaveCount(0);
 });
 test("vendedor ve solo pedidos; cliente no tiene panel; error del resumen ofrece reintentar", async ({ page }) => {
-  await entrarComo(page, ["vendedor"], { pedidos: RESUMEN_PANEL.pedidos, stock: null });
+  await entrarComo(page, ["vendedor"], { pedidos: PEDIDOS_SIN_MONTOS, stock: null });
   await page.goto("/panel");
-  await expect(page.getByText("Saldo por cobrar")).toBeVisible();
+  await expect(page.getByText("Pedido #123 · Ana Cliente")).toBeVisible();
+  await expect(page.getByText("Saldo por cobrar")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Stock" })).toHaveCount(0);
   const menu = await menuPanel(page);
   await expect(menu.getByRole("link", { name: "Notas de pedido" })).toBeVisible();
@@ -282,6 +286,12 @@ test("vendedor ve solo pedidos; cliente no tiene panel; error del resumen ofrece
   fallar = false;
   await page.getByRole("button", { name: "Reintentar" }).click();
   await expect(page.getByText("Saldo por cobrar")).toBeVisible();
+  await expect(page.getByText("$ 4.500,00")).toBeVisible();
+
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await entrarComo(page, ["super_admin"], { pedidos: RESUMEN_PANEL.pedidos, stock: null });
+  await page.goto("/panel");
+  await expect(page.getByText("Ventas de hoy")).toBeVisible();
 });
 const ARTICULO = { id: 519, nombre: "9 de Oro Agridulce 20x200g", marca: "Cañuela", activo: true, categoria_id: 3, categoria: { id: 3, nombre: "Galletitas en gral" },
   variedades: [{ id: 51, precio: 1200, iva_porcentaje: 21, controla_stock: true, cantidad: 30, stock_minimo: 50, cod_ref: "000519", codigo_barras: "7790040001230", unidad_medida: "PAQUETE", unidad_bulto: "CAJA", unidades_por_bulto: 20, fecha_cambio_precio: "2026-05-26T12:00:00Z" }] };
@@ -314,14 +324,21 @@ test("artículos: tabla con código, bultos y stock bajo; filtros en la direcci�
   await expect(page).toHaveURL(/stock=bajo_minimo/);
   await expect.poll(() => pedidos.at(-1)?.stock).toBe("bajo_minimo");
 
-  await page.getByRole("button", { name: "Nuevo artículo" }).click();
-  const ficha = page.getByRole("dialog");
+  await page.getByRole("button", { name: "Nuevo artículo" }).first().click();
+  // La ficha es una página propia que recuerda los filtros para volver.
+  await expect(page).toHaveURL(/\/distribuidora\/admin\/productos\/nuevo\?volver=/);
+  const ficha = page;
   await ficha.getByLabel(/^Descripción del artículo/).fill("Lavandina X5 al 25% 1 lt");
+  await page.getByRole("link", { name: "Volver" }).click();
+  await expect(page.getByRole("dialog", { name: "Tenés cambios sin guardar" })).toBeVisible();
+  await page.getByRole("button", { name: "Seguir editando" }).click();
+  await expect(page).toHaveURL(/productos\/nuevo/);
   await ficha.getByPlaceholder("Ej: 000519").fill("002982");
   await ficha.getByRole("button", { name: "Guardar artículo" }).click();
   // Sin familia ni precio no se envía: queda en la pestaña con datos faltantes.
   await expect(ficha.getByRole("tab", { name: /Datos generales/ })).toHaveAttribute("aria-selected", "true");
-  await ficha.getByLabel(/^Familia/).selectOption("3");
+  await ficha.getByRole("combobox", { name: /^Familia/ }).fill("galle");
+  await ficha.getByRole("option", { name: /Galletitas en gral/ }).click();
   await ficha.getByRole("button", { name: "Guardar artículo" }).click();
   await expect(ficha.getByRole("tab", { name: /Precios/ })).toHaveAttribute("aria-selected", "true");
   await ficha.getByLabel(/^Precio de venta/).fill("1500");
@@ -329,8 +346,9 @@ test("artículos: tabla con código, bultos y stock bajo; filtros en la direcci�
   await ficha.getByLabel(/^Se vende por/).selectOption("BOTELLA");
   await ficha.getByLabel(/^Unidades por bulto/).fill("12");
   await expect(ficha.getByText("1 caja = 12 botellas")).toBeVisible();
+  await noOverflow(page);
   await ficha.getByRole("button", { name: "Guardar artículo" }).click();
-  await expect(ficha).toHaveCount(0);
+  await expect(page).toHaveURL(/\/distribuidora\/admin\/productos\?stock=bajo_minimo$/);
   expect(guardados).toHaveLength(1);
   expect(guardados[0]).toMatchObject({ categoria_id: 3, nombre: "Lavandina X5 al 25% 1 lt", cod_ref: "002982", precio: 1500, unidad_medida: "BOTELLA", unidad_bulto: "CAJA", unidades_por_bulto: 12 });
 });
@@ -469,4 +487,155 @@ test("staff gestiona notas y registra cobros con historial en cualquier pantalla
   await noOverflow(page);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: info.outputPath("gestion-pedidos.png"), fullPage: true });
+});
+
+const CATEGORIAS = [
+  { id: 1, nombre: "Almacén", slug: "almacen", padre_id: null, cantidad_productos: 1 },
+  { id: 2, nombre: "Galletitas", slug: "almacen-galletitas", padre_id: 1, cantidad_productos: 40 },
+  { id: 3, nombre: "Galletas", slug: "almacen-galletas", padre_id: 1, cantidad_productos: 3 },
+  { id: 4, nombre: "Limpieza", slug: "limpieza", padre_id: null, cantidad_productos: 0 },
+  { id: 5, nombre: "Lavandinas", slug: "limpieza-lavandinas", padre_id: 4, cantidad_productos: 0 },
+];
+test("familias y categorías: dos columnas, búsqueda global, alta y fusión", async ({ page }) => {
+  await entrarComo(page, ["staff"]);
+  const envios = [];
+  await page.route("**/api/distribuidora/catalogos/categorias**", async (route) => {
+    const req = route.request();
+    if (req.method() === "GET") return route.fulfill({ json: { ok: true, data: CATEGORIAS } });
+    envios.push({ metodo: req.method(), url: new URL(req.url()).pathname, body: req.postDataJSON() });
+    if (req.url().endsWith("/fusionar")) return route.fulfill({ json: { ok: true, data: { productos_movidos: 3 } } });
+    return route.fulfill({ status: 201, json: { ok: true, data: { id: 9 } } });
+  });
+  await page.goto("/distribuidora/admin/categorias");
+  await expect(page.getByText("2 familias · 3 categorías · 44 artículos")).toBeVisible();
+  await page.getByRole("button", { name: "Cómo se ordena el catálogo" }).click(); // en celular no hay hover: se abre al tocar
+  await expect(page.getByRole("tooltip")).toContainText("Familia (Almacén, Limpieza, Ferretería) › Categoría");
+  await noOverflow(page);
+  await page.keyboard.press("Escape");
+  const familias = page.getByRole("navigation", { name: "Familias" });
+  await familias.getByRole("button", { name: /Almacén/ }).click();
+  await expect(page.getByRole("heading", { name: "Almacén" })).toBeVisible();
+  await expect(page.getByText("1 artículo está cargado directo en la familia, sin categoría.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Eliminar Galletitas" })).toBeDisabled(); // tiene artículos
+  await noOverflow(page);
+
+  await page.getByLabel("Nueva categoría en Almacén").fill("Arroz");
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await expect.poll(() => envios.length).toBe(1);
+  expect(envios[0].body).toEqual({ nombre: "Arroz", slug: "almacen-arroz", padre_id: 1 });
+
+  await page.getByRole("button", { name: "Fusionar Galletas" }).click();
+  const dialogo = page.getByRole("dialog", { name: 'Fusionar "Galletas"' });
+  await dialogo.getByRole("combobox", { name: /Destino/ }).fill("galletitas");
+  await dialogo.getByRole("option", { name: /Almacén › Galletitas/ }).click();
+  await expect(dialogo.getByText('3 artículos pasan a "Almacén › Galletitas".')).toBeVisible();
+  await dialogo.getByRole("button", { name: "Fusionar" }).click();
+  await expect.poll(() => envios.length).toBe(2);
+  expect(envios[1]).toMatchObject({ metodo: "POST", url: "/api/distribuidora/catalogos/categorias/3/fusionar", body: { destino_id: 2 } });
+
+  // La búsqueda recorre todas las familias y abre la que corresponde.
+  await page.getByRole("searchbox", { name: "Buscar familia o categoría" }).fill("lavand");
+  await page.getByRole("button", { name: /Limpieza › Lavandinas/ }).click();
+  await expect(page.getByRole("heading", { name: "Limpieza" })).toBeVisible();
+  await expect(page).toHaveURL(/familia=4/);
+});
+
+const MARCAS_GESTION = [
+  { id: 1, nombre: "Arcor", articulos: 8, activos: 8, categorias: [{ id: 3, ruta: "Galletitas en gral" }] },
+  { id: 2, nombre: "Bagley", articulos: 12, activos: 11, categorias: [{ id: 3, ruta: "Galletitas en gral" }] },
+  { id: 4, nombre: "Terrabusi", articulos: 0, activos: 0, categorias: [] },
+];
+// API de marcas simulada: lista por categoría, búsqueda, gestión, alta y unificar.
+async function mockMarcas(page) {
+  const envios = [];
+  const consultasGestion = [];
+  await page.route("**/api/distribuidora/marcas**", async (route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    if (req.method() !== "GET") {
+      envios.push({ metodo: req.method(), url: url.pathname, body: req.postDataJSON() });
+      if (url.pathname.endsWith("/unificar")) return route.fulfill({ json: { ok: true, mensaje: 'Quedó "Bagley"', data: { marca: "Bagley", articulos: 8 } } });
+      return route.fulfill({ status: 201, json: { ok: true, mensaje: "Marca creada", data: { id: 9, nombre: req.postDataJSON().nombre } } });
+    }
+    if (url.pathname.endsWith("/gestion")) {
+      consultasGestion.push(Object.fromEntries(url.searchParams));
+      return route.fulfill({ json: { ok: true, data: MARCAS_GESTION, total: 3, pagina: 1, total_paginas: 1, totales: { marcas: 3, articulos: 20 } } });
+    }
+    const q = url.searchParams.get("q")?.toLowerCase();
+    const todas = [{ id: 1, nombre: "Arcor" }, { id: 2, nombre: "Bagley" }, { id: 5, nombre: "Cañuela" }];
+    const data = q ? todas.filter((m) => m.nombre.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").includes(q.normalize("NFD").replace(/[̀-ͯ]/g, "")))
+      : url.searchParams.get("categoria") ? todas.slice(0, 2) : todas;
+    return route.fulfill({ json: { ok: true, data } });
+  });
+  envios.consultasGestion = consultasGestion;
+  return envios;
+}
+test("marcas: lista con dónde se ofrece, unificar y alta en página propia", async ({ page }) => {
+  await gestionArticulos(page);
+  const envios = await mockMarcas(page);
+  await page.goto("/distribuidora/admin/marcas");
+  await expect(page.getByText("3 marcas · 20 artículos con marca")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Dónde se ofrece Bagley" }).locator("visible=true")).toContainText("Galletitas en gral");
+  await expect(page.getByRole("list", { name: "Dónde se ofrece Terrabusi" }).locator("visible=true")).toContainText("Sin familia ni categoría");
+  await expect(page.getByRole("button", { name: "Eliminar Bagley" }).locator("visible=true")).toBeDisabled(); // tiene artículos
+  await noOverflow(page);
+
+  // Filtros y orden van al servidor y quedan en la dirección.
+  await page.getByLabel(/^Estado/).selectOption("sin_articulos");
+  await expect(page).toHaveURL(/estado=sin_articulos/);
+  await expect.poll(() => envios.consultasGestion.at(-1)?.estado).toBe("sin_articulos");
+  if ((page.viewportSize()?.width ?? 0) >= 768) {
+    await page.getByRole("button", { name: /^Artículos/ }).click(); // encabezado de la tabla
+    await expect.poll(() => envios.consultasGestion.at(-1)?.orden).toBe("articulos");
+  }
+  await page.goto("/distribuidora/admin/marcas");
+
+  await page.getByRole("checkbox", { name: "Elegir Arcor" }).locator("visible=true").check();
+  await page.getByRole("checkbox", { name: "Elegir Bagley" }).locator("visible=true").check();
+  await page.getByRole("button", { name: "Unificar" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Unificar 2 marcas" });
+  await expect(dialogo.getByRole("radio", { name: /^Bagley/ })).toBeChecked(); // la más usada
+  await dialogo.getByRole("button", { name: "Unificar" }).click();
+  await expect.poll(() => envios.length).toBe(1);
+  expect(envios[0]).toMatchObject({ metodo: "POST", url: "/api/distribuidora/marcas/unificar", body: { origenes: [1, 2], destino_id: 2 } });
+
+  // Nueva marca: página propia con nombre y dónde se ofrece; al guardar vuelve a Marcas.
+  await page.getByRole("button", { name: "Nueva marca" }).click();
+  await expect(page).toHaveURL(/\/distribuidora\/admin\/marcas\/nueva\?volver=/);
+  await page.getByLabel(/^Nombre de la marca/).fill("Molinos");
+  await page.getByRole("button", { name: "Guardar marca" }).click();
+  await expect(page.getByText("Elegí al menos una familia o categoría donde se ofrece.")).toBeVisible();
+  await page.getByRole("checkbox", { name: /Galletitas en gral/ }).check();
+  await noOverflow(page);
+  await page.getByRole("button", { name: "Guardar marca" }).click();
+  await expect(page).toHaveURL(/\/distribuidora\/admin\/marcas$/);
+  expect(envios[1]).toMatchObject({ metodo: "POST", url: "/api/distribuidora/marcas", body: { nombre: "Molinos", categorias: [3] } });
+});
+test("marca en la ficha: lista de su categoría, sin duplicar y alta en el momento", async ({ page }) => {
+  const { guardados } = await gestionArticulos(page);
+  const envios = await mockMarcas(page);
+  await page.goto("/distribuidora/admin/productos/nuevo");
+
+  // Sin categoría no se elige marca; con categoría, la lista trae las suyas y no duplica.
+  const marca = page.getByRole("combobox", { name: /^Marca/ });
+  await expect(marca).toBeDisabled();
+  await page.getByRole("combobox", { name: /^Familia/ }).fill("galle");
+  await page.getByRole("option", { name: /Galletitas en gral/ }).click();
+  await marca.click();
+  await expect(page.getByRole("option", { name: "Bagley" })).toBeVisible();
+  await marca.fill("cañuela");
+  await expect(page.getByRole("option", { name: "Cañuela" })).toBeVisible(); // de otras categorías
+  await expect(page.getByRole("option", { name: /Crear marca/ })).toHaveCount(0);
+  await marca.fill("Molinos");
+  await page.getByRole("option", { name: '+ Crear marca "Molinos"' }).click();
+  await expect(marca).toHaveValue("Molinos");
+  expect(envios[0]).toMatchObject({ metodo: "POST", url: "/api/distribuidora/marcas", body: { nombre: "Molinos", categorias: [3] } });
+  await noOverflow(page);
+
+  await page.getByLabel(/^Descripción del artículo/).fill("Harina 000 1 kg");
+  await page.getByRole("tab", { name: /Precios/ }).click();
+  await page.getByLabel(/^Precio de venta/).fill("900");
+  await page.getByRole("button", { name: "Guardar artículo" }).click();
+  await expect(page).toHaveURL(/\/distribuidora\/admin\/productos$/);
+  expect(guardados[0]).toMatchObject({ categoria_id: 3, marca_id: 9, nombre: "Harina 000 1 kg" });
 });

@@ -26,6 +26,10 @@ de cada cliente; `node scripts/analizar_modulos.mjs` lista sus carpetas sin toca
 - `unidades_config.js`: unidades de venta, bultos (equivalencia) y el cálculo de bultos/sueltos
   que usan la ficha del artículo, el catálogo y la lista de carga.
 - `docs/distribuidora-pedidos.md`: contrato y reglas del pedido; leer para cambios de negocio.
+- Catálogo en dos niveles (Familia › Categoría). Las marcas son tabla propia (`marca_distribuidora`)
+  asociada a familias o categorías (`marca_categoria_distribuidora`); el artículo guarda `marca_id` y
+  `producto_distribuidora.marca` es una copia del nombre que mantiene `marcas_distribuidora_service.js`
+  (no escribirla a mano). El bootstrap migra marcas en texto viejas (`sincronizarMarcasLegado`).
 - `frontend/src/config/`: marca, tema, navegación, catálogo y textos.
 - Ante diferencias entre comentarios y código, comprobar rutas, servicios y tests antes de concluir.
 

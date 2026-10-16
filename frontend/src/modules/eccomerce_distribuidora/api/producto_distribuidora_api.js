@@ -34,8 +34,3 @@ export async function ajustarPreciosMasivo(payload) {
   const { data } = await http.post("/distribuidora/productos/ajustar-precios", payload);
   return data;
 }
-
-export async function getMarcas() {
-  const { data } = await http.get("/distribuidora/productos/marcas");
-  return data.data;
-}

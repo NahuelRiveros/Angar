@@ -2,6 +2,8 @@ import { Op, fn, col, where } from "sequelize";
 import { CategoriaDistribuidora as Category, ProductoDistribuidora as Product, VariedadDistribuidora as Variant } from "../../../models/index.js";
 import { groupKey, categoryPaths, hash } from "./plan.js";
 import { keyText } from "./normalize.js";
+import { asegurarMarcasPorNombre, asociarSiFalta } from "../marcas_distribuidora_service.js";
+import { claveMarca } from "../../common/formato_nombre.js";
 const unique = (rows) => [...new Map(rows.map((r) => [r.id, r])).values()];
 const chunks = (array, size = 500) => Array.from({ length: Math.ceil(array.length / size) }, (_, i) => array.slice(i * size, (i + 1) * size));
 async function readChunks(Model, values, condition, transaction) {
@@ -46,8 +48,12 @@ export async function applyPlan(plan, catalog, transaction) {
   }
   if (newProducts.size) {
     const entries = [...newProducts];
-    const added = await Product.bulkCreate(entries.map(([,v]) => ({ nombre: v.producto_nombre, categoria_id: categoryIds.get(keyText(v.categoria)), marca: v.marca, descripcion: v.descripcion, activo: true })), { transaction, returning: true });
+    // Las marcas del archivo se buscan (o crean) en la tabla de marcas y se asocian a la categoría.
+    const marcas = await asegurarMarcasPorNombre(entries.map(([, v]) => v.marca).filter(Boolean), transaction);
+    const marcaDe = (v) => (v.marca ? marcas.get(claveMarca(v.marca)) : null);
+    const added = await Product.bulkCreate(entries.map(([,v]) => ({ nombre: v.producto_nombre, categoria_id: categoryIds.get(keyText(v.categoria)), marca_id: marcaDe(v)?.id ?? null, marca: marcaDe(v)?.nombre ?? null, descripcion: v.descripcion, activo: true })), { transaction, returning: true });
     added.forEach((p, i) => productIds.set(entries[i][0], p.id));
+    await asociarSiFalta(added.filter((p) => p.marca_id).map((p) => ({ marca_id: p.marca_id, categoria_id: p.categoria_id })), transaction);
   }
   if (creates.length) await Variant.bulkCreate(creates.map((r) => ({ producto_id: r.productId || productIds.get(groupKey(r.value.categoria, r.value.producto_nombre)), nombre: r.value.variedad_nombre, ...r.patch, fecha_cambio_precio: new Date() })), { transaction });
   const variants = new Map(catalog.variants.map((v) => [v.id, v]));

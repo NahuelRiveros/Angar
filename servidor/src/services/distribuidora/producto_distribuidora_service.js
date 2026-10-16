@@ -2,12 +2,13 @@ import { Op } from "sequelize";
 import { sequelize } from "../../database/sequelize.js";
 import { ProductoDistribuidora, CategoriaDistribuidora, VariedadDistribuidora } from "../../models/index.js";
 import { normalizarPaginacion, armarPaginacion } from "../common/pagination.js";
-import { capitalizar } from "../common/query_helpers.js";
+import { formatearNombre } from "../common/formato_nombre.js";
+import { resolverMarcaDeArticulo } from "./marcas_distribuidora_service.js";
 
 // fecha_alta viaja acá para que el admin pueda auditar cuándo se cargó cada
 // producto (columna DATEONLY ya existente en el modelo, antes no se
 // seleccionaba nunca — invisible aunque siempre estuvo en la base).
-const ATTR_LISTADO = ["id", "categoria_id", "nombre", "descripcion", "marca", "imagen_url", "activo", "fecha_alta"];
+const ATTR_LISTADO = ["id", "categoria_id", "nombre", "descripcion", "marca_id", "marca", "imagen_url", "activo", "fecha_alta"];
 
 const INCLUDE_LISTADO = [
   { model: CategoriaDistribuidora, as: "categoria", attributes: ["id", "nombre", "slug"] },
@@ -100,16 +101,6 @@ async function construirWhere({ categoria, incluirDescendientes = true, q, soloA
   return where;
 }
 
-/** Marcas cargadas (para el filtro de la gestión de artículos). */
-export async function listarMarcas() {
-  const filas = await ProductoDistribuidora.findAll({
-    where: { fecha_baja: null, marca: { [Op.ne]: null } },
-    attributes: [[sequelize.fn("DISTINCT", sequelize.col("marca")), "marca"]],
-    order: [["marca", "ASC"]], raw: true, limit: 1000,
-  });
-  return filas.map((f) => f.marca).filter(Boolean);
-}
-
 // `soloActivos` en false = ve también los productos desactivados (admin/staff
 // gestionando el catálogo); en true = solo lo que ve un cliente en el catálogo público.
 // `maxLimit` sube a 1000 solo para el admin (carga perezosa por categoría del
@@ -148,11 +139,13 @@ export async function obtenerProductoPorId(id, { soloActivos = true } = {}) {
 }
 
 export async function crearProducto(payload, { transaction } = {}) {
+  // La marca se elige de la tabla de marcas; `marca` (texto) es la copia de su nombre.
+  const marca = await resolverMarcaDeArticulo({ marca_id: payload.marca_id, marca: payload.marca, categoria_id: payload.categoria_id }, transaction);
   return ProductoDistribuidora.create({
     categoria_id: payload.categoria_id,
-    nombre: capitalizar(payload.nombre),
+    nombre: formatearNombre(payload.nombre),
     descripcion: payload.descripcion ?? null,
-    marca: payload.marca ?? null,
+    ...marca,
     imagen_url: payload.imagen_url ?? null,
     activo: true,
     fecha_alta: new Date(),
@@ -181,11 +174,13 @@ export async function crearProductoConVariedad(payload, variedad) {
 export async function actualizarProducto(id, payload, { transaction } = {}) {
   const producto = await ProductoDistribuidora.findByPk(id, { transaction });
   if (!producto) return null;
+  // Sin `marca_id` en el pedido se conserva la actual (y se asocia a la categoría nueva si cambió).
+  const marca = await resolverMarcaDeArticulo({ marca_id: payload.marca_id !== undefined ? payload.marca_id : (payload.marca === undefined ? producto.marca_id : undefined), marca: payload.marca, categoria_id: payload.categoria_id }, transaction);
   await producto.update({
     categoria_id: payload.categoria_id,
-    nombre: capitalizar(payload.nombre),
+    nombre: formatearNombre(payload.nombre),
     descripcion: payload.descripcion ?? null,
-    marca: payload.marca ?? null,
+    ...marca,
     imagen_url: payload.imagen_url ?? producto.imagen_url,
     activo: payload.activo ?? producto.activo,
   }, { transaction });

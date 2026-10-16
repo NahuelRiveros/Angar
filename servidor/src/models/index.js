@@ -87,6 +87,7 @@ import { CarritoItem }       from "./carrito/carrito_item.js";
 // carrito/ (indumentaria) — dos verticales de e-commerce separadas a propósito.
 import { CategoriaDistribuidora }   from "./distribuidora/categoria_distribuidora.js";
 import { ProductoDistribuidora }    from "./distribuidora/producto_distribuidora.js";
+import { MarcaDistribuidora, MarcaCategoriaDistribuidora } from "./distribuidora/marca_distribuidora.js";
 import { VariedadDistribuidora }    from "./distribuidora/variedad_distribuidora.js";
 import { CarritoDistribuidora }     from "./distribuidora/carrito_distribuidora.js";
 import { CarritoDistribuidoraItem } from "./distribuidora/carrito_distribuidora_item.js";
@@ -255,6 +256,12 @@ aplicarRelaciones([
   { tipo: "belongsTo", from: ProductoDistribuidora,  to: CategoriaDistribuidora, foreignKey: "categoria_id", as: "categoria" },
   { tipo: "hasMany",   from: CategoriaDistribuidora, to: ProductoDistribuidora,  foreignKey: "categoria_id", as: "productos" },
 
+  // ─── MarcaDistribuidora ↔ ProductoDistribuidora / categorías donde se ofrece ──
+  { tipo: "belongsTo", from: ProductoDistribuidora, to: MarcaDistribuidora, foreignKey: "marca_id", as: "marca_ref" },
+  { tipo: "hasMany",   from: MarcaDistribuidora, to: ProductoDistribuidora, foreignKey: "marca_id", as: "productos" },
+  { tipo: "hasMany",   from: MarcaDistribuidora, to: MarcaCategoriaDistribuidora, foreignKey: "marca_id", as: "categorias" },
+  { tipo: "belongsTo", from: MarcaCategoriaDistribuidora, to: CategoriaDistribuidora, foreignKey: "categoria_id", as: "categoria" },
+
   // ─── VariedadDistribuidora ↔ ProductoDistribuidora (una fila = una variedad) ──
   { tipo: "belongsTo", from: VariedadDistribuidora, to: ProductoDistribuidora, foreignKey: "producto_id", as: "producto" },
   { tipo: "hasMany",   from: ProductoDistribuidora, to: VariedadDistribuidora, foreignKey: "producto_id", as: "variedades" },
@@ -305,7 +312,7 @@ export {
   ModuloNegocio, BannerAnuncio,
   Categoria, Marca, Talle, Color, ProductoTienda, Stock, EnvioOpcion, CondicionIva,
   Carrito, CarritoItem,
-  CategoriaDistribuidora, ProductoDistribuidora, VariedadDistribuidora,
+  CategoriaDistribuidora, ProductoDistribuidora, VariedadDistribuidora, MarcaDistribuidora, MarcaCategoriaDistribuidora,
   CarritoDistribuidora, CarritoDistribuidoraItem, NotaPedido, NotaPedidoItem, NotaPedidoPago,
   PerfilClienteDistribuidora,
 };

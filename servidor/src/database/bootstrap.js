@@ -2,6 +2,7 @@ import { QueryTypes } from "sequelize";
 import { sequelize, DB_SCHEMA } from "./sequelize.js";
 import { projectModules } from "../configuracion_servidor/gate_config.js";
 import { calcularHashEsquema } from "./schema_hash.js";
+import { sincronizarMarcasLegado } from "../services/distribuidora/marcas_distribuidora_service.js";
 import {
   Sexo, TipoDocumento, TipoPersona, AlumnoEstado, PlanTipo, Rol, Modulo,
   TipoEjercicio, GrupoMuscular, CategoriaProducto, Patologia, HomeArea,
@@ -13,7 +14,7 @@ import {
   Ingreso, ModuloNegocio, BannerAnuncio, HomeTexto, HomePilar, HomeContacto,
   Categoria, Marca, Talle, Color, ProductoTienda, Stock, EnvioOpcion, CondicionIva,
   Carrito, CarritoItem,
-  CategoriaDistribuidora, ProductoDistribuidora, VariedadDistribuidora,
+  CategoriaDistribuidora, ProductoDistribuidora, VariedadDistribuidora, MarcaDistribuidora, MarcaCategoriaDistribuidora,
   CarritoDistribuidora, CarritoDistribuidoraItem, NotaPedido, NotaPedidoItem, NotaPedidoPago,
   PerfilClienteDistribuidora, OperacionCarrito, NotaPedidoEstadoLog, ImportacionCatalogo, ImportacionCatalogoLote,
 } from "../models/index.js";
@@ -31,6 +32,7 @@ export async function bootstrap_database() {
   await sincronizar_modelos_si_hace_falta();
   await crear_indice_busqueda_productos();
   await backfill_pago_legado();
+  if (projectModules.eccomerce_distribuidora) await backfill_marcas_distribuidora();
   console.log("✅ Bootstrap finalizado correctamente");
 }
 
@@ -222,7 +224,9 @@ async function sincronizar_modelos() {
     ImportacionCatalogo,
     ImportacionCatalogoLote,
     CategoriaDistribuidora, // categoria_distribuidora (auto-referenciada)
-    ProductoDistribuidora,  // producto_distribuidora → categoria_distribuidora
+    MarcaDistribuidora,     // marca_distribuidora (catálogo propio)
+    MarcaCategoriaDistribuidora, // marca_categoria_distribuidora → marca_distribuidora, categoria_distribuidora
+    ProductoDistribuidora,  // producto_distribuidora → categoria_distribuidora, marca_distribuidora
     VariedadDistribuidora,  // variedad_distribuidora → producto_distribuidora
     CarritoDistribuidora,     // carrito_distribuidora → usuario
     CarritoDistribuidoraItem, // carrito_distribuidora_item → carrito_distribuidora, producto_distribuidora, variedad_distribuidora
@@ -306,6 +310,16 @@ export async function crear_indice_busqueda_productos() {
  * No dropea la columna `pagado` vieja (evita DDL destructivo en un boot
  * automático) — queda huérfana e inofensiva hasta que alguien la borre a mano.
  */
+/**
+ * Marcas en texto (antes de la tabla marca_distribuidora) → filas de la tabla y
+ * marca_id en cada artículo, uniendo las repetidas por clave. Idempotente: con
+ * todo migrado es una sola consulta que no devuelve filas.
+ */
+async function backfill_marcas_distribuidora() {
+  const { marcas, articulos } = await sincronizarMarcasLegado();
+  if (articulos) console.log(`✅ Marcas migradas: ${marcas} marca(s), ${articulos} artículo(s)`);
+}
+
 async function backfill_pago_legado() {
   const [{ existe }] = await sequelize.query(`
     SELECT EXISTS (

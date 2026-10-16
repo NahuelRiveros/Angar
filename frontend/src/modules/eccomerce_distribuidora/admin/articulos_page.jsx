@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DollarSign, Edit2, FolderTree, Package, Plus, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 import SearchField from "../../../controls/ui/search_field.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
+import ComboboxField from "../../../controls/ui/combobox_field.jsx";
 import Pagination from "../../../controls/ui/pagination.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
@@ -12,10 +13,11 @@ import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
 import { cantidadConUnidad, describirBulto, textoBultos } from "../../../../../unidades_config.js";
 import { getCategorias } from "../api/categoria_distribuidora_api.js";
-import { getProductos, getMarcas, crearProducto, actualizarProducto, cambiarEstadoProducto, eliminarProducto } from "../api/producto_distribuidora_api.js";
+import { getProductos, cambiarEstadoProducto, eliminarProducto } from "../api/producto_distribuidora_api.js";
+import { listarMarcas } from "../api/marcas_distribuidora_api.js";
 import { construirOpcionesCategoria } from "../utils/categoria_jerarquia.js";
 import { formatearPrecio } from "../utils/precio_iva.js";
-import ProductoFormModal from "./producto_form_modal.jsx";
+import { rutaFichaArticulo } from "../utils/rutas_articulo.js";
 import AjustePreciosModal from "./ajuste_precios_modal.jsx";
 
 const POR_PAGINA = 50;
@@ -88,32 +90,38 @@ export default function ArticulosPage() {
     placeholderData: keepPreviousData,
   });
   const categorias = useQuery({ queryKey: ["gestion-categorias"], queryFn: getCategorias, staleTime: 60_000 });
-  const marcas = useQuery({ queryKey: ["gestion-marcas"], queryFn: getMarcas, staleTime: 60_000 });
+  // Con una familia o categoría elegida, el filtro de marca muestra solo las asociadas a ella.
+  const marcas = useQuery({
+    queryKey: ["gestion-marcas", filtros.categoria || null],
+    queryFn: () => listarMarcas({ categoria: filtros.categoria || undefined }),
+    staleTime: 60_000, placeholderData: keepPreviousData,
+  });
+  const opcionesMarca = useMemo(() => (marcas.data ?? []).map((m) => ({ value: m.nombre, label: m.nombre })), [marcas.data]);
   const opcionesCategoria = useMemo(() => construirOpcionesCategoria(categorias.data ?? []), [categorias.data]);
 
-  const [ficha, setFicha] = useState(null); // null | { articulo? }
-  const [errorFicha, setErrorFicha] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
   const [ajuste, setAjuste] = useState(null); // null | { producto } | { masivo: true }
   const [confirmar, setConfirmar] = useState(null); // null | { tipo, articulo }
 
   const refrescar = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["gestion-articulos"] }),
     queryClient.invalidateQueries({ queryKey: ["gestion-marcas"] }),
+    queryClient.invalidateQueries({ queryKey: ["gestion-marcas-resumen"] }),
+    queryClient.invalidateQueries({ queryKey: ["marcas-familia"] }),
     queryClient.invalidateQueries({ queryKey: ["panel-resumen"] }),
   ]);
 
-  const guardar = useMutation({
-    mutationFn: (payload) => (ficha?.articulo ? actualizarProducto(ficha.articulo.id, payload) : crearProducto(payload)),
-    onSuccess: async () => { toast.success(ficha?.articulo ? "Artículo actualizado" : "Artículo creado"); setFicha(null); await refrescar(); },
-    onError: (e) => setErrorFicha(e.response?.data?.mensaje || "No se pudo guardar el artículo."),
-  });
   const accion = useMutation({
     mutationFn: ({ tipo, articulo }) => (tipo === "eliminar" ? eliminarProducto(articulo.id) : cambiarEstadoProducto(articulo.id, !articulo.activo)),
     onSuccess: async (r) => { toast.success(r?.mensaje || "Listo"); setConfirmar(null); await refrescar(); },
     onError: (e) => { toast.error(e.response?.data?.mensaje || "No se pudo completar la acción."); setConfirmar(null); },
   });
 
-  const abrirFicha = (articulo = null) => { setErrorFicha(""); setFicha({ articulo }); };
+  // La ficha es una página: al guardar o cancelar vuelve acá con los mismos filtros y página.
+  const abrirFicha = (articulo = null) => navigate(rutaFichaArticulo({
+    id: articulo?.id, volver: location.pathname + location.search, familia: articulo ? null : filtros.categoria,
+  }));
   const filas = articulos.data?.data ?? [];
   const acciones = { onEditar: abrirFicha, onPrecio: (producto) => setAjuste({ producto }), onEstado: (articulo) => setConfirmar({ tipo: "estado", articulo }), onEliminar: (articulo) => setConfirmar({ tipo: "eliminar", articulo }) };
 
@@ -133,8 +141,9 @@ export default function ArticulosPage() {
 
       <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))]">
         <SearchField value={filtros.q} onSearch={(q) => actualizar({ q })} label="Buscar artículos" placeholder="Código, barras, descripción o marca" />
-        <SelectField label="Familia" placeholder="Todas" options={opcionesCategoria} value={filtros.categoria} onChange={(e) => actualizar({ categoria: e.target.value })} />
-        <SelectField label="Marca" placeholder="Todas" options={(marcas.data ?? []).map((m) => ({ value: m, label: m }))} value={filtros.marca} onChange={(e) => actualizar({ marca: e.target.value })} />
+        <ComboboxField label="Familia o categoría" vacioLabel="Todas" options={opcionesCategoria} value={filtros.categoria} onChange={(categoria) => actualizar({ categoria, marca: null })} />
+        <ComboboxField label="Marca" vacioLabel="Todas" options={opcionesMarca} value={filtros.marca} onChange={(marca) => actualizar({ marca })} etiquetaSeleccionada={filtros.marca}
+          helperText={filtros.categoria ? "Marcas de la familia o categoría elegida." : undefined} />
         <SelectField label="Estado" placeholder="Todos" options={OPCIONES_ESTADO} value={filtros.estado} onChange={(e) => actualizar({ estado: e.target.value })} />
         <SelectField label="Stock" placeholder="Todo" options={OPCIONES_STOCK} value={filtros.stock} onChange={(e) => actualizar({ stock: e.target.value })} />
       </div>
@@ -210,11 +219,6 @@ export default function ArticulosPage() {
           </section>
         ))}
 
-      {ficha && (
-        <ProductoFormModal key={ficha.articulo?.id ?? "nuevo"} abierto onClose={() => setFicha(null)} productoEditar={ficha.articulo}
-          onGuardar={(payload) => { setErrorFicha(""); guardar.mutate(payload); }} guardando={guardar.isPending} error={errorFicha}
-          opcionesCategoria={opcionesCategoria} categoriaInicial={filtros.categoria || null} marcas={marcas.data ?? []} />
-      )}
       {ajuste && (
         <AjustePreciosModal productoFijo={ajuste.producto} opcionesCategoria={opcionesCategoria} onClose={() => setAjuste(null)} onAplicado={refrescar} />
       )}

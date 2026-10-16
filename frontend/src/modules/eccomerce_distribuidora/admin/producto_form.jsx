@@ -1,7 +1,8 @@
-import { useId, useState } from "react";
-import Modal from "../../../controls/ui/modal.jsx";
+import { useEffect, useMemo, useState } from "react";
 import InputField from "../../../controls/ui/input_field.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
+import ComboboxField from "../../../controls/ui/combobox_field.jsx";
+import MarcaField from "./marca_field.jsx";
 import ImageUploadField from "../../../controls/ui/image_upload_field.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import { UNIDADES, cantidadConUnidad, describirBulto, textoBultos } from "../../../../../unidades_config.js";
@@ -20,23 +21,25 @@ const fecha = (valor) => (valor ? new Date(valor).toLocaleDateString("es-AR") : 
  * Ficha del artículo, ordenada como la del sistema de gestión del cliente:
  * datos generales, precios y stock/unidades en pestañas. Cada producto tiene una
  * presentación (variedad) con su precio, código, bulto y stock propios.
+ * Se usa en una página propia (ver articulo_form_page.jsx): `onCambio(true)` avisa
+ * que hay cambios sin guardar para preguntar antes de salir.
  */
-export default function ProductoFormModal({ abierto, onClose, onGuardar, productoEditar, guardando, opcionesCategoria, categoriaInicial, marcas = [], error = "" }) {
+export default function ProductoForm({ onCancelar, onGuardar, onCambio, productoEditar, guardando, opcionesCategoria, categoriaInicial, error = "" }) {
   const v = productoEditar?.variedades?.[0];
-  const idMarcas = useId();
   const [pestana, setPestana] = useState("general");
-  const [d, setD] = useState({
+  const [inicial] = useState(() => ({
     categoria_id: productoEditar?.categoria_id ?? categoriaInicial ?? "",
-    nombre: productoEditar?.nombre ?? "", marca: productoEditar?.marca ?? "", descripcion: productoEditar?.descripcion ?? "",
+    nombre: productoEditar?.nombre ?? "", marca_id: productoEditar?.marca_id ?? null, marca: productoEditar?.marca ?? "", descripcion: productoEditar?.descripcion ?? "",
     imagen_url: productoEditar?.imagen_url ?? "", activo: productoEditar?.activo ?? true,
     cod_ref: v?.cod_ref ?? "", codigo_barras: v?.codigo_barras ?? "",
     precio: v?.precio ?? "", precio_anterior: v?.precio_anterior ?? "", iva_porcentaje: String(Number(v?.iva_porcentaje ?? 21)),
     controla_stock: v?.controla_stock ?? false, cantidad: v?.cantidad ?? 0, stock_minimo: v?.stock_minimo ?? 0,
     unidad_medida: v?.unidad_medida ?? "UNIDAD", unidad_bulto: v?.unidad_bulto ?? "CAJA", unidades_por_bulto: v?.unidades_por_bulto ?? 1,
-  });
+  }));
+  const [d, setD] = useState(inicial);
+  const sucio = useMemo(() => JSON.stringify(d) !== JSON.stringify(inicial), [d, inicial]);
+  useEffect(() => { onCambio?.(sucio); }, [sucio, onCambio]);
   const set = (campo) => (e) => setD((prev) => ({ ...prev, [campo]: e?.target ? (e.target.type === "checkbox" ? e.target.checked : e.target.value) : e }));
-
-  if (!abierto) return null;
 
   const faltaGeneral = !d.categoria_id || !d.nombre.trim();
   const faltaPrecio = d.precio === "" || Number(d.precio) < 0;
@@ -47,7 +50,7 @@ export default function ProductoFormModal({ abierto, onClose, onGuardar, product
     if (faltaGeneral) { setPestana("general"); return; }
     if (faltaPrecio) { setPestana("precios"); return; }
     onGuardar({
-      categoria_id: Number(d.categoria_id), nombre: d.nombre.trim(), marca: d.marca.trim() || null,
+      categoria_id: Number(d.categoria_id), nombre: d.nombre.trim(), marca_id: d.marca_id,
       descripcion: d.descripcion.trim() || null, imagen_url: d.imagen_url.trim() || null, activo: d.activo,
       cod_ref: d.cod_ref.trim() || null, codigo_barras: d.codigo_barras.trim() || null,
       precio: Number(d.precio), precio_anterior: d.precio_anterior === "" ? null : Number(d.precio_anterior),
@@ -58,8 +61,8 @@ export default function ProductoFormModal({ abierto, onClose, onGuardar, product
   }
 
   return (
-    <Modal title={productoEditar ? `Artículo ${v?.cod_ref ? v.cod_ref + " · " : ""}${productoEditar.nombre}` : "Nuevo artículo"} onClose={onClose} busy={guardando} className="max-w-2xl">
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <form onSubmit={submit} className="space-y-4" noValidate>
+      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
         <div role="tablist" aria-label="Secciones de la ficha" className="flex gap-1 rounded-xl bg-slate-100 p-1">
           {PESTANAS.map((p) => (
             <button key={p.id} type="button" role="tab" aria-selected={pestana === p.id} onClick={() => setPestana(p.id)}
@@ -74,15 +77,15 @@ export default function ProductoFormModal({ abierto, onClose, onGuardar, product
         <ErrorBanner message={error} />
 
         <div role="tabpanel" hidden={pestana !== "general"} className="space-y-4">
-          <SelectField label="Familia / categoría" required options={opcionesCategoria} value={d.categoria_id} onChange={set("categoria_id")} helperText="› indica subcategoría: elegí la más específica." />
+          <ComboboxField label="Familia / categoría" required options={opcionesCategoria} value={d.categoria_id} onChange={set("categoria_id")} placeholder="Escribí para buscar, ej: galletitas" helperText="Elegí la más específica: Familia › Categoría." />
           <InputField label="Descripción del artículo" required hideMessage value={d.nombre} onChange={set("nombre")} placeholder="Ej: 9 de Oro Agridulce 20x200g" />
           <div className="grid gap-3 sm:grid-cols-2">
             <InputField label="Código" hideMessage value={d.cod_ref} onChange={set("cod_ref")} placeholder="Ej: 000519" tooltip="El código del artículo en tu sistema de gestión. Se busca y se imprime en la lista de carga." />
             <InputField label="Código de barras" hideMessage inputMode="numeric" value={d.codigo_barras} onChange={set("codigo_barras")} placeholder="Ej: 7790040001230" />
           </div>
           <div>
-            <InputField label="Marca" hideMessage value={d.marca} onChange={set("marca")} placeholder="Ej: Cañuela" list={idMarcas} />
-            <datalist id={idMarcas}>{marcas.map((m) => <option key={m} value={m} />)}</datalist>
+            <MarcaField categoriaId={d.categoria_id} value={d.marca_id} nombre={d.marca}
+              onChange={(marca_id, marca) => setD((prev) => ({ ...prev, marca_id, marca: marca ?? "" }))} />
           </div>
           <InputField label="Descripción ampliada (opcional)" hideMessage value={d.descripcion} onChange={set("descripcion")} />
           <ImageUploadField label="Imagen (opcional)" tooltip="Arrastrá una foto del producto o pegá una URL." value={d.imagen_url} onChange={set("imagen_url")} />
@@ -137,13 +140,14 @@ export default function ProductoFormModal({ abierto, onClose, onGuardar, product
           )}
         </div>
 
-        <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-4">
-          <button type="button" onClick={onClose} disabled={guardando} className="min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60">Cancelar</button>
+      </div>
+      {/* Fijos abajo: en celular la ficha es larga y Guardar queda siempre a mano. */}
+      <div className="sticky bottom-0 z-10 -mx-3 flex flex-wrap justify-end gap-3 border-t border-slate-200 bg-white/95 px-3 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border">
+          <button type="button" onClick={onCancelar} disabled={guardando} className="min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60">Cancelar</button>
           <button type="submit" disabled={guardando} className="min-h-11 rounded-xl bg-(--kt-petrol) px-5 text-sm font-semibold text-white hover:bg-(--kt-night) disabled:opacity-60">
             {guardando ? "Guardando…" : "Guardar artículo"}
           </button>
-        </div>
-      </form>
-    </Modal>
+      </div>
+    </form>
   );
 }

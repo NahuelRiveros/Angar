@@ -6,10 +6,7 @@ export function slugify(texto) {
     .replace(/(^-|-$)/g, "");
 }
 
-// Categorías en orden jerárquico (padre antes que hijo), con `profundidad`
-// para poder indentar el <select> — así se distingue de un vistazo "Comestibles"
-// (raíz) de "› Galletitas" (hija) de "›› Pepitos" (nieta), en vez de una lista
-// plana donde no se nota quién es padre de quién.
+// Categorías en orden jerárquico (padre antes que hijo), con `profundidad`.
 export function aplanarJerarquia(categorias, padreId = null, profundidad = 0) {
   const hijos = categorias
     .filter((c) => c.padre_id === padreId)
@@ -20,25 +17,57 @@ export function aplanarJerarquia(categorias, padreId = null, profundidad = 0) {
   ]);
 }
 
-export function construirOpcionesCategoria(categorias) {
-  return aplanarJerarquia(categorias).map((c) => ({
-    value: c.id,
-    label: c.profundidad > 0 ? `${"›".repeat(c.profundidad)} ${c.nombre}` : c.nombre,
-  }));
+/**
+ * Índice de la clasificación de dos niveles (Familia › Categoría), armado una vez
+ * por listado: con 2000 categorías evita recorrer el array en cada fila.
+ * `ruta` es el nombre completo ("Almacén › Galletitas"); `total` suma los artículos
+ * propios y los de todo lo que cuelga debajo.
+ */
+export function indexarCategorias(categorias = []) {
+  const porId = new Map(categorias.map((c) => [c.id, c]));
+  const hijosDe = new Map();
+  for (const c of categorias) {
+    if (c.padre_id == null || !porId.has(c.padre_id)) continue;
+    if (!hijosDe.has(c.padre_id)) hijosDe.set(c.padre_id, []);
+    hijosDe.get(c.padre_id).push(c);
+  }
+  const familiaDe = new Map();
+  const rutaDe = new Map();
+  for (const c of categorias) {
+    const nombres = [c.nombre];
+    let actual = c;
+    const vistos = new Set([c.id]);
+    while (actual.padre_id != null && porId.has(actual.padre_id) && !vistos.has(actual.padre_id)) {
+      actual = porId.get(actual.padre_id);
+      vistos.add(actual.id);
+      nombres.unshift(actual.nombre);
+    }
+    familiaDe.set(c.id, actual.id);
+    rutaDe.set(c.id, nombres.join(" › "));
+  }
+  const totalDe = new Map(categorias.map((c) => [c.id, 0]));
+  for (const c of categorias) {
+    const cantidad = c.cantidad_productos ?? 0;
+    totalDe.set(c.id, totalDe.get(c.id) + cantidad);
+    const familia = familiaDe.get(c.id);
+    if (familia !== c.id) totalDe.set(familia, totalDe.get(familia) + cantidad);
+  }
+  const ordenar = (a, b) => a.nombre.localeCompare(b.nombre, "es");
+  const familias = categorias.filter((c) => familiaDe.get(c.id) === c.id).sort(ordenar);
+  // Categorías de cada familia, incluidas las de niveles heredados (se muestran con su ruta).
+  const categoriasDe = new Map(familias.map((f) => [f.id, []]));
+  for (const c of categorias) if (familiaDe.get(c.id) !== c.id) categoriasDe.get(familiaDe.get(c.id))?.push(c);
+  for (const lista of categoriasDe.values()) lista.sort((a, b) => rutaDe.get(a.id).localeCompare(rutaDe.get(b.id), "es"));
+  return { porId, hijosDe, familiaDe, rutaDe, totalDe, familias, categoriasDe };
 }
 
-// Una categoría no puede ser padre de sí misma ni de ninguno de sus propios
-// descendientes (crearía un ciclo) — devuelve el set de ids a excluir del
-// selector de "categoría padre" al editar `categoriaEditar`.
-export function idsExcluidosComoPadre(categoriaEditar, categorias) {
-  if (!categoriaEditar) return new Set();
-  const excluidos = new Set([categoriaEditar.id]);
-  let agregado = true;
-  while (agregado) {
-    agregado = false;
-    for (const c of categorias) {
-      if (excluidos.has(c.padre_id) && !excluidos.has(c.id)) { excluidos.add(c.id); agregado = true; }
-    }
-  }
-  return excluidos;
+// Opciones para elegir familia o categoría con buscador: la etiqueta lleva la ruta
+// completa, así "Varios" de Almacén no se confunde con "Varios" de Limpieza.
+export function construirOpcionesCategoria(categorias, { soloFamilias = false } = {}) {
+  const { familias, categoriasDe, rutaDe, totalDe } = indexarCategorias(categorias);
+  return familias.flatMap((f) => [f, ...(soloFamilias ? [] : categoriasDe.get(f.id))]).map((c) => ({
+    value: c.id,
+    label: rutaDe.get(c.id),
+    hint: `${totalDe.get(c.id)} art.`,
+  }));
 }

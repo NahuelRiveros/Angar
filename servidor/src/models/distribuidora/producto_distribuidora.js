@@ -17,8 +17,14 @@ export const ProductoDistribuidora = defineModel("ProductoDistribuidora", {
 
   nombre:      { type: DataTypes.STRING(150), allowNull: false },
   descripcion: { type: DataTypes.TEXT, allowNull: true },
-  // string simple a propósito — no se pidió gestión de marcas como catálogo
-  // propio (a diferencia de Marca en indumentaria); se puede promover después.
+  // La marca vive en marca_distribuidora (marca_id). `marca` es una copia del
+  // nombre que mantienen los servicios de marcas: la leen la tienda, la búsqueda
+  // y la lista de carga sin tener que unir tablas.
+  marca_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: "marca_distribuidora", key: "id" },
+  },
   marca: { type: DataTypes.STRING(80), allowNull: true },
 
   imagen_url: { type: DataTypes.STRING(500), allowNull: true },
@@ -32,6 +38,7 @@ export const ProductoDistribuidora = defineModel("ProductoDistribuidora", {
   indexes: [
     { fields: ["categoria_id"] },
     { fields: ["activo"] },
+    { fields: ["marca_id"] },
     // No puede haber dos productos con el mismo nombre EN LA MISMA categoría
     // (categoria_id nunca es null acá, así que un solo índice alcanza — a
     // diferencia de CategoriaDistribuidora, que sí necesita manejar la raíz).

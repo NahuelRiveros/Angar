@@ -3,6 +3,8 @@ import { seed_rbac } from "./seed_rbac.js";
 import { seed_ejercicios } from "./seed_ejercicios.js";
 import { seed_super_admin } from "./seed_super_admin.js";
 import { seed_suscripcion } from "./seed_suscripcion.js";
+import { seed_familias_distribuidora } from "./seed_familias_distribuidora.js";
+import { seed_marcas_distribuidora } from "./seed_marcas_distribuidora.js";
 
 /**
  * Seed de catálogos + usuario super admin — idempotente, seguro de correr
@@ -29,5 +31,7 @@ export async function seed_database() {
   await seed_ejercicios();
   await seed_super_admin();
   await seed_suscripcion();
+  await seed_familias_distribuidora(); // solo con el catálogo vacío
+  await seed_marcas_distribuidora();   // solo sin marcas; usa las familias de arriba
   console.log("✅ Seed finalizado");
 }

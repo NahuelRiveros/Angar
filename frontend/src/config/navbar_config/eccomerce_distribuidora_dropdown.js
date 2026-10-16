@@ -8,6 +8,7 @@ import {
   Upload,
   Boxes,
   FolderTree,
+  Tag,
   Truck,
 } from "lucide-react";
 
@@ -89,6 +90,14 @@ export const eccomerceDistribuidoraAdminDropdown = {
       modulo: "eccomerce_distribuidora",
       roles: ["admin", "staff"],
       icon: FolderTree,
+    },
+    {
+      label: "Marcas",
+      to: "/distribuidora/admin/marcas",
+      requiereAuth: true,
+      modulo: "eccomerce_distribuidora",
+      roles: ["admin", "staff"],
+      icon: Tag,
     },
     {
       label: "Importar productos",

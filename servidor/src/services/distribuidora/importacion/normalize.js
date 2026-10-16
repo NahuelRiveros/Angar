@@ -1,4 +1,5 @@
 import { catalogImportConfig as config } from "../../../../../catalog_import_config.js";
+import { formatearNombre } from "../../common/formato_nombre.js";
 export const importError = (message, status = 400) => Object.assign(new Error(message), { status });
 export const keyText = (v) => String(v ?? "").trim().toLocaleLowerCase("es-AR");
 export function numberValue(raw, decimal, label) {
@@ -47,9 +48,14 @@ export function normalizeRows(parsed, mapping, settings) {
       if (v.importe < 0 || v.importe > 99999999.99) throw importError("Precio fuera del rango permitido.");
       if (settings.identity === "sku" && !v.cod_ref) throw importError("Falta código / SKU.");
       if ((settings.mode !== "update" || settings.identity === "name") && !v.producto_nombre) throw importError("Falta nombre del producto.");
-      const parts = v.categoria?.split(">").map((s) => s.trim()).filter(Boolean) || [];
+      // Mismo formato que la carga manual; la coincidencia con lo existente es en minúscula, no cambia.
+      for (const campo of ["producto_nombre", "marca"]) v[campo] = formatearNombre(v[campo]) || null;
+      const parts = v.categoria?.split(">").map((s) => formatearNombre(s)).filter(Boolean) || [];
       if (parts.length > 10 || parts.some((s) => s.length > 80)) throw importError("La categoría admite hasta 10 niveles de 80 caracteres.");
-      v.categoria = parts.join(" > ") || null;
+      // El catálogo usa dos niveles (Familia > Categoría): "A > B > C" queda como "A > B - C".
+      const niveles = parts.length > 2 ? [parts[0], parts.slice(1).join(" - ")] : parts;
+      if (niveles[1]?.length > 80) throw importError("La categoría (desde el segundo nivel) admite hasta 80 caracteres.");
+      v.categoria = niveles.join(" > ") || null;
       for (const [name, label] of [["iva_porcentaje", "IVA"], ["cantidad", "Stock"]]) {
         const raw = field(row, name); v[name] = raw == null || String(raw).trim() === "" ? null : numberValue(raw, settings.decimal, label);
       }
