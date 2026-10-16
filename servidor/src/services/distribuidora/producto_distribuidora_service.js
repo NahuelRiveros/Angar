@@ -13,7 +13,8 @@ const INCLUDE_LISTADO = [
   { model: CategoriaDistribuidora, as: "categoria", attributes: ["id", "nombre", "slug"] },
   {
     model: VariedadDistribuidora, as: "variedades", where: { fecha_baja: null }, required: false,
-    attributes: ["id", "nombre", "precio", "precio_anterior", "iva_porcentaje", "controla_stock", "cantidad", "cod_ref"],
+    attributes: ["id", "nombre", "precio", "precio_anterior", "iva_porcentaje", "controla_stock", "cantidad", "cod_ref",
+      "codigo_barras", "unidad_medida", "unidad_bulto", "unidades_por_bulto", "stock_minimo", "fecha_cambio_precio"],
   },
 ];
 
@@ -63,21 +64,50 @@ async function idsConDescendientes(categoriaId) {
   return ids;
 }
 
-async function construirWhere({ categoria, incluirDescendientes = true, q, soloActivos = true } = {}) {
+// Ids de productos con alguna presentación vigente que cumple `condicion`.
+async function idsConVariedad(condicion) {
+  const filas = await VariedadDistribuidora.findAll({ where: { fecha_baja: null, ...condicion }, attributes: ["producto_id"], raw: true });
+  return [...new Set(filas.map((v) => v.producto_id))];
+}
+
+const CONDICION_STOCK = {
+  sin_stock: { controla_stock: true, cantidad: { [Op.lte]: 0 } },
+  // Incluye los agotados: también están por debajo del mínimo.
+  bajo_minimo: { controla_stock: true, stock_minimo: { [Op.gt]: 0 }, [Op.and]: [sequelize.where(sequelize.col("cantidad"), Op.lte, sequelize.col("stock_minimo"))] },
+};
+
+// `estado` y `stock` solo los usa la gestión (con soloActivos en false).
+async function construirWhere({ categoria, incluirDescendientes = true, q, soloActivos = true, marca, estado, stock } = {}) {
   const where = { fecha_baja: null };
-  if (soloActivos) where.activo = true;
+  const filtros = [];
+  if (soloActivos || estado === "activos") where.activo = true;
+  else if (estado === "inactivos") where.activo = false;
   if (categoria) {
     where.categoria_id = incluirDescendientes ? { [Op.in]: await idsConDescendientes(categoria) } : categoria;
   }
+  if (marca) where.marca = { [Op.iLike]: String(marca).slice(0, 80) };
   if (q) {
-    const pattern = "%" + String(q).slice(0, 120) + "%";
-    const variants = await VariedadDistribuidora.findAll({ where: { fecha_baja: null, cod_ref: { [Op.iLike]: pattern } }, attributes: ["producto_id"], raw: true });
-    where[Op.or] = [
+    // `%` y `_` del texto buscado se escapan: son comodines de LIKE.
+    const pattern = "%" + String(q).slice(0, 120).replace(/[\\%_]/g, "\\$&") + "%";
+    const porCodigo = await idsConVariedad({ [Op.or]: [{ cod_ref: { [Op.iLike]: pattern } }, { codigo_barras: { [Op.iLike]: pattern } }] });
+    filtros.push({ [Op.or]: [
       { nombre: { [Op.iLike]: pattern } }, { marca: { [Op.iLike]: pattern } },
-      { id: { [Op.in]: variants.map((v) => v.producto_id) } },
-    ];
+      { id: { [Op.in]: porCodigo } },
+    ] });
   }
+  if (!soloActivos && CONDICION_STOCK[stock]) filtros.push({ id: { [Op.in]: await idsConVariedad(CONDICION_STOCK[stock]) } });
+  if (filtros.length) where[Op.and] = filtros;
   return where;
+}
+
+/** Marcas cargadas (para el filtro de la gestión de artículos). */
+export async function listarMarcas() {
+  const filas = await ProductoDistribuidora.findAll({
+    where: { fecha_baja: null, marca: { [Op.ne]: null } },
+    attributes: [[sequelize.fn("DISTINCT", sequelize.col("marca")), "marca"]],
+    order: [["marca", "ASC"]], raw: true, limit: 1000,
+  });
+  return filas.map((f) => f.marca).filter(Boolean);
 }
 
 // `soloActivos` en false = ve también los productos desactivados (admin/staff
@@ -89,8 +119,8 @@ async function construirWhere({ categoria, incluirDescendientes = true, q, soloA
 // exacta (sin bajar a subcategorías) — lo usa el árbol del admin al expandir
 // un nivel puntual, para no traerse de golpe todo el subárbol y mezclarlo
 // bajo el nodo equivocado.
-export async function listarProductos({ categoria, incluirDescendientes = true, q, pagina, por_pagina, soloActivos = true } = {}) {
-  const where = await construirWhere({ categoria, incluirDescendientes, q, soloActivos });
+export async function listarProductos({ categoria, incluirDescendientes = true, q, pagina, por_pagina, soloActivos = true, marca, estado, stock } = {}) {
+  const where = await construirWhere({ categoria, incluirDescendientes, q, soloActivos, marca, estado, stock });
   const maxLimit = soloActivos ? 100 : 1000;
   const { page, limit, offset } = normalizarPaginacion({ page: pagina, limit: por_pagina, defaultLimit: 24, maxLimit });
 
@@ -138,16 +168,11 @@ export async function crearProducto(payload, { transaction } = {}) {
  * Transacción: si la variedad falla (ej. precio inválido), no queda un
  * producto huérfano sin variedad.
  */
-export async function crearProductoConVariedad(payload) {
+// `variedad` llega ya validada con validarVariedad() (services/common/articulo_rules.js).
+export async function crearProductoConVariedad(payload, variedad) {
   const producto = await sequelize.transaction(async (transaction) => {
     const nuevoProducto = await crearProducto(payload, { transaction });
-    await crearVariedad(nuevoProducto.id, {
-      precio: payload.precio,
-      precio_anterior: payload.precio_anterior || null,
-      iva_porcentaje: payload.iva_porcentaje,
-      controla_stock: payload.controla_stock,
-      cantidad: payload.cantidad,
-    }, { transaction });
+    await crearVariedad(nuevoProducto.id, variedad, { transaction });
     return nuevoProducto;
   });
   return obtenerProductoPorId(producto.id);
@@ -174,22 +199,17 @@ export async function actualizarProducto(id, payload, { transaction } = {}) {
  * tiene ninguna (dato viejo, o se la borró desde la base a mano), la crea
  * en vez de fallar.
  */
-export async function actualizarProductoConVariedad(id, payload) {
+export async function actualizarProductoConVariedad(id, payload, datosVariedad) {
   const producto = await sequelize.transaction(async (transaction) => {
     const actualizado = await actualizarProducto(id, payload, { transaction });
     if (!actualizado) return null;
-    const datosVariedad = {
-      precio: payload.precio,
-      precio_anterior: payload.precio_anterior || null,
-      iva_porcentaje: payload.iva_porcentaje,
-      controla_stock: payload.controla_stock,
-      cantidad: payload.cantidad,
-    };
     const variedad = await VariedadDistribuidora.findOne({
       where: { producto_id: id, fecha_baja: null }, order: [["id", "ASC"]], transaction,
     });
-    if (variedad) await variedad.update(datosVariedad, { transaction });
-    else await crearVariedad(id, datosVariedad, { transaction });
+    if (variedad) {
+      const cambioPrecio = Number(variedad.precio) !== Number(datosVariedad.precio);
+      await variedad.update({ ...datosVariedad, ...(cambioPrecio ? { fecha_cambio_precio: new Date() } : {}) }, { transaction });
+    } else await crearVariedad(id, datosVariedad, { transaction });
     return actualizado;
   });
   if (!producto) return null;
@@ -216,10 +236,10 @@ export async function eliminarProducto(id) {
 // función de datos, reutilizable si en el futuro hiciera falta más de una
 // presentación por producto. ──────────────────────────────────────────────
 
-export async function crearVariedad(producto_id, { nombre = null, precio, precio_anterior = null, iva_porcentaje = 21, controla_stock = false, cantidad = 0, cod_ref = null }, { transaction } = {}) {
+export async function crearVariedad(producto_id, { nombre = null, ...datos }, { transaction } = {}) {
   return VariedadDistribuidora.create({
-    producto_id, nombre, precio, precio_anterior, iva_porcentaje, controla_stock, cantidad, cod_ref,
-    fecha_alta: new Date(),
+    precio_anterior: null, iva_porcentaje: 21, controla_stock: false, cantidad: 0, cod_ref: null,
+    ...datos, producto_id, nombre, fecha_alta: new Date(), fecha_cambio_precio: new Date(),
   }, { transaction });
 }
 
@@ -255,7 +275,7 @@ export async function ajustarPreciosMasivo({ porcentaje, producto_id = null, cat
   // ni producto_id ni categoria_id → sin filtro extra, afecta todo el catálogo
 
   const [cantidadActualizada] = await VariedadDistribuidora.update(
-    { precio: sequelize.literal(`ROUND(precio * ${factor}, 2)`) },
+    { precio: sequelize.literal(`ROUND(precio * ${factor}, 2)`), fecha_cambio_precio: new Date() },
     { where }
   );
 

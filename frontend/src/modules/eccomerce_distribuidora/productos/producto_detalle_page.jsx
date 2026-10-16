@@ -6,6 +6,7 @@ import { getProducto } from "../api/producto_distribuidora_api.js";
 import { useCarritoDistribuidora } from "../carrito/carrito_context.jsx";
 import { storefrontConfig as config } from "../../../config/storefront_config.js";
 import { formatearPrecio } from "../utils/precio_iva.js";
+import { cantidadConUnidad, describirBulto, textoBultos } from "../../../../../unidades_config.js";
 import StockBadge from "../../../controls/catalog/stock_badge.jsx";
 import QuantityInput from "../../../controls/ui/quantity_input.jsx";
 import ActionButton from "../../../controls/ui/action_button.jsx";
@@ -38,9 +39,13 @@ function Detail({ product }) {
   const max = Math.min(config.maxQuantity, variant?.controla_stock ? variant.cantidad : config.maxQuantity);
   const previousPrice = variant?.precio_anterior && Number(variant.precio_anterior) > Number(variant.precio) ? Number(variant.precio_anterior) : null;
   const discountPercent = previousPrice ? Math.round((1 - Number(variant.precio) / previousPrice) * 100) : null;
+  // Mayorista: se pide por unidad, pero conviene ver y sumar cajas completas.
+  const porBulto = Number(variant?.unidades_por_bulto) || 1;
+  const bulto = variant ? describirBulto(variant) : null;
+  const siguienteBulto = (Math.floor(quantity / porBulto) + 1) * porBulto;
   const stock = !variant ? null
     : !variant.controla_stock ? { tone: "unknown", label: config.labels.availability }
-    : max > 0 ? { tone: "ok", label: `${variant.cantidad} disponibles` }
+    : max > 0 ? { tone: "ok", label: `${cantidadConUnidad(variant.cantidad, variant.unidad_medida)} disponibles` }
     : { tone: "out", label: "Sin stock" };
 
   return (
@@ -84,6 +89,7 @@ function Detail({ product }) {
               {previousPrice && <p className="text-sm text-slate-400 line-through">{formatearPrecio(previousPrice)}</p>}
               <p className="kt-display text-3xl font-extrabold text-(--kt-ink)">{formatearPrecio(variant.precio)}</p>
               <p className="text-xs text-slate-500">{config.labels.priceNotice}</p>
+              {bulto && <p className="text-sm text-(--kt-ink-soft)">{bulto} · Precio por {variant.unidad_bulto?.toLowerCase() ?? "bulto"}: <b className="text-(--kt-ink)">{formatearPrecio(variant.precio * porBulto)}</b></p>}
             </>
           ) : (
             <p className="text-lg font-semibold text-(--kt-ink-soft)">Consultá disponibilidad</p>
@@ -96,10 +102,17 @@ function Detail({ product }) {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3">
               <QuantityInput value={quantity} onChange={setQuantity} max={max} disabled={busy || max < 1} />
+              {bulto && (
+                <button type="button" disabled={busy || siguienteBulto > max} onClick={() => setQuantity(siguienteBulto)}
+                  className="min-h-11 rounded-xl border border-(--kt-turquoise-border) bg-(--kt-turquoise-soft) px-3 text-sm font-semibold text-(--kt-petrol) disabled:opacity-50">
+                  +1 {variant.unidad_bulto?.toLowerCase() ?? "caja"}
+                </button>
+              )}
               {quantity > 1 && (
                 <p className="text-sm text-(--kt-ink-soft)">Subtotal: <span className="font-bold text-(--kt-ink)">{formatearPrecio(variant.precio * quantity)}</span></p>
               )}
             </div>
+            {bulto && quantity > 0 && <p className="text-sm text-(--kt-ink-soft)">= {textoBultos(quantity, variant)}</p>}
             <ActionButton
               disabled={busy || max < 1}
               className={`bg-(--kt-accent-comercial)! hover:bg-(--kt-accent-comercial-hover)! ${error ? "kt-shake" : ""}`}

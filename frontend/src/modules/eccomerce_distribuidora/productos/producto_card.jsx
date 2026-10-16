@@ -3,6 +3,7 @@ import ProductCard from "../../../controls/catalog/product_card.jsx";
 import { useCarritoDistribuidora } from "../carrito/carrito_context.jsx";
 import { storefrontConfig as config } from "../../../config/storefront_config.js";
 import { formatearPrecio } from "../utils/precio_iva.js";
+import { describirBulto } from "../../../../../unidades_config.js";
 export default function ProductoCard({ producto }) {
   const { addItem } = useCarritoDistribuidora();
   const [busy, setBusy] = useState(false);
@@ -32,7 +33,7 @@ export default function ProductoCard({ producto }) {
     pricePrefix={!single && cheapest ? "Desde " : ""}
     previousPrice={previousPrice ? formatearPrecio(previousPrice) : null}
     discountPercent={discountPercent}
-    presentation={single ? (varieties[0].nombre || "Unidad") : `${varieties.length} presentaciones`}
+    presentation={single ? [varieties[0].nombre, describirBulto(varieties[0])].filter(Boolean).join(" · ") || "Unidad" : `${varieties.length} presentaciones`}
     stock={stock}
     unavailable={!available.length} onAdd={single ? add : undefined} busy={busy} message={message} error={error} />;
 }

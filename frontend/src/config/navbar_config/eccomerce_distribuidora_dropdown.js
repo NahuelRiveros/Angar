@@ -7,6 +7,8 @@ import {
   ClipboardList,
   Upload,
   Boxes,
+  FolderTree,
+  Truck,
 } from "lucide-react";
 
 // Un link de primer nivel + dos dropdowns para el mismo módulo — mismas
@@ -73,12 +75,20 @@ export const eccomerceDistribuidoraAdminDropdown = {
   icon: Boxes,
   items: [
     {
-      label: "Categorías y productos",
+      label: "Artículos",
       to: "/distribuidora/admin/productos",
       requiereAuth: true,
       modulo: "eccomerce_distribuidora",
       roles: ["admin", "staff"],
       icon: Package,
+    },
+    {
+      label: "Familias y categorías",
+      to: "/distribuidora/admin/categorias",
+      requiereAuth: true,
+      modulo: "eccomerce_distribuidora",
+      roles: ["admin", "staff"],
+      icon: FolderTree,
     },
     {
       label: "Importar productos",
@@ -95,6 +105,15 @@ export const eccomerceDistribuidoraAdminDropdown = {
       modulo: "eccomerce_distribuidora",
       roles: orderConfig.managementRoles,
       icon: ClipboardList,
+    },
+    {
+      // "Artículos a cargar": varios pedidos juntos, por familia, en bultos y sueltos.
+      label: "Lista de carga",
+      to: "/distribuidora/admin/lista-carga",
+      requiereAuth: true,
+      modulo: "eccomerce_distribuidora",
+      roles: orderConfig.managementRoles,
+      icon: Truck,
     },
   ],
 };

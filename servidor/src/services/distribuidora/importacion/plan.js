@@ -68,7 +68,10 @@ export function buildPlan(rows, settings, catalog) {
       patch.controla_stock = value.cantidad != null;
     }
     if (!variant || !variant.cod_ref && value.cod_ref) patch.cod_ref = value.cod_ref;
-    const changed = variant && Object.entries(patch).some(([k,v]) => ["precio", "iva_porcentaje", "cantidad"].includes(k) ? Number(variant[k]) !== v : variant[k] !== v);
+    // Datos de la ficha que se cargan a mano: en existentes solo se completan si faltaban.
+    if (value.codigo_barras && (!variant || !variant.codigo_barras)) patch.codigo_barras = value.codigo_barras;
+    if (value.unidades_por_bulto != null && (!variant || Number(variant.unidades_por_bulto ?? 1) <= 1)) patch.unidades_por_bulto = value.unidades_por_bulto;
+    const changed = variant && Object.entries(patch).some(([k,v]) => ["precio", "iva_porcentaje", "cantidad", "unidades_por_bulto"].includes(k) ? Number(variant[k]) !== v : variant[k] !== v);
     return {
       row: row.row, value, action: variant ? changed ? "update" : "unchanged" : "create", patch,
       target: variant?.id ?? null, productId: product?.id ?? null,

@@ -23,6 +23,8 @@ de cada cliente; `node scripts/analizar_modulos.mjs` lista sus carpetas sin toca
 - `client_config.js`: cliente activo, acceso público y políticas del carrito.
 - `order_config.js`: roles de gestión, estados, transiciones y cobros.
 - `catalog_import_config.js`: configuración compartida de importación.
+- `unidades_config.js`: unidades de venta, bultos (equivalencia) y el cálculo de bultos/sueltos
+  que usan la ficha del artículo, el catálogo y la lista de carga.
 - `docs/distribuidora-pedidos.md`: contrato y reglas del pedido; leer para cambios de negocio.
 - `frontend/src/config/`: marca, tema, navegación, catálogo y textos.
 - Ante diferencias entre comentarios y código, comprobar rutas, servicios y tests antes de concluir.
@@ -39,6 +41,7 @@ frontend/src/
   auth/                            sesión y permisos de interfaz
   api/                             cliente HTTP y APIs comunes
   controls/                        controles compartidos, layout, carrito, pedidos
+  controls/layout/panel/           marco del panel de gestión (/panel): menú lateral por rol
   controls/ui/                     campos, modal, data_grid, confirm_dialog
   modules/eccomerce_distribuidora/  pantallas y API de distribuidora
   hooks/                           hooks compartidos
@@ -56,6 +59,11 @@ servidor/src/
 servidor/tests/                    node:test y PostgreSQL local
 frontend/tests/browser/           Playwright con API simulada
 ```
+
+Dos marcos en `app/router.jsx`: la tienda (`AppLayout`, navbar y footer) y el panel de gestión
+(`PanelLayout`). Todo lo que maneja el personal va en `app/routes/panel.routes.jsx` y su menú se arma en
+`config/navbar_config/panel_gestion.js` reutilizando los ítems (roles y `modulo`) de cada dropdown.
+El resumen del inicio sale de `GET /api/distribuidora/panel/resumen`, filtrado por rol en el servidor.
 
 No existen `servidor/src/nucleo/`, `models_v2/`, ni `frontend/src/components/ui/`
 en esta instalación. No copiar imports o fixtures del gimnasio suponiendo que existen.

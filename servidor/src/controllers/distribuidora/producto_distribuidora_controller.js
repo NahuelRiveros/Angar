@@ -1,7 +1,8 @@
 import {
   listarProductos, obtenerProductoPorId, crearProductoConVariedad, actualizarProductoConVariedad, cambiarEstadoProducto, eliminarProducto,
-  ajustarPreciosMasivo,
+  ajustarPreciosMasivo, listarMarcas,
 } from "../../services/distribuidora/producto_distribuidora_service.js";
+import { validarVariedad, FILTROS_STOCK } from "../../services/common/articulo_rules.js";
 
 // admin/staff gestionan el catálogo y necesitan seguir viendo los productos
 // desactivados (para poder reactivarlos); cualquier otro rol ve solo lo activo.
@@ -14,10 +15,15 @@ export async function listarProductosController(req, res) {
   try {
     // req.query siempre trae strings — "false" es truthy en JS, hay que
     // convertirlo a booleano posta antes de pasarlo al service.
+    const gestion = puedeVerInactivos(req);
+    const { categoria, q, pagina, por_pagina, marca, estado, stock } = req.query;
     const { productos, pagination } = await listarProductos({
-      ...req.query,
+      categoria, q, pagina, por_pagina, marca,
       incluirDescendientes: req.query.incluirDescendientes !== "false",
-      soloActivos: !puedeVerInactivos(req),
+      soloActivos: !gestion,
+      // Filtros de la gestión de artículos: un cliente no puede pedir inactivos ni stock.
+      estado: gestion && ["activos", "inactivos"].includes(estado) ? estado : undefined,
+      stock: gestion && FILTROS_STOCK.includes(stock) ? stock : undefined,
     });
     return res.json({ ok: true, data: productos, total: pagination.total, pagina: pagination.page, total_paginas: pagination.totalPages });
   } catch (error) {
@@ -39,14 +45,13 @@ export async function obtenerProductoController(req, res) {
 
 export async function crearProductoController(req, res) {
   try {
-    const { categoria_id, nombre, precio } = req.body;
+    const { categoria_id, nombre } = req.body ?? {};
     if (!categoria_id || !nombre?.trim()) {
-      return res.status(400).json({ ok: false, mensaje: "categoria_id y nombre son requeridos" });
+      return res.status(400).json({ ok: false, mensaje: "Elegí la familia y escribí el nombre del artículo." });
     }
-    if (precio === undefined || precio === null || Number.isNaN(Number(precio))) {
-      return res.status(400).json({ ok: false, mensaje: "El precio es requerido" });
-    }
-    const producto = await crearProductoConVariedad(req.body);
+    const { datos, error } = validarVariedad(req.body);
+    if (error) return res.status(400).json({ ok: false, mensaje: error });
+    const producto = await crearProductoConVariedad(req.body, datos);
     return res.status(201).json({ ok: true, mensaje: "Producto creado correctamente", data: producto });
   } catch (error) {
     if (error.name === "SequelizeUniqueConstraintError") {
@@ -59,11 +64,12 @@ export async function crearProductoController(req, res) {
 
 export async function actualizarProductoController(req, res) {
   try {
-    const { precio } = req.body;
-    if (precio === undefined || precio === null || Number.isNaN(Number(precio))) {
-      return res.status(400).json({ ok: false, mensaje: "El precio es requerido" });
+    if (!req.body?.categoria_id || !req.body?.nombre?.trim()) {
+      return res.status(400).json({ ok: false, mensaje: "Elegí la familia y escribí el nombre del artículo." });
     }
-    const producto = await actualizarProductoConVariedad(req.params.id, req.body);
+    const { datos, error } = validarVariedad(req.body);
+    if (error) return res.status(400).json({ ok: false, mensaje: error });
+    const producto = await actualizarProductoConVariedad(req.params.id, req.body, datos);
     if (!producto) return res.status(404).json({ ok: false, mensaje: "Producto no encontrado" });
     return res.json({ ok: true, mensaje: "Producto actualizado correctamente", data: producto });
   } catch (error) {
@@ -113,5 +119,14 @@ export async function ajustarPreciosMasivoController(req, res) {
   } catch (error) {
     console.error("Error al ajustar precios masivamente:", error);
     return res.status(error.status ?? 500).json({ ok: false, mensaje: error.status ? error.message : "Error interno al ajustar los precios" });
+  }
+}
+
+export async function listarMarcasController(_req, res) {
+  try {
+    return res.json({ ok: true, data: await listarMarcas() });
+  } catch (error) {
+    console.error("Error al listar marcas:", error);
+    return res.status(500).json({ ok: false, mensaje: "Error interno al listar las marcas" });
   }
 }

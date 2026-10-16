@@ -35,8 +35,20 @@ export const VariedadDistribuidora = defineModel("VariedadDistribuidora", {
   controla_stock: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   cantidad: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
 
-  // SKU / código de barras, opcional
+  // Código interno del artículo (en el sistema del cliente, ej. "000519"), opcional
   cod_ref: { type: DataTypes.STRING(60), allowNull: true },
+  // EAN/UPC impreso en el envase; se busca igual que el código interno.
+  codigo_barras: { type: DataTypes.STRING(30), allowNull: true },
+
+  // Ficha "Stock" del sistema del cliente: en qué se cuenta/vende (UM primaria)
+  // y cuántas de esas trae el bulto (1 CAJA = 20 PAQUETE). Valores en unidades_config.js.
+  unidad_medida:      { type: DataTypes.STRING(20), allowNull: false, defaultValue: "UNIDAD" },
+  unidad_bulto:       { type: DataTypes.STRING(20), allowNull: false, defaultValue: "CAJA" },
+  unidades_por_bulto: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+  // Aviso de reposición: con stock controlado, cantidad <= stock_minimo = "stock bajo".
+  stock_minimo:       { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  // Se completa sola cada vez que cambia el precio (edición, ajuste masivo o importación).
+  fecha_cambio_precio: { type: DataTypes.DATE, allowNull: true },
 
   fecha_alta: { type: DataTypes.DATEONLY, allowNull: false, defaultValue: DataTypes.NOW },
   fecha_baja: { type: DataTypes.DATEONLY, allowNull: true },
@@ -44,5 +56,7 @@ export const VariedadDistribuidora = defineModel("VariedadDistribuidora", {
   tableName: "variedad_distribuidora",
   indexes: [
     { fields: ["producto_id"] },
+    { fields: ["cod_ref"] },
+    { fields: ["codigo_barras"] },
   ],
 });

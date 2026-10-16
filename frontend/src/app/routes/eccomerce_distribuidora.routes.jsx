@@ -2,7 +2,6 @@ import { orderConfig } from "../../config/order_config.js";
 import { lazy } from "react";
 import { projectModules } from "../../config/gate_config.js";
 import { storefrontConfig } from "../../config/storefront_config.js";
-import { Navigate } from "react-router-dom";
 const ProductosDistribuidoraPage = lazy(() => import("../../modules/eccomerce_distribuidora/productos/productos_page.jsx"));
 const ProductoDetalleDistribuidoraPage = lazy(() => import("../../modules/eccomerce_distribuidora/productos/producto_detalle_page.jsx"));
 const NotaPedidoPage = lazy(() => import("../../modules/eccomerce_distribuidora/carrito/nota_pedido_page.jsx"));
@@ -15,6 +14,8 @@ const PerfilPage = lazy(() => import("../../modules/eccomerce_distribuidora/perf
 const AdminProductosPage = lazy(() => import("../../modules/eccomerce_distribuidora/admin/productos_page.jsx"));
 const NotasPedidoDistribuidoraPage = lazy(() => import("../../modules/eccomerce_distribuidora/pedidos/notas_pedido_page.jsx"));
 const ImportacionDistribuidoraPage = lazy(() => import("../../modules/eccomerce_distribuidora/admin/importacion_page.jsx"));
+const ArticulosPage = lazy(() => import("../../modules/eccomerce_distribuidora/admin/articulos_page.jsx"));
+const ListaCargaPage = lazy(() => import("../../modules/eccomerce_distribuidora/pedidos/lista_carga_page.jsx"));
 import { protegida } from "./route_helpers.jsx";
 
 // Catálogo público y carrito invitado configurables por instalación.
@@ -36,12 +37,14 @@ export const eccomerceDistribuidoraRoutes = !projectModules.eccomerce_distribuid
   // usuario logueado, no solo clientes — un admin/staff que hace su propio
   // pedido también necesita completar estos datos.
   { path: "/perfil", element: protegida(<PerfilPage />) },
+];
 
-  // Categorías se unificó dentro de Productos (mismo árbol, categorías y
-  // productos se gestionan desde un solo lugar) — se deja el redirect por si
-  // alguien tiene el link viejo guardado.
-  { path: "/distribuidora/admin/categorias", element: <Navigate to="/distribuidora/admin/productos" replace /> },
-  { path: "/distribuidora/admin/productos", element: protegida(<AdminProductosPage />, ROLES_ADMIN) },
+// Pantallas de gestión: se muestran dentro del panel (ver panel.routes.jsx), con las mismas direcciones.
+export const eccomerceDistribuidoraAdminRoutes = !projectModules.eccomerce_distribuidora ? [] : [
+  // "Artículos" (tabla con filtros) y "Familias y categorías" (árbol con sus artículos).
+  { path: "/distribuidora/admin/productos", element: protegida(<ArticulosPage />, ROLES_ADMIN) },
+  { path: "/distribuidora/admin/categorias", element: protegida(<AdminProductosPage />, ROLES_ADMIN) },
+  { path: "/distribuidora/admin/lista-carga", element: protegida(<ListaCargaPage />, ROLES_VENTAS) },
   { path: "/distribuidora/admin/importar", element: protegida(<ImportacionDistribuidoraPage />, ROLES_ADMIN) },
   { path: "/distribuidora/admin/notas-pedido", element: protegida(<NotasPedidoDistribuidoraPage />, ROLES_VENTAS) },
 ];

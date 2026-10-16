@@ -49,9 +49,14 @@ export async function applyPlan(plan, catalog, transaction) {
     const added = await Product.bulkCreate(entries.map(([,v]) => ({ nombre: v.producto_nombre, categoria_id: categoryIds.get(keyText(v.categoria)), marca: v.marca, descripcion: v.descripcion, activo: true })), { transaction, returning: true });
     added.forEach((p, i) => productIds.set(entries[i][0], p.id));
   }
-  if (creates.length) await Variant.bulkCreate(creates.map((r) => ({ producto_id: r.productId || productIds.get(groupKey(r.value.categoria, r.value.producto_nombre)), nombre: r.value.variedad_nombre, ...r.patch })), { transaction });
+  if (creates.length) await Variant.bulkCreate(creates.map((r) => ({ producto_id: r.productId || productIds.get(groupKey(r.value.categoria, r.value.producto_nombre)), nombre: r.value.variedad_nombre, ...r.patch, fecha_cambio_precio: new Date() })), { transaction });
   const variants = new Map(catalog.variants.map((v) => [v.id, v]));
   const updates = plan.filter((r) => r.action === "update");
-  if (updates.length) await Variant.bulkCreate(updates.map((r) => ({ ...variants.get(r.target), ...r.patch })), { transaction, updateOnDuplicate: ["precio", "iva_porcentaje", "cantidad", "controla_stock", "cod_ref"] });
+  const conFechaPrecio = (r) => {
+    const antes = variants.get(r.target);
+    const cambioPrecio = r.patch.precio != null && Number(antes.precio) !== Number(r.patch.precio);
+    return { ...antes, ...r.patch, ...(cambioPrecio ? { fecha_cambio_precio: new Date() } : {}) };
+  };
+  if (updates.length) await Variant.bulkCreate(updates.map(conFechaPrecio), { transaction, updateOnDuplicate: ["precio", "iva_porcentaje", "cantidad", "controla_stock", "cod_ref", "codigo_barras", "unidades_por_bulto", "fecha_cambio_precio"] });
   return { products: newProducts.size, categories: newCategories };
 }

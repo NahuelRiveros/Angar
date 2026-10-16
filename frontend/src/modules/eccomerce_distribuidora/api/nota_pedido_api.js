@@ -45,3 +45,9 @@ export async function exportarNotaPedido(id) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+// "Artículos a cargar" de varios pedidos juntos (lista de carga).
+export async function getListaCarga(ids) {
+  const { data } = await http.get("/distribuidora/notas-pedido/lista-carga", { params: { ids: ids.join(",") } });
+  return data.data;
+}

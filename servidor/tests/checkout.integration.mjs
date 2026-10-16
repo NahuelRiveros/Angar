@@ -20,6 +20,11 @@ const { createResetToken } = await import("../src/services/common/auth_tokens.js
 const { resetPassword } = await import("../src/services/usuarios/password_recovery_service.js");
 const { env } = await import("../src/configuracion_servidor/env.js");
 const { guardarPerfil, obtenerPerfil } = await import("../src/services/distribuidora/perfil_cliente_service.js");
+const { crear_indice_busqueda_productos } = await import("../src/database/bootstrap.js");
+const { obtenerResumenPanel } = await import("../src/services/distribuidora/panel_distribuidora_service.js");
+const productos = await import("../src/services/distribuidora/producto_distribuidora_service.js");
+const { armarListaCarga } = await import("../src/services/distribuidora/lista_carga_service.js");
+const { validarVariedad } = await import("../src/services/common/articulo_rules.js");
 test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia y recuperación", async (t) => {
   let created = false;
   try {
@@ -238,6 +243,120 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       assert.equal(completo.cuit, "20-12345678-9");
       const nota = await crearNotaPedido(id, { key: randomUUID(), expectedItems: await obtenerCarrito(id) });
       assert.ok(nota.id);
+    });
+    await t.test("índice de búsqueda se crea aunque pg_trgm esté instalada en otro schema", async () => {
+      const { QueryTypes } = await import("sequelize");
+      const extSchema = DB_SCHEMA + "_ext";
+      assert.match(extSchema, /^codex_ux_test_[a-f0-9]{32}_ext$/);
+      const [{ instalada }] = await sequelize.query("SELECT count(*)::int AS instalada FROM pg_extension WHERE extname = 'pg_trgm'", { type: QueryTypes.SELECT });
+      // Si no estaba, se instala en un schema propio fuera del search_path (como "kinetica" o "extensions").
+      if (!instalada) {
+        await sequelize.query('CREATE SCHEMA "' + extSchema + '"');
+        await sequelize.query('CREATE EXTENSION pg_trgm SCHEMA "' + extSchema + '"');
+      }
+      try {
+        await crear_indice_busqueda_productos();
+        await crear_indice_busqueda_productos(); // al reiniciar el servidor no falla
+        const [{ indices }] = await sequelize.query("SELECT count(*)::int AS indices FROM pg_indexes WHERE schemaname = :schema AND indexname = 'producto_distribuidora_nombre_trgm_idx'", { replacements: { schema: DB_SCHEMA }, type: QueryTypes.SELECT });
+        assert.equal(indices, 1);
+      } finally {
+        if (!instalada) await sequelize.query('DROP SCHEMA "' + extSchema + '" CASCADE');
+      }
+    });
+    await t.test("panel: resumen por rol, ventas en hora de Argentina y presentaciones sin stock", async () => {
+      // 14/03/2030 23:30 en Argentina = 15/03 02:30 UTC: "hoy" sigue siendo el 14.
+      const ahora = new Date("2030-03-15T02:30:00Z");
+      const antes = await obtenerResumenPanel(["staff"], { ahora });
+      const base = { usuario_id: id, estado_pago: "pendiente", monto_pagado: 0, cuit: "20-12345678-9", direccion: "Prueba 123", provincia: "Buenos Aires", localidad: "La Plata", fecha_mod: ahora };
+      await models.NotaPedido.bulkCreate([
+        { ...base, estado: "pendiente", total: 100, fecha_alta: new Date("2030-03-14T12:00:00Z") },  // hoy
+        { ...base, estado: "en_curso", total: 50, monto_pagado: 20, estado_pago: "parcial", fecha_alta: new Date("2030-03-15T01:00:00Z") }, // hoy (22 h en AR)
+        { ...base, estado: "entregado", total: 30, monto_pagado: 30, estado_pago: "pagado", fecha_alta: new Date("2030-03-02T12:00:00Z") }, // este mes
+        { ...base, estado: "pendiente", total: 7, fecha_alta: new Date("2030-03-01T02:00:00Z") },    // 28/02 en AR: mes anterior
+        { ...base, estado: "cancelada", total: 999, fecha_alta: new Date("2030-03-14T13:00:00Z") },  // cancelado: no suma
+      ]);
+      const producto = await models.ProductoDistribuidora.create({ categoria_id: category.id, nombre: "Yerba" });
+      await models.VariedadDistribuidora.bulkCreate([
+        { producto_id: producto.id, nombre: "500 g", precio: 10, controla_stock: true, cantidad: 0 },
+        { producto_id: producto.id, nombre: "1 kg", precio: 20, controla_stock: false, cantidad: 0 },
+        { producto_id: producto.id, nombre: "Vieja", precio: 5, controla_stock: true, cantidad: 0, fecha_baja: "2030-01-01" },
+      ]);
+
+      const { pedidos, stock } = await obtenerResumenPanel(["staff"], { ahora });
+      assert.deepEqual(pedidos.ventas, { hoy: { pedidos: 2, monto: 150 }, mes: { pedidos: 3, monto: 180 } });
+      assert.equal(pedidos.por_estado.pendiente - antes.pedidos.por_estado.pendiente, 2);
+      assert.equal(pedidos.por_estado.en_curso - antes.pedidos.por_estado.en_curso, 1);
+      assert.equal(pedidos.por_estado.cancelada - antes.pedidos.por_estado.cancelada, 1);
+      assert.equal(pedidos.por_cobrar.saldo - antes.pedidos.por_cobrar.saldo, 100 + 30 + 7);
+      assert.equal(pedidos.ultimos.length, 5);
+      assert.equal(pedidos.ultimos[0].fecha_alta.toISOString(), "2030-03-15T01:00:00.000Z");
+      assert.equal(pedidos.ultimos[0].cliente, "Ana Google");
+      assert.equal(stock.sin_stock - antes.stock.sin_stock, 1);
+      assert.ok(stock.ejemplos_sin_stock.some((v) => v.producto === "Yerba" && v.presentacion === "500 g"));
+
+      const vendedor = await obtenerResumenPanel(["vendedor"], { ahora });
+      assert.ok(vendedor.pedidos);
+      assert.equal(vendedor.stock, null);
+      assert.deepEqual(await obtenerResumenPanel(["cliente"], { ahora }), { pedidos: null, stock: null });
+    });
+    await t.test("artículos: ficha con bultos, filtros de gestión y fecha de cambio de precio", async () => {
+      const familia = await models.CategoriaDistribuidora.create({ nombre: "Galletitas en gral", slug: "galletitas-en-gral" });
+      const ficha = (cambios = {}) => validarVariedad({ precio: 1000, controla_stock: true, cantidad: 482, stock_minimo: 50, unidad_medida: "PAQUETE", unidad_bulto: "CAJA", unidades_por_bulto: 20, cod_ref: "000519", codigo_barras: "7790040001230", ...cambios }).datos;
+      const nueve = await productos.crearProductoConVariedad({ categoria_id: familia.id, nombre: "9 de oro agridulce 200g", marca: "Cañuela" }, ficha());
+      const v = nueve.variedades[0];
+      assert.equal(v.unidades_por_bulto, 20);
+      assert.equal(v.codigo_barras, "7790040001230");
+      assert.ok(v.fecha_cambio_precio);
+
+      // Mismo precio: la fecha no cambia; precio nuevo: sí.
+      const fechaInicial = new Date(v.fecha_cambio_precio).getTime();
+      await new Promise((r) => setTimeout(r, 20));
+      const sinCambio = await productos.actualizarProductoConVariedad(nueve.id, { categoria_id: familia.id, nombre: nueve.nombre, marca: "Cañuela" }, ficha());
+      assert.equal(new Date(sinCambio.variedades[0].fecha_cambio_precio).getTime(), fechaInicial);
+      const conCambio = await productos.actualizarProductoConVariedad(nueve.id, { categoria_id: familia.id, nombre: nueve.nombre, marca: "Cañuela" }, ficha({ precio: 1100, cantidad: 30 }));
+      assert.ok(new Date(conCambio.variedades[0].fecha_cambio_precio).getTime() > fechaInicial);
+
+      const lavandina = await productos.crearProductoConVariedad({ categoria_id: familia.id, nombre: "Lavandina X5 12x1 lts", marca: "X5" }, ficha({ cod_ref: "002982", codigo_barras: null, cantidad: 0, unidad_medida: "BOTELLA", unidades_por_bulto: 12 }));
+      await productos.cambiarEstadoProducto(lavandina.id, false);
+      const buscar = async (filtros) => (await productos.listarProductos({ soloActivos: false, categoria: familia.id, ...filtros })).productos.map((p) => p.nombre).sort();
+      assert.deepEqual(await buscar({ q: "7790040" }), [nueve.nombre]);                       // por código de barras
+      assert.deepEqual(await buscar({ q: "002982" }), [lavandina.nombre]);                     // por código interno
+      assert.deepEqual(await buscar({ stock: "bajo_minimo" }), [lavandina.nombre, nueve.nombre].sort()); // 30 <= 50 y 0
+      assert.deepEqual(await buscar({ stock: "sin_stock" }), [lavandina.nombre]);
+      assert.deepEqual(await buscar({ estado: "inactivos" }), [lavandina.nombre]);
+      assert.deepEqual(await buscar({ marca: "cañuela" }), [nueve.nombre]);
+      assert.deepEqual(await buscar({ q: "100%" }), []);                                       // el % no es comodín
+      assert.ok((await productos.listarMarcas()).includes("Cañuela"));
+      // El catálogo público nunca muestra inactivos aunque pidan el filtro.
+      assert.deepEqual((await productos.listarProductos({ categoria: familia.id, estado: "inactivos" })).productos.map((p) => p.nombre), [nueve.nombre]);
+
+      const antes = await models.VariedadDistribuidora.findByPk(v.id);
+      await new Promise((r) => setTimeout(r, 20));
+      await productos.ajustarPreciosMasivo({ porcentaje: 10, producto_id: nueve.id });
+      const despues = await models.VariedadDistribuidora.findByPk(v.id);
+      assert.equal(Number(despues.precio), 1210);
+      assert.ok(despues.fecha_cambio_precio > antes.fecha_cambio_precio);
+
+      const { stock } = await obtenerResumenPanel(["admin"]);
+      assert.equal(stock.bajo_minimo, 1); // la lavandina está inactiva: el dashboard solo cuenta artículos activos
+    });
+    await t.test("lista de carga: suma varios pedidos por artículo, agrupa por familia y separa bultos", async () => {
+      const familia = await models.CategoriaDistribuidora.create({ nombre: "Limpieza", slug: "limpieza" });
+      const crear = (nombre, cod, porBulto) => productos.crearProductoConVariedad({ categoria_id: familia.id, nombre }, validarVariedad({ precio: 100, cod_ref: cod, unidad_medida: "BOTELLA", unidades_por_bulto: porBulto }).datos);
+      const lav = await crear("Lavandina X5 1 lt", "002982", 12);
+      const jabon = await crear("Jabón Lux x3", "002967", 1);
+      const base = { usuario_id: id, estado_pago: "pendiente", monto_pagado: 0, total: 0, cuit: "20-12345678-9", direccion: "Prueba 123", provincia: "Buenos Aires", localidad: "La Plata", fecha_alta: new Date(), fecha_mod: new Date() };
+      const [n1, n2, cancelado] = await models.NotaPedido.bulkCreate([{ ...base, estado: "en_curso" }, { ...base, estado: "pendiente" }, { ...base, estado: "cancelada" }]);
+      const item = (nota, prod, cantidad) => ({ nota_pedido_id: nota.id, producto_id: prod.id, variedad_id: prod.variedades[0].id, nombre_producto: prod.nombre, precio_unitario: 100, cantidad, subtotal: 100 * cantidad });
+      await models.NotaPedidoItem.bulkCreate([item(n1, lav, 20), item(n2, lav, 6), item(n1, jabon, 9), item(cancelado, lav, 500)]);
+
+      const lista = await armarListaCarga([n1.id, n2.id, cancelado.id, 999999]);
+      assert.deepEqual(lista.comprobantes, [n1.id, n2.id]);
+      const limpieza = lista.familias.find((f) => f.nombre === "Limpieza");
+      const fila = (codigo) => limpieza.articulos.find((a) => a.codigo === codigo);
+      assert.deepEqual([fila("002982").cantidad, fila("002982").bultos, fila("002982").sueltos], [26, 2, 2]);
+      assert.deepEqual([fila("002967").cantidad, fila("002967").bultos, fila("002967").sueltos], [9, 0, 9]);
+      assert.equal(lista.totales.unidades, 35);
     });
   } finally {
     if (created) {

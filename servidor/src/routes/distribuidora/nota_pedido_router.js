@@ -5,6 +5,7 @@ import {
   cambiarEstadoController, registrarPagoController, anularPagoController,
   exportarNotaPedidoController,
 } from "../../controllers/distribuidora/nota_pedido_controller.js";
+import { listaCargaController } from "../../controllers/distribuidora/lista_carga_controller.js";
 import { requireAuth, requireRole } from "../../middleware/auth_middleware.js";
 import { requireModuloHabilitado } from "../../middleware/modulo_middleware.js";
 
@@ -16,6 +17,7 @@ const ROLES_VENTAS = orderConfig.managementRoles;
 
 // Rutas específicas ANTES de "/:id".
 notaPedidoRouter.get("/todas", requireRole(...ROLES_VENTAS), listarTodasController);
+notaPedidoRouter.get("/lista-carga", requireRole(...ROLES_VENTAS), listaCargaController);
 
 notaPedidoRouter.get("/", listarMisNotasController);
 notaPedidoRouter.post("/", crearNotaPedidoController);

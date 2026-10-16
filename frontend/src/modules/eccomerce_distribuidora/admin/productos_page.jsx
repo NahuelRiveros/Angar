@@ -353,8 +353,8 @@ export default function ProductosDistribuidoraPage() {
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900">Categorías y productos</h1>
-            <p className="mt-0.5 text-sm text-slate-500">Categorías y productos en un solo lugar — el precio se carga al crear el producto.</p>
+            <h1 className="text-2xl font-extrabold text-slate-900">Familias y categorías</h1>
+            <p className="mt-0.5 text-sm text-slate-500">El árbol de familias con sus artículos. Para buscar y filtrar artículos usá «Artículos».</p>
           </div>
           <div className="flex flex-wrap gap-2 self-start sm:self-auto">
             <button
@@ -418,6 +418,7 @@ export default function ProductosDistribuidoraPage() {
         onGuardar={guardarProducto}
         productoEditar={productoEditar}
         guardando={guardandoProducto}
+        error={modalProductoAbierto ? errorProducto : ""}
         opcionesCategoria={opcionesCategoria}
         categoriaInicial={categoriaPreseleccionada}
       />

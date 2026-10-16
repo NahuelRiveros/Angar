@@ -272,7 +272,7 @@ async function sincronizar_modelos() {
  * Corre DESPUÉS de sincronizar_modelos() porque necesita que la tabla ya
  * exista (en un deploy con eccomerce_distribuidora apagado, no existe).
  */
-async function crear_indice_busqueda_productos() {
+export async function crear_indice_busqueda_productos() {
   const [{ existe }] = await sequelize.query(`
     SELECT EXISTS (
       SELECT 1 FROM information_schema.tables
@@ -282,17 +282,17 @@ async function crear_indice_busqueda_productos() {
   if (!existe) return;
 
   await sequelize.query("CREATE EXTENSION IF NOT EXISTS pg_trgm");
-  // Supabase instala las extensiones en el schema `extensions`, que no está en
-  // nuestro search_path (DB_SCHEMA, public): se califica la opclass con el
-  // schema real de pg_trgm para que Postgres la encuentre en cualquier entorno.
-  const [{ schema_trgm }] = await sequelize.query(`
-    SELECT n.nspname AS schema_trgm
-    FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace
-    WHERE e.extname = 'pg_trgm'
-  `, { type: QueryTypes.SELECT });
+  // Si la extensión ya estaba en otro schema (uno viejo, o "extensions" en Supabase),
+  // "IF NOT EXISTS" no la mueve y gin_trgm_ops no aparece en nuestro search_path:
+  // se usa calificada con el schema donde realmente está.
+  const [{ esquema }] = await sequelize.query(
+    "SELECT n.nspname AS esquema FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'pg_trgm'",
+    { type: QueryTypes.SELECT },
+  );
+  const esquemaSeguro = `"${esquema.replaceAll('"', '""')}"`;
   await sequelize.query(`
     CREATE INDEX IF NOT EXISTS producto_distribuidora_nombre_trgm_idx
-    ON "${DB_SCHEMA}".producto_distribuidora USING gin (nombre "${schema_trgm}".gin_trgm_ops)
+    ON "${DB_SCHEMA}".producto_distribuidora USING gin (nombre ${esquemaSeguro}.gin_trgm_ops)
   `);
 }
 

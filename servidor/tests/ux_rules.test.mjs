@@ -67,3 +67,55 @@ test("navbar filtra árboles por rol y módulo, sin acoplarse a un rubro", () =>
     assert.equal(filtrarNavbarPorRol(config, { roles: ["admin"] }, { [modulo]: false }).dropdowns.length, 0);
   }
 });
+
+test("panel de gestión: cada rol ve solo sus secciones y el cliente no entra", async () => {
+  const { panelGrupos, rolesPanel } = await import("../../frontend/src/config/navbar_config/panel_gestion.js");
+  const modulos = { eccomerce_distribuidora: true };
+  const menu = (roles) => Object.fromEntries(filtrarNavbarPorRol({ dropdowns: panelGrupos }, { roles }, modulos).dropdowns
+    .map((g) => [g.id, g.items.map((i) => i.to)]));
+
+  assert.deepEqual(Object.keys(menu(["staff"])), ["inicio", "distribuidora"]);
+  assert.deepEqual(menu(["vendedor"]).distribuidora, ["/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
+  assert.deepEqual(menu(["staff"]).distribuidora, ["/distribuidora/admin/productos", "/distribuidora/admin/categorias", "/distribuidora/admin/importar", "/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
+  assert.ok(menu(["admin"]).admin.includes("/admin/staffManager"));
+  assert.deepEqual(Object.keys(menu(["super_admin"])), ["inicio", "sistema"]);
+  assert.deepEqual(menu(["cliente"]), {});
+  assert.equal(rolesPanel.includes("cliente"), false);
+  // Con el módulo apagado desde /super-admin/modulos, desaparece su sección.
+  assert.equal(filtrarNavbarPorRol({ dropdowns: panelGrupos }, { roles: ["staff"] }, { eccomerce_distribuidora: false }).dropdowns.some((g) => g.id === "distribuidora"), false);
+});
+
+test("bultos y sueltos: 23 paquetes en cajas de 20 son 1 caja + 3 paquetes", async () => {
+  const { separarBultos, describirBulto, textoBultos } = await import("../../unidades_config.js");
+  assert.deepEqual(separarBultos(23, 20), { bultos: 1, sueltos: 3 });
+  assert.deepEqual(separarBultos(40, 20), { bultos: 2, sueltos: 0 });
+  assert.deepEqual(separarBultos(7, 1), { bultos: 0, sueltos: 7 }); // sin bulto, todo suelto
+  assert.deepEqual(separarBultos(-3, 12), { bultos: 0, sueltos: 0 });
+  assert.equal(describirBulto({ unidad_bulto: "CAJA", unidades_por_bulto: 20, unidad_medida: "PAQUETE" }), "Caja x 20 paquetes");
+  assert.equal(describirBulto({ unidades_por_bulto: 1 }), null);
+  const lavandina = { unidad_bulto: "CAJA", unidades_por_bulto: 12, unidad_medida: "BOTELLA" };
+  assert.equal(textoBultos(26, lavandina), "2 cajas + 2 botellas");
+  assert.equal(textoBultos(12, lavandina), "1 caja");
+  assert.equal(textoBultos(5, lavandina), "5 botellas");
+  const { cantidadConUnidad } = await import("../../unidades_config.js");
+  assert.deepEqual([cantidadConUnidad(1, "CAJA"), cantidadConUnidad(0, "UNIDAD"), cantidadConUnidad(20, "PAQUETE"), cantidadConUnidad(3, "KG")], ["1 caja", "0 unidades", "20 paquetes", "3 kg"]);
+});
+
+test("ficha del artículo valida precio, IVA, stock, unidades y código de barras", async () => {
+  const { validarVariedad } = await import("../src/services/common/articulo_rules.js");
+  const ok = validarVariedad({ precio: "1500.5", iva_porcentaje: "10.5", controla_stock: true, cantidad: "482", stock_minimo: "50", unidad_medida: "paquete", unidad_bulto: "CAJA", unidades_por_bulto: "20", cod_ref: " 000519 ", codigo_barras: "7790 040 001230", extra: "x" });
+  assert.deepEqual(ok.datos, { precio: 1500.5, precio_anterior: null, iva_porcentaje: 10.5, controla_stock: true, cantidad: 482, stock_minimo: 50, unidad_medida: "PAQUETE", unidad_bulto: "CAJA", unidades_por_bulto: 20, cod_ref: "000519", codigo_barras: "7790040001230" });
+  assert.equal(validarVariedad({ precio: 10, controla_stock: false, cantidad: 99 }).datos.cantidad, 0, "sin control de stock no guarda cantidad");
+  for (const [cambio, mensaje] of [
+    [{ precio: "" }, /precio/], [{ precio: -1 }, /precio/], [{ iva_porcentaje: 150 }, /IVA/],
+    [{ controla_stock: true, cantidad: 2.5 }, /stock/], [{ stock_minimo: -1 }, /mínimo/],
+    [{ unidad_medida: "TONELADA" }, /unidad/], [{ unidades_por_bulto: 0 }, /bulto/], [{ codigo_barras: "77-90" }, /barras/],
+  ]) assert.match(validarVariedad({ precio: 10, ...cambio }).error ?? "", mensaje, JSON.stringify(cambio));
+});
+
+test("lista de carga acepta ids de pedidos válidos y limita la cantidad", async () => {
+  const { leerIdsPedidos, MAX_PEDIDOS_LISTA_CARGA } = await import("../src/services/distribuidora/lista_carga_service.js");
+  assert.deepEqual(leerIdsPedidos("12, 15,15,x,-3,0"), [12, 15]);
+  assert.throws(() => leerIdsPedidos(""), /al menos un pedido/);
+  assert.throws(() => leerIdsPedidos(Array.from({ length: MAX_PEDIDOS_LISTA_CARGA + 1 }, (_, i) => i + 1).join(",")), /hasta/);
+});

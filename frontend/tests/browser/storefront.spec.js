@@ -212,6 +212,174 @@ test("cliente de Google sin apellido completa sus datos en el primer pedido", as
   await expect(page.getByText("Gise Google · 11 2345-6789")).toBeVisible();
   expect(guardados[0]).toMatchObject({ nombre: "Gise", apellido: "Google", celular: "11 2345-6789", cuit: "20-12345678-9", provincia: "Buenos Aires" });
 });
+const RESUMEN_PANEL = {
+  pedidos: {
+    por_estado: { pendiente: 3, en_curso: 2, entregado: 9, cancelada: 1 },
+    por_cobrar: { saldo: 4500, pedidos: 4 },
+    ventas: { hoy: { pedidos: 2, monto: 2400 }, mes: { pedidos: 14, monto: 98000 } },
+    ultimos: [{ id: 123, estado: "pendiente", estado_pago: "pendiente", total: 2400, fecha_alta: "2026-10-15T12:00:00Z", cliente: "Ana Cliente" }],
+  },
+  stock: { sin_stock: 6, productos_activos: 40, ejemplos_sin_stock: [{ id: 11, producto: "Arroz largo fino", presentacion: "Paquete 1 kg" }] },
+};
+async function entrarComo(page, roles, resumen = RESUMEN_PANEL) {
+  await mockApi(page);
+  await page.addInitScript(() => localStorage.setItem("token", "mock-session"));
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { ok: true, usuario: { usuario_id: 8, nombre: "Eva", roles } } }));
+  const pedidosResumen = [];
+  await page.route("**/api/distribuidora/panel/resumen", (route) => { pedidosResumen.push(1); return route.fulfill({ json: { ok: true, data: resumen } }); });
+  return pedidosResumen;
+}
+// En celular el menú lateral se abre con ☰; en escritorio está siempre visible.
+async function menuPanel(page) {
+  if ((page.viewportSize()?.width ?? 0) < 1024) await page.getByRole("button", { name: "Abrir menú del panel" }).click();
+  return page.getByRole("navigation", { name: "Menú del panel" });
+}
+test("staff entra al panel desde el navbar y ve dashboard y menú de su rol", async ({ page }, info) => {
+  await entrarComo(page, ["staff"]);
+  await page.goto("/");
+  if (info.project.name === "desktop") {
+    await expect(page.getByRole("button", { name: /Distribuidora · Gestión/ })).toHaveCount(0);
+    await page.getByRole("link", { name: "Panel de gestión" }).click();
+  } else await page.goto("/panel");
+  await expect(page).toHaveURL(/\/panel$/);
+  await expect(page.getByRole("heading", { name: "Hola, Eva" })).toBeVisible();
+  await expect(page.getByText("$ 4.500,00")).toBeVisible();
+  await expect(page.getByText("6 presentación(es) sin stock")).toBeVisible();
+  await expect(page.getByText("Pedido #123 · Ana Cliente")).toBeVisible();
+  await expect(page.getByRole("contentinfo")).toHaveCount(0); // sin el footer de la tienda
+  await noOverflow(page);
+  const menu = await menuPanel(page);
+  await expect(menu.getByRole("link", { name: "Artículos", exact: true })).toBeVisible();
+  await expect(menu.getByRole("link", { name: "Personal" })).toHaveCount(0);           // solo admin
+  await expect(menu.getByRole("link", { name: "Módulos habilitados" })).toHaveCount(0); // solo super_admin
+  await menu.getByRole("link", { name: "Notas de pedido" }).click();
+  await expect(page).toHaveURL(/distribuidora\/admin\/notas-pedido$/);
+  await expect(page.getByRole("heading", { name: "Notas de pedido", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Menú del panel" })).toHaveCount(0);
+});
+test("vendedor ve solo pedidos; cliente no tiene panel; error del resumen ofrece reintentar", async ({ page }) => {
+  await entrarComo(page, ["vendedor"], { pedidos: RESUMEN_PANEL.pedidos, stock: null });
+  await page.goto("/panel");
+  await expect(page.getByText("Saldo por cobrar")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Stock" })).toHaveCount(0);
+  const menu = await menuPanel(page);
+  await expect(menu.getByRole("link", { name: "Notas de pedido" })).toBeVisible();
+  await expect(menu.getByRole("link", { name: "Artículos", exact: true })).toHaveCount(0);
+
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await entrarComo(page, ["cliente"]);
+  await page.goto("/panel");
+  await expect(page).not.toHaveURL(/\/panel/);
+  await expect(page.getByRole("link", { name: "Panel de gestión" })).toHaveCount(0);
+
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await entrarComo(page, ["admin"]);
+  // Falla (también el reintento automático) hasta que el usuario toca "Reintentar".
+  let fallar = true;
+  await page.route("**/api/distribuidora/panel/resumen", (route) => fallar ? route.fulfill({ status: 500, json: { ok: false } }) : route.fallback());
+  await page.goto("/panel");
+  await expect(page.getByText("No pudimos cargar el resumen.")).toBeVisible();
+  fallar = false;
+  await page.getByRole("button", { name: "Reintentar" }).click();
+  await expect(page.getByText("Saldo por cobrar")).toBeVisible();
+});
+const ARTICULO = { id: 519, nombre: "9 de Oro Agridulce 20x200g", marca: "Cañuela", activo: true, categoria_id: 3, categoria: { id: 3, nombre: "Galletitas en gral" },
+  variedades: [{ id: 51, precio: 1200, iva_porcentaje: 21, controla_stock: true, cantidad: 30, stock_minimo: 50, cod_ref: "000519", codigo_barras: "7790040001230", unidad_medida: "PAQUETE", unidad_bulto: "CAJA", unidades_por_bulto: 20, fecha_cambio_precio: "2026-05-26T12:00:00Z" }] };
+async function gestionArticulos(page) {
+  await entrarComo(page, ["staff"]);
+  const pedidos = [];
+  const guardados = [];
+  await page.route("**/api/distribuidora/productos**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/marcas")) return route.fulfill({ json: { ok: true, data: ["Cañuela", "X5"] } });
+    if (route.request().method() === "POST") { guardados.push(route.request().postDataJSON()); return route.fulfill({ status: 201, json: { ok: true, data: ARTICULO } }); }
+    pedidos.push(Object.fromEntries(url.searchParams));
+    return route.fulfill({ json: { ok: true, data: [ARTICULO], total: 1, pagina: 1, total_paginas: 1 } });
+  });
+  await page.route("**/api/distribuidora/catalogos/categorias", (route) => route.fulfill({ json: { ok: true, data: [{ id: 3, nombre: "Galletitas en gral", padre_id: null }] } }));
+  return { pedidos, guardados };
+}
+test("artículos: tabla con código, bultos y stock bajo; filtros en la dirección; ficha con pestañas", async ({ page }) => {
+  const { pedidos, guardados } = await gestionArticulos(page);
+  await page.goto("/distribuidora/admin/productos");
+  await expect(page.getByRole("heading", { name: "Artículos", exact: true })).toBeVisible();
+  const listado = page.getByRole("region", { name: "Listado de artículos" });
+  await expect(listado.getByText("000519").locator("visible=true").first()).toBeVisible();
+  await expect(listado.getByText("Cañuela · Caja x 20 paquetes").locator("visible=true").first()).toBeVisible();
+  await expect(listado.getByText("Stock bajo · mín. 50").locator("visible=true").first()).toBeVisible();
+  await expect(listado.getByText("= 1 caja + 10 paquetes").locator("visible=true").first()).toBeVisible();
+  await noOverflow(page);
+
+  await page.getByLabel(/^Stock/).selectOption("bajo_minimo");
+  await expect(page).toHaveURL(/stock=bajo_minimo/);
+  await expect.poll(() => pedidos.at(-1)?.stock).toBe("bajo_minimo");
+
+  await page.getByRole("button", { name: "Nuevo artículo" }).click();
+  const ficha = page.getByRole("dialog");
+  await ficha.getByLabel(/^Descripción del artículo/).fill("Lavandina X5 al 25% 1 lt");
+  await ficha.getByPlaceholder("Ej: 000519").fill("002982");
+  await ficha.getByRole("button", { name: "Guardar artículo" }).click();
+  // Sin familia ni precio no se envía: queda en la pestaña con datos faltantes.
+  await expect(ficha.getByRole("tab", { name: /Datos generales/ })).toHaveAttribute("aria-selected", "true");
+  await ficha.getByLabel(/^Familia/).selectOption("3");
+  await ficha.getByRole("button", { name: "Guardar artículo" }).click();
+  await expect(ficha.getByRole("tab", { name: /Precios/ })).toHaveAttribute("aria-selected", "true");
+  await ficha.getByLabel(/^Precio de venta/).fill("1500");
+  await ficha.getByRole("tab", { name: "Stock y unidades" }).click();
+  await ficha.getByLabel(/^Se vende por/).selectOption("BOTELLA");
+  await ficha.getByLabel(/^Unidades por bulto/).fill("12");
+  await expect(ficha.getByText("1 caja = 12 botellas")).toBeVisible();
+  await ficha.getByRole("button", { name: "Guardar artículo" }).click();
+  await expect(ficha).toHaveCount(0);
+  expect(guardados).toHaveLength(1);
+  expect(guardados[0]).toMatchObject({ categoria_id: 3, nombre: "Lavandina X5 al 25% 1 lt", cod_ref: "002982", precio: 1500, unidad_medida: "BOTELLA", unidad_bulto: "CAJA", unidades_por_bulto: 12 });
+});
+test("lista de carga: elegir pedidos, ver artículos por familia en bultos y sueltos e imprimir", async ({ page }) => {
+  await entrarComo(page, ["vendedor"]);
+  const persona = { nombre: "Ana", apellido: "Cliente" };
+  await page.route("**/api/distribuidora/notas-pedido/todas**", (route) => route.fulfill({ json: { ok: true, total: 2, totalPages: 1, page: 1, data: [
+    { id: 12, estado: "en_curso", total: 5000, fecha_alta: "2026-10-15T12:00:00Z", localidad: "Formosa", usuario: { persona } },
+    { id: 15, estado: "en_curso", total: 2600, fecha_alta: "2026-10-15T13:00:00Z", localidad: "Las Lomitas", usuario: { persona } },
+  ] } }));
+  const pedidosLista = [];
+  await page.route("**/api/distribuidora/notas-pedido/lista-carga**", (route) => {
+    pedidosLista.push(new URL(route.request().url()).searchParams.get("ids"));
+    return route.fulfill({ json: { ok: true, data: { comprobantes: [12, 15], totales: { articulos: 2, unidades: 35, bultos: 2 }, familias: [
+      { id: 33, nombre: "Limpieza", articulos: [
+        { producto_id: 1, variedad_id: 1, codigo: "002982", descripcion: "Lavandina X5 al 25% 1 lt", cantidad: 26, bultos: 2, sueltos: 2, unidades_por_bulto: 12, unidad_bulto: "CAJA" },
+        { producto_id: 2, variedad_id: 2, codigo: "002967", descripcion: "Jabón tocador Lux x3", cantidad: 9, bultos: 0, sueltos: 9, unidades_por_bulto: 1, unidad_bulto: "CAJA" },
+      ] }] } } });
+  });
+  await page.addInitScript(() => { window.__impresiones = 0; window.print = () => { window.__impresiones += 1; }; });
+  await page.goto("/distribuidora/admin/lista-carga");
+  await expect(page.getByRole("button", { name: /Armar lista de carga/ })).toBeDisabled();
+  await page.getByText("Elegir todos los de esta página").click();
+  await page.getByRole("button", { name: "Armar lista de carga (2 pedidos)" }).click();
+  await expect(page).toHaveURL(/pedidos=12(%2C|,)15/);
+  const lista = page.getByRole("article", { name: "Artículos a cargar" });
+  await expect(lista.getByText("Compuesto por 2 comprobante(s): #12, #15")).toBeVisible();
+  await expect(lista.getByRole("columnheader", { name: "Familia: Limpieza" })).toBeVisible();
+  const fila = lista.getByRole("row", { name: /002982/ });
+  await expect(fila.getByRole("cell").nth(2)).toHaveText("26");
+  await expect(fila.getByRole("cell").nth(3)).toHaveText("2");
+  await expect(fila.getByRole("cell").nth(4)).toHaveText("2");
+  await noOverflow(page);
+  await page.getByRole("button", { name: "Imprimir" }).click();
+  expect(await page.evaluate(() => window.__impresiones)).toBe(1);
+  expect(pedidosLista).toEqual(["12,15"]);
+});
+test("catálogo: presentación con caja, +1 caja y equivalencia en bultos", async ({ page }) => {
+  await mockApi(page);
+  const conCaja = { ...product, variedades: [{ ...product.variedades[0], cantidad: 200, unidad_medida: "PAQUETE", unidad_bulto: "CAJA", unidades_por_bulto: 20 }] };
+  await page.route("**/api/distribuidora/productos/1", (route) => route.fulfill({ json: { ok: true, data: conCaja } }));
+  await page.goto("/distribuidora/catalogo/1");
+  await expect(page.getByText(/Caja x 20 paquetes/)).toBeVisible();
+  await page.getByRole("button", { name: "+1 caja" }).click();
+  await expect(page.getByText("= 1 caja", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "+1 caja" }).click();
+  await expect(page.getByText("= 2 cajas", { exact: true })).toBeVisible();
+  await noOverflow(page);
+});
 test("cantidades rápidas en varias líneas conservan el último cambio", async ({ page }) => {
   const row = { item_id: 50, producto_id: 1, variedad_id: 11, cantidad: 1, nombre: "Arroz largo fino", variante: "1 kg", precio: 1200, precio_al_agregar: 1200, stock_disponible: 200, activo: true, variante_disponible: true };
   const api = await mockApi(page, [row, { ...row, item_id: 51, producto_id: 2, variedad_id: 12, nombre: "Fideos" }]);

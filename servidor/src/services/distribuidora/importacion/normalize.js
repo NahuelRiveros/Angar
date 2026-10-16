@@ -55,6 +55,11 @@ export function normalizeRows(parsed, mapping, settings) {
       }
       if (v.iva_porcentaje != null && (v.iva_porcentaje < 0 || v.iva_porcentaje > 100 || Math.abs(v.iva_porcentaje * 100 - Math.round(v.iva_porcentaje * 100)) > 0.00001)) throw importError("IVA inválido (0 a 100, hasta 2 decimales).");
       if (v.cantidad != null && (!Number.isInteger(v.cantidad) || v.cantidad < 0 || v.cantidad > 2147483647)) throw importError("Stock inválido: usar un entero no negativo.");
+      v.codigo_barras = text(row, "codigo_barras", 30)?.replace(/s/g, "") || null;
+      if (v.codigo_barras && !/^d{6,14}$/.test(v.codigo_barras)) throw importError("Código de barras inválido: entre 6 y 14 números.");
+      const porBulto = field(row, "unidades_por_bulto");
+      v.unidades_por_bulto = porBulto == null || String(porBulto).trim() === "" ? null : numberValue(porBulto, settings.decimal, "Unidades por bulto");
+      if (v.unidades_por_bulto != null && (!Number.isInteger(v.unidades_por_bulto) || v.unidades_por_bulto < 1 || v.unidades_por_bulto > 10000)) throw importError("Unidades por bulto inválidas: un entero entre 1 y 10000.");
       return { row: row.number, value: v };
     } catch (e) { return { row: row.number, action: "error", message: e.message }; }
   });

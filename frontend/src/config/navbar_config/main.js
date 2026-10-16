@@ -9,12 +9,8 @@ import CarritoDistribuidoraIcon from "../../modules/eccomerce_distribuidora/carr
 import { gymLinks, gymDropdown } from "./gym_dropdown.js";
 import { kinesiologiaDropdown } from "./kinesiologia_dropdown.js";
 import { eccomerceIndumentariaDropdown } from "./eccomerce_indumentaria_dropdown.js";
-import { adminDropdown } from "./admin_dropdown.js";
-import { superAdminDropdown } from "./super_admin_dropdown.js";
-import {
-  eccomerceDistribuidoraCatalogoLink,
-  eccomerceDistribuidoraAdminDropdown,
-} from "./eccomerce_distribuidora_dropdown.js";
+import { eccomerceDistribuidoraCatalogoLink } from "./eccomerce_distribuidora_dropdown.js";
+import { panelGestionLink } from "./panel_gestion.js";
 
 // Un archivo por dropdown (gym_dropdown.js, kinesiologia_dropdown.js,
 // eccomerce_indumentaria_dropdown.js, admin_dropdown.js,
@@ -70,14 +66,14 @@ export const navbar_config = {
       { label: "Cómo pedir", to: "/#como-pedir", icon: HelpCircle },
       { label: "Contacto", to: "/#contacto", icon: Phone },
     ] : []),
+    // "Distribuidora · Gestión", "Admin" y "Sistema" viven en el panel (/panel),
+    // con su menú lateral; ver panel_gestion.js.
+    panelGestionLink,
   ],
 
   dropdowns: [
     ...(projectModules.gym ? [gymDropdown] : []),
     ...(projectModules.kinesiologia ? [kinesiologiaDropdown] : []),
     ...(catalogConfig.enabled ? [eccomerceIndumentariaDropdown] : []),
-    ...(projectModules.eccomerce_distribuidora ? [eccomerceDistribuidoraAdminDropdown] : []),
-    adminDropdown,
-    superAdminDropdown,
   ],
 };
