@@ -1,8 +1,8 @@
 import axios from "axios";
 import { authConfig } from "../config/auth_config";
+import { resolverApiUrl } from "./api_url.js";
 
-const API_URL = import.meta.env.VITE_API_URL
-  ?? (import.meta.env.DEV ? "http://localhost:3001/api" : "https://dynamic-gym.onrender.com/api");
+const API_URL = resolverApiUrl(import.meta.env.VITE_API_URL, import.meta.env.DEV);
 
 export const http = axios.create({ baseURL: API_URL });
 
@@ -24,4 +24,3 @@ http.interceptors.response.use(
     return Promise.reject(error);
   }
 );
- 

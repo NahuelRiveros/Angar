@@ -43,6 +43,8 @@ Usar React Hook Form y Zod para formularios, TanStack Query donde corresponda,
 y el adapter existente para persistencia del carrito.
 Cubrir carga, error, vacío, teclado y anchos de 320, 390 y 1440 px.
 
-`VITE_API_URL` controla la API. El fallback actual de producción en `src/api/http.js`
-todavía apunta a dynamic-gym; verificar la configuración efectiva antes de un despliegue.
-No asumir mismo origen ni modificar ese destino durante tareas de documentación.
+`VITE_API_URL` controla la API. Las direcciones públicas de respaldo viven en
+`../deployment_config.js`: producción usa `https://distribucg.onrender.com/api`.
+`src/api/api_url.js` valida la URL durante el build y al crear el cliente HTTP;
+rechaza el dominio del proyecto anterior. Revisar las variables de Vercel,
+que tienen prioridad sobre el respaldo. No asumir mismo origen.

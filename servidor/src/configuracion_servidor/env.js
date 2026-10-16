@@ -1,4 +1,5 @@
 import "dotenv/config.js";
+import { deploymentConfig } from "../../../deployment_config.js";
 
 // El panel de Render guarda el valor tal cual: si se pega con comillas o espacios
 // ("https://…"), quedarían como parte del texto. dotenv ya los quita en el .env local.
@@ -61,13 +62,13 @@ export const env = {
   MP_ACCESS_TOKEN: process.env.MP_ACCESS_TOKEN || "",
 
   // URL COMPLETA del backend en Render (para que MP envíe el webhook).
-  // Ejemplo: "https://dynamic-gym.onrender.com"
+  // Ejemplo: "https://distribucg.onrender.com"
   // En local: dejar vacío (el webhook no llegará, pero el flujo funciona).
   RENDER_APP_URL: process.env.RENDER_APP_URL || "",
 
   // URL COMPLETA del frontend en Vercel (para la redirección post-pago de MP).
-  // Ejemplo: "https://dynamic-gym.vercel.app"
-  VERCEL_FRONTEND_URL: process.env.VERCEL_FRONTEND_URL || "http://localhost:5173",
+  // Ejemplo: "https://distribu-cg.vercel.app"
+  VERCEL_FRONTEND_URL: process.env.VERCEL_FRONTEND_URL || (esProduccion ? deploymentConfig.frontendUrl : "http://localhost:5173"),
 
   // ── Plan del software ──────────────────────────────────────────
   // Precio mensual en ARS (sin centavos). Ej: 10000 = $10.000

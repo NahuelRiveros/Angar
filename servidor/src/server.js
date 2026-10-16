@@ -7,9 +7,10 @@ import { iniciarCronEstadoAlumnos } from "./cron/estado_alumno_cron.js";
 import "./models/index.js";
 import { env } from "./configuracion_servidor/env.js";
 import { projectModules } from "./configuracion_servidor/gate_config.js";
+import { deploymentConfig } from "../../deployment_config.js";
 
 async function main() {
-  console.log(`🚀 Iniciando Dynamic Gym [${env.NODE_ENV}]...`);
+  console.log(`🚀 Iniciando ${deploymentConfig.nombre} [${env.NODE_ENV}]...`);
 
   await sequelize.authenticate();
   await sequelize.query(`SET TIME ZONE 'America/Argentina/Cordoba'`);

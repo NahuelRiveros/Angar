@@ -9,6 +9,7 @@ import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 import routes from "./routes/index.js";
 import { env, limpiarValor } from "./configuracion_servidor/env.js";
+import { deploymentConfig } from "../../deployment_config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -36,7 +37,8 @@ export function parsearOrigenes(valor) {
 }
 
 const origenesConfigurados = parsearOrigenes(env.CORS_ORIGIN);
-const corsOrigin = origenesConfigurados.length ? origenesConfigurados : CORS_DEV;
+const corsOrigin = origenesConfigurados.length ? origenesConfigurados
+  : env.NODE_ENV === "production" ? parsearOrigenes(env.VERCEL_FRONTEND_URL) : CORS_DEV;
 
 export function createApp() {
   const app = express();
@@ -44,7 +46,7 @@ export function createApp() {
   if (env.NODE_ENV !== "test") console.log(`🌐 Orígenes permitidos (CORS_ORIGIN): ${corsOrigin.join(", ")}`);
   const rechazados = new Set();
 
-  app.use(helmet());
+  app.use(helmet({ crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" } }));
 
   // Reduce respuestas JSON/estáticos hasta un 70% — va ANTES de rutas
   app.use(compression());
@@ -92,10 +94,10 @@ export function createApp() {
     app.get("/", (_req, res) => {
       res.json({
         ok: true,
-        nombre: "Dynamic Gym API",
+        nombre: `${deploymentConfig.nombre} API`,
         entorno: env.NODE_ENV,
         salud: "/api/health",
-        frontend: "https://dynamic-gym.vercel.app",
+        frontend: env.VERCEL_FRONTEND_URL,
       });
     });
 
