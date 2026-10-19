@@ -9,7 +9,8 @@ export async function seed_super_admin() {
   const { SUPERADMIN_NOMBRE, SUPERADMIN_APELLIDO, SUPERADMIN_DNI, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD } = env;
 
   if (!SUPERADMIN_EMAIL || !SUPERADMIN_PASSWORD || !SUPERADMIN_DNI) {
-    console.log("⏭️  SUPERADMIN_* incompleto en .env — se omite creación de super admin");
+    const faltantes = ["SUPERADMIN_EMAIL", "SUPERADMIN_PASSWORD", "SUPERADMIN_DNI"].filter((clave) => !env[clave]);
+    console.log(`⏭️ Super admin: faltan ${faltantes.join(", ")} — se omite su creación`);
     return;
   }
 
@@ -31,6 +32,7 @@ export async function seed_super_admin() {
     }
 
     let usuario = await Usuario.findOne({ where: { persona_id: persona.id }, transaction: t });
+    const nuevo = !usuario;
     if (!usuario) {
       const contrasena = await bcrypt.hash(SUPERADMIN_PASSWORD, 10);
       usuario = await Usuario.create(
@@ -51,6 +53,8 @@ export async function seed_super_admin() {
       }
     }
 
-    console.log(`✅ Super admin listo: ${email} (usuario_id=${usuario.id}, activo=true)`);
+    console.log(`✅ Super admin listo: ${persona.email} (usuario_id=${usuario.id}, activo=true, contraseña ${nuevo ? "creada" : "conservada"})`);
+    if (persona.email !== email) console.warn("⚠️ SUPERADMIN_EMAIL difiere del email guardado de la persona encontrada por DNI. El seed conserva el email existente.");
+    if (!nuevo) console.log("ℹ️ SUPERADMIN_PASSWORD no reemplaza la contraseña existente. Diagnóstico: npm run admin:verificar");
   });
 }
