@@ -9,6 +9,9 @@ const MisPedidosPage = lazy(() => import("../../modules/eccomerce_distribuidora/
 const PerfilPage = lazy(() => import("../../modules/eccomerce_distribuidora/perfil/perfil_page.jsx"));
 const CategoriasDistribuidoraPage = lazy(() => import("../../modules/eccomerce_distribuidora/admin/categorias_page.jsx"));
 const ArticuloFormPage = lazy(() => import("../../modules/eccomerce_distribuidora/admin/articulo_form_page.jsx"));
+const ListasPrecioPage = lazy(() => import("../../modules/eccomerce_distribuidora/admin/listas_precio_page.jsx"));
+const ListaPrecioFormPage = lazy(() => import("../../modules/eccomerce_distribuidora/admin/lista_precio_form_page.jsx"));
+const ListaPrecioPreciosPage = lazy(() => import("../../modules/eccomerce_distribuidora/admin/lista_precio_precios_page.jsx"));
 const MarcaFormPage = lazy(() => import("../../modules/eccomerce_distribuidora/admin/marca_form_page.jsx"));
 const MarcasDistribuidoraPage = lazy(() => import("../../modules/eccomerce_distribuidora/admin/marcas_page.jsx"));
 const NotasPedidoDistribuidoraPage = lazy(() => import("../../modules/eccomerce_distribuidora/pedidos/notas_pedido_page.jsx"));
@@ -49,6 +52,11 @@ export const eccomerceDistribuidoraAdminRoutes = !projectModules.eccomerce_distr
   { path: "/distribuidora/admin/marcas", element: protegida(<MarcasDistribuidoraPage />, ROLES_ADMIN) },
   { path: "/distribuidora/admin/marcas/nueva", element: protegida(<MarcaFormPage />, ROLES_ADMIN) },
   { path: "/distribuidora/admin/marcas/:id", element: protegida(<MarcaFormPage />, ROLES_ADMIN) },
+  // Listas de precios regionales: solo admin, igual que en el servidor.
+  { path: "/distribuidora/admin/listas-precio", element: protegida(<ListasPrecioPage />, ["admin"]) },
+  { path: "/distribuidora/admin/listas-precio/nueva", element: protegida(<ListaPrecioFormPage />, ["admin"]) },
+  { path: "/distribuidora/admin/listas-precio/:id", element: protegida(<ListaPrecioFormPage />, ["admin"]) },
+  { path: "/distribuidora/admin/listas-precio/:id/precios", element: protegida(<ListaPrecioPreciosPage />, ["admin"]) },
   { path: "/distribuidora/admin/lista-carga", element: protegida(<ListaCargaPage />, ROLES_VENTAS) },
   { path: "/distribuidora/admin/importar", element: protegida(<ImportacionDistribuidoraPage />, ROLES_ADMIN) },
   { path: "/distribuidora/admin/notas-pedido", element: protegida(<NotasPedidoDistribuidoraPage />, ROLES_VENTAS) },

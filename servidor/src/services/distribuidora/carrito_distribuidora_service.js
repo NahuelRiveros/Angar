@@ -2,9 +2,29 @@ import { CarritoDistribuidora, CarritoDistribuidoraItem, ProductoDistribuidora, 
 import { withCart, idempotent } from "./cart_transaction.js";
 import { cartError, validQuantity } from "../common/cart_rules.js";
 import { clientConfig } from "../../../../client_config.js";
+import { listaDeUsuario, preciosDeLista } from "./listas_precio_service.js";
 export async function obtenerOCrearCarrito(usuario_id) {
   const [cart] = await CarritoDistribuidora.findOrCreate({ where: { usuario_id }, defaults: { usuario_id } });
   return cart;
+}
+/**
+ * Qué mostrar tachado en el carrito: el precio anterior si es oferta, o la General
+ * si su lista de zona la cobra más barata. Nunca se muestra cuando la zona paga más.
+ */
+function referenciaDescuento(variedad, deLista) {
+  if (!variedad) return { precio_referencia: null, descuento: null };
+  const precio = Number(deLista?.precio ?? variedad.precio);
+  const anterior = deLista ? deLista.precio_anterior : (variedad.precio_anterior == null ? null : Number(variedad.precio_anterior));
+  if (anterior != null && anterior > precio) return { precio_referencia: anterior, descuento: "oferta" };
+  if (deLista && Number(variedad.precio) > precio) return { precio_referencia: Number(variedad.precio), descuento: "zona" };
+  return { precio_referencia: null, descuento: null };
+}
+// Precio vigente de cada presentación para el dueño del carrito: el de su lista
+// regional si tiene, si no la General. Lo usan el carrito y el pedido (mismo valor).
+async function preciosDelCarrito(carrito_id, variedadIds, transaction) {
+  const cart = await CarritoDistribuidora.findByPk(carrito_id, { attributes: ["usuario_id"], transaction });
+  const lista = await listaDeUsuario(cart?.usuario_id, transaction);
+  return { lista, precios: await preciosDeLista(lista?.id, variedadIds, transaction) };
 }
 export async function listarItemsCarrito(carrito_id, transaction) {
   const rows = await CarritoDistribuidoraItem.findAll({
@@ -14,12 +34,14 @@ export async function listarItemsCarrito(carrito_id, transaction) {
       { model: VariedadDistribuidora, as: "variedad", required: false },
     ], order: [["fecha_alta", "ASC"]],
   });
+  const { precios } = await preciosDelCarrito(carrito_id, rows.map((r) => r.variedad_id).filter(Boolean), transaction);
   return rows.map((item) => ({
+    ...referenciaDescuento(item.variedad, precios.get(item.variedad_id)),
     item_id: item.id, producto_id: item.producto_id, variedad_id: item.variedad_id,
     nombre: item.producto?.nombre ?? "Producto no disponible", categoria: item.producto?.categoria?.nombre ?? null,
     imagen: item.producto?.imagen_url ?? null, variante: item.variedad?.nombre ?? null,
     variante_disponible: !!item.variedad && !item.variedad.fecha_baja,
-    precio: Number(item.variedad?.precio ?? item.precio_unidad), precio_al_agregar: Number(item.precio_unidad),
+    precio: Number(precios.get(item.variedad_id)?.precio ?? item.variedad?.precio ?? item.precio_unidad), precio_al_agregar: Number(item.precio_unidad),
     stock_disponible: item.variedad?.controla_stock ? item.variedad.cantidad : null,
     cantidad: item.cantidad, activo: !!item.producto?.activo && !item.producto.fecha_baja,
   }));
@@ -33,13 +55,15 @@ async function addToCart(cart, payload, t) {
   const variants = await VariedadDistribuidora.findAll({ where: { producto_id, fecha_baja: null, ...(variedad_id ? { id: variedad_id } : {}) }, transaction: t });
   if (variants.length !== 1) throw cartError("Elegí una presentación disponible");
   const variant = variants[0];
+  const { precios } = await preciosDelCarrito(cart.id, [variant.id], t);
+  const precio = precios.get(variant.id)?.precio ?? variant.precio;
   const existing = await CarritoDistribuidoraItem.findOne({ where: { carrito_id: cart.id, variedad_id: variant.id }, transaction: t });
   const quantity = validQuantity((existing?.cantidad ?? 0) + cantidad, variant.controla_stock ? variant.cantidad : null);
-  if (existing) await existing.update({ cantidad: quantity, precio_unidad: variant.precio }, { transaction: t });
+  if (existing) await existing.update({ cantidad: quantity, precio_unidad: precio }, { transaction: t });
   else {
     const count = await CarritoDistribuidoraItem.count({ where: { carrito_id: cart.id }, transaction: t });
     if (count >= clientConfig.distribuidora.maxCartLines) throw cartError("Alcanzaste el máximo de productos por pedido.");
-    await CarritoDistribuidoraItem.create({ carrito_id: cart.id, producto_id, variedad_id: variant.id, cantidad: quantity, precio_unidad: variant.precio, fecha_alta: new Date() }, { transaction: t });
+    await CarritoDistribuidoraItem.create({ carrito_id: cart.id, producto_id, variedad_id: variant.id, cantidad: quantity, precio_unidad: precio, fecha_alta: new Date() }, { transaction: t });
   }
   await cart.update({ fecha_mod: new Date() }, { transaction: t });
 }

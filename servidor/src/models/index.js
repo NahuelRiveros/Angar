@@ -88,6 +88,7 @@ import { CarritoItem }       from "./carrito/carrito_item.js";
 import { CategoriaDistribuidora }   from "./distribuidora/categoria_distribuidora.js";
 import { ProductoDistribuidora }    from "./distribuidora/producto_distribuidora.js";
 import { MarcaDistribuidora, MarcaCategoriaDistribuidora } from "./distribuidora/marca_distribuidora.js";
+import { ListaPrecio, ListaPrecioLocalidad, ListaPrecioItem } from "./distribuidora/lista_precio.js";
 import { VariedadDistribuidora }    from "./distribuidora/variedad_distribuidora.js";
 import { CarritoDistribuidora }     from "./distribuidora/carrito_distribuidora.js";
 import { CarritoDistribuidoraItem } from "./distribuidora/carrito_distribuidora_item.js";
@@ -262,6 +263,11 @@ aplicarRelaciones([
   { tipo: "hasMany",   from: MarcaDistribuidora, to: MarcaCategoriaDistribuidora, foreignKey: "marca_id", as: "categorias" },
   { tipo: "belongsTo", from: MarcaCategoriaDistribuidora, to: CategoriaDistribuidora, foreignKey: "categoria_id", as: "categoria" },
 
+  // ─── ListaPrecio ↔ localidades / precios por presentación ───────────────
+  { tipo: "hasMany",   from: ListaPrecio, to: ListaPrecioLocalidad, foreignKey: "lista_id", as: "localidades" },
+  { tipo: "hasMany",   from: ListaPrecio, to: ListaPrecioItem, foreignKey: "lista_id", as: "items" },
+  { tipo: "belongsTo", from: ListaPrecioItem, to: VariedadDistribuidora, foreignKey: "variedad_id", as: "variedad" },
+
   // ─── VariedadDistribuidora ↔ ProductoDistribuidora (una fila = una variedad) ──
   { tipo: "belongsTo", from: VariedadDistribuidora, to: ProductoDistribuidora, foreignKey: "producto_id", as: "producto" },
   { tipo: "hasMany",   from: ProductoDistribuidora, to: VariedadDistribuidora, foreignKey: "producto_id", as: "variedades" },
@@ -313,6 +319,7 @@ export {
   Categoria, Marca, Talle, Color, ProductoTienda, Stock, EnvioOpcion, CondicionIva,
   Carrito, CarritoItem,
   CategoriaDistribuidora, ProductoDistribuidora, VariedadDistribuidora, MarcaDistribuidora, MarcaCategoriaDistribuidora,
+  ListaPrecio, ListaPrecioLocalidad, ListaPrecioItem,
   CarritoDistribuidora, CarritoDistribuidoraItem, NotaPedido, NotaPedidoItem, NotaPedidoPago,
   PerfilClienteDistribuidora,
 };

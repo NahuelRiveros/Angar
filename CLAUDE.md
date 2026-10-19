@@ -30,6 +30,10 @@ de cada cliente; `node scripts/analizar_modulos.mjs` lista sus carpetas sin toca
   asociada a familias o categorías (`marca_categoria_distribuidora`); el artículo guarda `marca_id` y
   `producto_distribuidora.marca` es una copia del nombre que mantiene `marcas_distribuidora_service.js`
   (no escribirla a mano). El bootstrap migra marcas en texto viejas (`sincronizarMarcasLegado`).
+- Precios: la "General" es `variedad.precio`/`precio_anterior`. Las listas regionales (`lista_precio*`) solo
+  guardan excepciones por presentación y aplican por la localidad del perfil del cliente (una localidad, una
+  lista). Todo precio que ve o paga un cliente pasa por `listas_precio_service.js` (catálogo, detalle,
+  ofertas, carrito y pedido); la gestión ve la General. Oferta = `precio_anterior > precio` de su lista.
 - `frontend/src/config/`: marca, tema, navegación, catálogo y textos.
 - Ante diferencias entre comentarios y código, comprobar rutas, servicios y tests antes de concluir.
 

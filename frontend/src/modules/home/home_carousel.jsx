@@ -7,7 +7,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
  * que hay más contenido. Flechas + puntos sincronizados con el scroll real,
  * así funciona igual con mouse, touch o teclado sin lógica de swipe propia.
  */
-export default function HomeCarousel({ items, renderItem }) {
+// `anchoItem`: ancho de cada elemento (por defecto, imágenes grandes de la galería).
+export default function HomeCarousel({ items, renderItem, anchoItem = "w-[85%] sm:w-[55%] lg:w-[38%]" }) {
   const trackRef = useRef(null);
   const [activo, setActivo] = useState(0);
 
@@ -47,7 +48,7 @@ export default function HomeCarousel({ items, renderItem }) {
         className="flex snap-x snap-mandatory gap-6 overflow-x-auto scroll-smooth pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item, i) => (
-          <div key={i} className="w-[85%] shrink-0 snap-start sm:w-[55%] lg:w-[38%]">
+          <div key={i} className={`shrink-0 snap-start ${anchoItem}`}>
             {renderItem(item, i)}
           </div>
         ))}

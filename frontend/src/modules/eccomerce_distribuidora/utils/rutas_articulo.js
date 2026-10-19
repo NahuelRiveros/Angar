@@ -15,3 +15,5 @@ export const RUTA_MARCAS = "/distribuidora/admin/marcas";
 export function rutaFichaMarca({ id, volver } = {}) {
   return `${RUTA_MARCAS}/${id ?? "nueva"}${volver ? `?volver=${encodeURIComponent(volver)}` : ""}`;
 }
+
+export const RUTA_LISTAS = "/distribuidora/admin/listas-precio";

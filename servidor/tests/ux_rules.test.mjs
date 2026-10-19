@@ -81,6 +81,7 @@ test("panel de gestión: cada rol ve solo sus secciones y el cliente no entra", 
   assert.deepEqual(menu(["vendedor"]).distribuidora, ["/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
   assert.deepEqual(menu(["staff"]).distribuidora, ["/distribuidora/admin/productos", "/distribuidora/admin/categorias", "/distribuidora/admin/marcas", "/distribuidora/admin/importar", "/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
   assert.ok(menu(["admin"]).admin.includes("/admin/staffManager"));
+  assert.ok(menu(["admin"]).distribuidora.includes("/distribuidora/admin/listas-precio")); // solo admin: define lo que se cobra
   assert.deepEqual(Object.keys(menu(["super_admin"])), ["inicio", "sistema"]);
   assert.deepEqual(menu(["cliente"]), {});
   assert.equal(rolesPanel.includes("cliente"), false);

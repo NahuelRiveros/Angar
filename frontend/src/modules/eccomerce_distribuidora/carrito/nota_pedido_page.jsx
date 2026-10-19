@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../../auth/auth_context.jsx";
 import { useCarritoDistribuidora } from "./carrito_context.jsx";
 import { storefrontConfig as config } from "../../../config/storefront_config.js";
@@ -15,8 +15,10 @@ import { enviarNotaPedido } from "../api/nota_pedido_api.js";
 import { formatearPrecio as fmt } from "../utils/precio_iva.js";
 import PerfilFormModal from "./perfil_form_modal.jsx";
 function readAttempt(key) { try { return JSON.parse(sessionStorage.getItem(key)); } catch { return null; } }
+const ETIQUETAS_DESCUENTO = { zona: "Precio especial en tu zona", oferta: "Oferta" };
 export default function NotaPedidoPage() {
   const cart = useCarritoDistribuidora();
+  const queryClient = useQueryClient();
   const { isAuth, usuario } = useAuth();
   const navigate = useNavigate();
   const notesKey = config.storageKey + ":notes:" + (usuario?.usuario_id ?? "guest");
@@ -69,6 +71,11 @@ export default function NotaPedidoPage() {
   if (sent) return <div className="mx-auto max-w-lg space-y-4 px-4 py-16 text-center"><h1 className="text-3xl font-bold">¡Pedido #{sent.id} enviado!</h1>
     <p>Total: {fmt(sent.total)}</p><p className="text-sm text-slate-600">{config.labels.orderNotice}</p>
     <Link to={config.ordersPath} className="block rounded-xl bg-(--kt-teal-700) p-3 font-bold text-white">Ver mis pedidos</Link><Link to={config.catalogPath} className="block py-3 underline">Seguir comprando</Link></div>;
+  // Ahorro visible: precio de zona más barato que la General, y ofertas.
+  const ahorro = (motivo) => cart.items.filter((i) => i.descuento === motivo && Number(i.precio_referencia) > Number(i.precio))
+    .reduce((s, i) => s + (Number(i.precio_referencia) - Number(i.precio)) * i.cantidad, 0);
+  const ahorroZona = ahorro("zona");
+  const ahorroOfertas = ahorro("oferta");
   const filtered = cart.items.filter((i) => (i.nombre + " " + (i.variante ?? "")).toLowerCase().includes(search.toLowerCase()));
   return <div className="bg-(--kt-bg-soft) px-3 py-6 sm:px-6"><div className="mx-auto max-w-6xl space-y-5">
     <div><h1 className="kt-display text-3xl font-bold">Tu carrito</h1><p className="mt-1 text-sm text-slate-600">{cart.items.length} productos · {cart.cantidadItems} unidades</p></div>
@@ -82,12 +89,17 @@ export default function NotaPedidoPage() {
       <section aria-label="Productos del carrito" className="space-y-3">
         {cart.items.length > 8 && <InputField name="cart-search" label="Buscar en el carrito" type="search" value={search} onChange={(e) => setSearch(e.target.value)} />}
         {filtered.map((item) => <CartItem key={item.item_id} item={item} to={config.catalogPath + "/" + item.producto_id} formatPrice={fmt} maxQuantity={config.maxQuantity}
+          etiquetaDescuento={ETIQUETAS_DESCUENTO[item.descuento]}
           disabled={busy || !!attempt} onQuantity={(q) => act(cart.setCantidad(item.item_id, q))} onRemove={() => act(cart.removeItem(item.item_id))} />)}
         {!filtered.length && <p className="p-4 text-sm">No encontramos productos con ese nombre en tu carrito.</p>}
         <button type="button" disabled={busy || !!attempt} onClick={() => setClearOpen(true)} className="min-h-11 px-3 text-sm text-rose-700 underline">Vaciar carrito</button>
       </section>
       <aside className="space-y-4 self-start rounded-2xl border border-(--kt-border) bg-white p-5 lg:sticky lg:top-20">
         <h2 className="text-lg font-bold">Resumen del pedido</h2><div className="flex justify-between text-xl font-bold"><span>Total</span><span>{fmt(cart.total)}</span></div>
+        {(ahorroZona > 0 || ahorroOfertas > 0) && <div className="space-y-1 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+          {ahorroZona > 0 && <p>Ahorrás {fmt(ahorroZona)} con los precios de tu zona</p>}
+          {ahorroOfertas > 0 && <p>Ahorrás {fmt(ahorroOfertas)} en ofertas</p>}
+        </div>}
         <p className="text-xs text-slate-500">{config.labels.priceNotice}</p>
         <label className="block text-sm font-semibold" htmlFor="order-notes">Notas para el pedido (opcional)</label>
         <textarea id="order-notes" value={notes} maxLength={2000} disabled={busy || !!attempt} onChange={(e) => { setNotes(e.target.value); sessionStorage.setItem(notesKey, e.target.value); }} rows={3} className="w-full rounded-xl border border-(--kt-border) p-3 text-sm" placeholder="Ejemplo: horario para recibir la entrega" />
@@ -103,7 +115,10 @@ export default function NotaPedidoPage() {
         <Link to={config.catalogPath} className="block min-h-11 py-3 text-center text-sm font-semibold underline">Seguir comprando</Link>
       </aside>
     </div>}
-    {editProfile && <PerfilFormModal perfil={profile.data} onClose={() => setEditProfile(false)} onGuardado={async () => { await profile.refetch(); setEditProfile(false); }} />}
+    {editProfile && <PerfilFormModal perfil={profile.data} onClose={() => setEditProfile(false)} onGuardado={async () => {
+      // La localidad define la lista de precios: se recargan los precios del carrito y, si cambiaron, se avisa arriba.
+      await Promise.all([profile.refetch(), cart.recargar().catch(() => {}), queryClient.invalidateQueries({ queryKey: ["storefront"] })]); setEditProfile(false);
+    }} />}
     {clearOpen && <Modal title="¿Vaciar tu carrito?" onClose={() => setClearOpen(false)}><p className="mb-4 text-sm">Se quitarán los productos seleccionados.</p><ActionButton onClick={async () => { await act(cart.clearCart()); setClearOpen(false); }}>Vaciar carrito</ActionButton></Modal>}
     {review && <Modal title="Revisá y confirmá tu pedido" busy={busy} onClose={() => setReview(null)}>
       <div className="space-y-4"><p className="text-sm">{profile.data?.direccion}, {profile.data?.localidad}, {profile.data?.provincia}</p>

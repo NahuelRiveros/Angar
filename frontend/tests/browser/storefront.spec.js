@@ -639,3 +639,27 @@ test("marca en la ficha: lista de su categoría, sin duplicar y alta en el momen
   await expect(page).toHaveURL(/\/distribuidora\/admin\/productos$/);
   expect(guardados[0]).toMatchObject({ categoria_id: 3, marca_id: 9, nombre: "Harina 000 1 kg" });
 });
+
+test("ofertas: carrusel en el home con precios de la zona y filtro en el catálogo", async ({ page }) => {
+  await mockApi(page);
+  const oferta = { ...product, id: 5, nombre: "Yerba en oferta", variedades: [{ ...product.variedades[0], id: 55, precio: 1200, precio_anterior: 1500 }] };
+  await page.route("**/api/distribuidora/productos/ofertas**", (route) => route.fulfill({ json: { ok: true, data: [oferta], lista_precio: "Interior Norte" } }));
+  const consultas = [];
+  await page.route("**/api/distribuidora/productos?**", (route) => {
+    consultas.push(Object.fromEntries(new URL(route.request().url()).searchParams));
+    return route.fulfill({ json: { ok: true, data: [oferta], total: 1, pagina: 1, total_paginas: 1 } });
+  });
+  await page.goto("/");
+  const seccion = page.getByRole("region", { name: "Aprovechá los precios de esta semana" });
+  await expect(seccion.getByText("Yerba en oferta")).toBeVisible();
+  await expect(seccion.getByText("Precios para tu zona: Interior Norte")).toBeVisible();
+  await expect(seccion.getByText("-20%")).toBeVisible();
+  await noOverflow(page);
+
+  await seccion.getByRole("link", { name: /Ver todas las ofertas/ }).click();
+  await expect(page).toHaveURL(/\/distribuidora\/catalogo\?oferta=1$/);
+  await expect(page.getByRole("button", { name: "Ofertas" })).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => consultas.at(-1)?.oferta).toBe("1");
+  await page.getByRole("button", { name: "Ofertas" }).click(); // vuelve al catálogo completo
+  await expect.poll(() => consultas.at(-1)?.oferta).toBeUndefined();
+});

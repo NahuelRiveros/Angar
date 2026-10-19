@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { UserCircle, Check } from "lucide-react";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
 import { getMiPerfil, guardarMiPerfil } from "../api/perfil_cliente_api.js";
 import PerfilCampos from "./perfil_campos.jsx";
+import { useCarritoDistribuidora } from "../carrito/carrito_context.jsx";
 
 /**
  * ABM del perfil de facturación/entrega — mismos campos que
@@ -17,6 +19,8 @@ import PerfilCampos from "./perfil_campos.jsx";
  */
 export default function PerfilPage() {
   const toast = useToast();
+  const queryClient = useQueryClient();
+  const cart = useCarritoDistribuidora();
   const [cargando, setCargando] = useState(true);
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
@@ -69,6 +73,8 @@ export default function PerfilPage() {
       });
       if (r?.ok === false) { setError(r.mensaje); return; }
       toast.success("Perfil actualizado correctamente");
+      // La localidad define la lista de precios: catálogo y carrito vuelven a pedir sus precios.
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ["storefront"] }), cart.recargar?.().catch(() => {})]);
     } catch (err) {
       setError(err?.response?.data?.mensaje || "No se pudo guardar el perfil");
     } finally {

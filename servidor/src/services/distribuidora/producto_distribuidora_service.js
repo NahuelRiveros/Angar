@@ -78,8 +78,10 @@ const CONDICION_STOCK = {
 };
 
 // `estado` y `stock` solo los usa la gestión (con soloActivos en false).
-async function construirWhere({ categoria, incluirDescendientes = true, q, soloActivos = true, marca, estado, stock } = {}) {
+async function construirWhere({ categoria, incluirDescendientes = true, q, soloActivos = true, marca, estado, stock, ids } = {}) {
   const where = { fecha_baja: null };
+  // `ids`: subconjunto ya calculado (ej. productos en oferta para la lista del cliente).
+  if (Array.isArray(ids)) where.id = { [Op.in]: ids };
   const filtros = [];
   if (soloActivos || estado === "activos") where.activo = true;
   else if (estado === "inactivos") where.activo = false;
@@ -110,8 +112,8 @@ async function construirWhere({ categoria, incluirDescendientes = true, q, soloA
 // exacta (sin bajar a subcategorías) — lo usa el árbol del admin al expandir
 // un nivel puntual, para no traerse de golpe todo el subárbol y mezclarlo
 // bajo el nodo equivocado.
-export async function listarProductos({ categoria, incluirDescendientes = true, q, pagina, por_pagina, soloActivos = true, marca, estado, stock } = {}) {
-  const where = await construirWhere({ categoria, incluirDescendientes, q, soloActivos, marca, estado, stock });
+export async function listarProductos({ categoria, incluirDescendientes = true, q, pagina, por_pagina, soloActivos = true, marca, estado, stock, ids } = {}) {
+  const where = await construirWhere({ categoria, incluirDescendientes, q, soloActivos, marca, estado, stock, ids });
   const maxLimit = soloActivos ? 100 : 1000;
   const { page, limit, offset } = normalizarPaginacion({ page: pagina, limit: por_pagina, defaultLimit: 24, maxLimit });
 

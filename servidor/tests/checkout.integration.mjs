@@ -14,7 +14,7 @@ process.env.DB_SCHEMA = ownedSchema;
 const { sequelize, DB_SCHEMA } = await import("../src/database/sequelize.js");
 const models = await import("../src/models/index.js");
 const { registrarCliente, login, loginConGoogle } = await import("../src/services/usuarios/auth_service.js");
-const { obtenerCarrito, agregarItem, fusionarCarrito, actualizarCantidad } = await import("../src/services/distribuidora/carrito_distribuidora_service.js");
+const { obtenerCarrito, agregarItem, fusionarCarrito, actualizarCantidad, vaciarCarrito } = await import("../src/services/distribuidora/carrito_distribuidora_service.js");
 const { crearNotaPedido, cambiarEstado, registrarPago, anularPago, listarTodas } = await import("../src/services/distribuidora/nota_pedido_service.js");
 const { createResetToken } = await import("../src/services/common/auth_tokens.js");
 const { resetPassword } = await import("../src/services/usuarios/password_recovery_service.js");
@@ -27,6 +27,7 @@ const { armarListaCarga } = await import("../src/services/distribuidora/lista_ca
 const { validarVariedad } = await import("../src/services/common/articulo_rules.js");
 const categoriasSrv = await import("../src/services/distribuidora/catalogos_distribuidora_service.js");
 const marcasSrv = await import("../src/services/distribuidora/marcas_distribuidora_service.js");
+const listasSrv = await import("../src/services/distribuidora/listas_precio_service.js");
 test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia y recuperación", async (t) => {
   let created = false;
   try {
@@ -35,7 +36,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
     assert.match(DB_SCHEMA, /^codex_ux_test_[a-f0-9]{32}$/);
     await sequelize.query('CREATE SCHEMA "' + DB_SCHEMA + '"');
     created = true;
-    for (const name of ["ModuloNegocio", "Sexo", "TipoDocumento", "TipoPersona", "Persona", "Usuario", "Rol", "UsuarioRol", "CategoriaDistribuidora", "MarcaDistribuidora", "MarcaCategoriaDistribuidora", "ProductoDistribuidora", "VariedadDistribuidora", "CarritoDistribuidora", "CarritoDistribuidoraItem", "NotaPedido", "NotaPedidoEstadoLog", "NotaPedidoPago", "NotaPedidoItem", "PerfilClienteDistribuidora", "OperacionCarrito"]) await models[name].sync();
+    for (const name of ["ModuloNegocio", "Sexo", "TipoDocumento", "TipoPersona", "Persona", "Usuario", "Rol", "UsuarioRol", "CategoriaDistribuidora", "MarcaDistribuidora", "MarcaCategoriaDistribuidora", "ProductoDistribuidora", "VariedadDistribuidora", "ListaPrecio", "ListaPrecioLocalidad", "ListaPrecioItem", "CarritoDistribuidora", "CarritoDistribuidoraItem", "NotaPedido", "NotaPedidoEstadoLog", "NotaPedidoPago", "NotaPedidoItem", "PerfilClienteDistribuidora", "OperacionCarrito"]) await models[name].sync();
     await models.ModuloNegocio.create({ codigo: "eccomerce_distribuidora", descripcion: "Distribuidora", habilitado: true });
     await models.TipoDocumento.create({ descripcion: "DNI" });
     await models.Rol.create({ codigo: "cliente", descripcion: "Cliente" });
@@ -466,6 +467,49 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       await categoriasSrv.fusionarCategoria(otraFam.id, fam.id);
       const asociadas = await models.MarcaCategoriaDistribuidora.findAll({ where: { marca_id: bagley.id }, raw: true });
       assert.ok(asociadas.some((a) => a.categoria_id === fam.id));
+    });
+    await t.test("listas de precios: la localidad del cliente define el precio del carrito y del pedido; ofertas por lista", async () => {
+      const cat = await models.CategoriaDistribuidora.create({ nombre: "Listas QA", slug: "listas-qa" });
+      const yerba = await models.ProductoDistribuidora.create({ categoria_id: cat.id, nombre: "Yerba Lista QA" });
+      const vYerba = await models.VariedadDistribuidora.create({ producto_id: yerba.id, nombre: "1 kg", precio: 1000, cod_ref: "LQA-1" });
+      const azucar = await models.ProductoDistribuidora.create({ categoria_id: cat.id, nombre: "Azucar Lista QA" });
+      const vAzucar = await models.VariedadDistribuidora.create({ producto_id: azucar.id, nombre: "1 kg", precio: 500, precio_anterior: 600, cod_ref: "LQA-2" });
+
+      // Sin lista: General, y el azúcar está en oferta (600 → 500).
+      assert.ok((await listasSrv.idsProductosEnOferta(null)).includes(azucar.id));
+      // Ana (perfil en La Plata, Buenos Aires) entra en esta lista; la localidad no puede repetirse en otra.
+      const lista = await listasSrv.guardarLista(null, { nombre: "La Plata QA", localidades: [{ provincia: "Buenos Aires", departamento: null, localidad: "La Plata" }] });
+      await assert.rejects(listasSrv.guardarLista(null, { nombre: "Otra QA", localidades: [{ provincia: "buenos aires", localidad: "LA PLATA" }] }), /ya está en "La Plata QA"/);
+      assert.deepEqual(await listasSrv.listaDeUsuario(id), { id: lista.id, nombre: "La Plata QA" });
+
+      await listasSrv.guardarPreciosDeLista(lista.id, [{ variedad_id: vYerba.id, precio: 1200, precio_anterior: 1500 }, { variedad_id: vAzucar.id, precio: 550 }]);
+      const enOferta = await listasSrv.idsProductosEnOferta(lista.id);
+      assert.ok(enOferta.includes(yerba.id));     // oferta propia de la lista
+      assert.ok(!enOferta.includes(azucar.id));   // precio especial sin "anterior": en esta zona no es oferta
+      const [conLista] = await listasSrv.aplicarListaAProductos([await productos.obtenerProductoPorId(yerba.id)], lista);
+      assert.deepEqual([conLista.variedades[0].precio, conLista.variedades[0].precio_anterior], [1200, 1500]);
+
+      // Carrito y pedido usan el precio de la lista y el pedido guarda cuál fue.
+      await vaciarCarrito(id);
+      const carrito = await agregarItem(id, { producto_id: yerba.id, variedad_id: vYerba.id, cantidad: 2 });
+      const linea = carrito.find((it) => it.variedad_id === vYerba.id);
+      assert.deepEqual([linea.precio, linea.precio_referencia, linea.descuento], [1200, 1500, "oferta"]); // oferta de la lista: se tacha el anterior
+      // Precio de zona sin "anterior" pero más barato que la General: se tacha la General.
+      await listasSrv.guardarPreciosDeLista(lista.id, [{ variedad_id: vAzucar.id, precio: 450 }]);
+      const conZona = await agregarItem(id, { producto_id: azucar.id, variedad_id: vAzucar.id, cantidad: 1 });
+      const lineaZona = conZona.find((it) => it.variedad_id === vAzucar.id);
+      assert.deepEqual([lineaZona.precio, lineaZona.precio_referencia, lineaZona.descuento], [450, 500, "zona"]);
+      await actualizarCantidad(id, lineaZona.item_id, 1);
+      await vaciarCarrito(id);
+      await agregarItem(id, { producto_id: yerba.id, variedad_id: vYerba.id, cantidad: 2 });
+      const nota = await crearNotaPedido(id, { key: randomUUID(), expectedItems: await obtenerCarrito(id) });
+      assert.deepEqual([Number(nota.total), nota.lista_precio_nombre], [2400, "La Plata QA"]);
+
+      // Lista pausada: vuelve la General. Importar con un código inexistente no guarda nada.
+      await listasSrv.guardarLista(lista.id, { nombre: "La Plata QA", activo: false, localidades: [{ provincia: "Buenos Aires", localidad: "La Plata" }] });
+      assert.equal(await listasSrv.listaDeUsuario(id), null);
+      await assert.rejects(listasSrv.importarPreciosDeLista(lista.id, [{ cod_ref: "LQA-1", precio: 1 }, { cod_ref: "NO-EXISTE", precio: 2 }]), /NO-EXISTE/);
+      assert.equal((await listasSrv.listarPreciosDeLista(lista.id, { solo_especiales: true })).filas.find((f) => f.variedad_id === vYerba.id).precio, 1200);
     });
   } finally {
     if (created) {

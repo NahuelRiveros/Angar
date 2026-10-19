@@ -15,6 +15,7 @@ import {
   Categoria, Marca, Talle, Color, ProductoTienda, Stock, EnvioOpcion, CondicionIva,
   Carrito, CarritoItem,
   CategoriaDistribuidora, ProductoDistribuidora, VariedadDistribuidora, MarcaDistribuidora, MarcaCategoriaDistribuidora,
+  ListaPrecio, ListaPrecioLocalidad, ListaPrecioItem,
   CarritoDistribuidora, CarritoDistribuidoraItem, NotaPedido, NotaPedidoItem, NotaPedidoPago,
   PerfilClienteDistribuidora, OperacionCarrito, NotaPedidoEstadoLog, ImportacionCatalogo, ImportacionCatalogoLote,
 } from "../models/index.js";
@@ -228,6 +229,9 @@ async function sincronizar_modelos() {
     MarcaCategoriaDistribuidora, // marca_categoria_distribuidora → marca_distribuidora, categoria_distribuidora
     ProductoDistribuidora,  // producto_distribuidora → categoria_distribuidora, marca_distribuidora
     VariedadDistribuidora,  // variedad_distribuidora → producto_distribuidora
+    ListaPrecio,            // lista_precio (listas regionales; la General es el precio de la variedad)
+    ListaPrecioLocalidad,   // lista_precio_localidad → lista_precio
+    ListaPrecioItem,        // lista_precio_item → lista_precio, variedad_distribuidora
     CarritoDistribuidora,     // carrito_distribuidora → usuario
     CarritoDistribuidoraItem, // carrito_distribuidora_item → carrito_distribuidora, producto_distribuidora, variedad_distribuidora
     NotaPedido,     // nota_pedido → usuario

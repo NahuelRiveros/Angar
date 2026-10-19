@@ -15,6 +15,7 @@ import {
 import { getProductos } from "../eccomerce_distribuidora/api/producto_distribuidora_api.js";
 import { getCategorias } from "../eccomerce_distribuidora/api/categoria_distribuidora_api.js";
 import HomeCarousel from "./home_carousel.jsx";
+import OfertasDestacadas from "../eccomerce_distribuidora/home/ofertas_destacadas.jsx";
 
 // Un placeholder sin completar en home_config.js se ve como "[Tu número
 // acá]" — mostrarlo tal cual a un visitante real sería peor que no mostrar
@@ -120,6 +121,10 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── OFERTAS — lugar principal: apenas después de la marca. Se oculta
+          sola si no hay ofertas o el comercio está apagado. ── */}
+      {comercioActivo && <OfertasDestacadas />}
 
       {/* ── HERO — ahora es la franja de acción, después de la
           presentación de marca: bajada corta + botones, sin H1 propio (ver

@@ -11,6 +11,8 @@ export function guestItem(product, variety, quantity) {
     item_id: "guest:" + variety.id, producto_id: product.id, variedad_id: variety.id,
     nombre: product.nombre, variante: variety.nombre, imagen: product.imagen_url,
     categoria: product.categoria?.nombre, precio: Number(variety.precio), precio_al_agregar: Number(variety.precio),
+    // Visitante: solo la oferta General (el precio de zona llega al iniciar sesión).
+    ...(Number(variety.precio_anterior) > Number(variety.precio) ? { precio_referencia: Number(variety.precio_anterior), descuento: "oferta" } : {}),
     stock_disponible: variety.controla_stock ? variety.cantidad : null, cantidad: quantity,
     activo: true, variante_disponible: true,
   };

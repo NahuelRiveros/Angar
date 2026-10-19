@@ -3,6 +3,11 @@ import {
   ajustarPreciosMasivo,
 } from "../../services/distribuidora/producto_distribuidora_service.js";
 import { validarVariedad, FILTROS_STOCK } from "../../services/common/articulo_rules.js";
+import { listaDeUsuario, aplicarListaAProductos, idsProductosEnOferta, preciosEnListas } from "../../services/distribuidora/listas_precio_service.js";
+
+const MAX_OFERTAS = 24;
+// Precios para quien mira: la gestión ve la General; un cliente, la de su localidad.
+const listaPara = (req, gestion) => (gestion ? null : listaDeUsuario(req.user?.usuario_id));
 
 // admin/staff gestionan el catálogo y necesitan seguir viendo los productos
 // desactivados (para poder reactivarlos); cualquier otro rol ve solo lo activo.
@@ -17,15 +22,19 @@ export async function listarProductosController(req, res) {
     // convertirlo a booleano posta antes de pasarlo al service.
     const gestion = puedeVerInactivos(req);
     const { categoria, q, pagina, por_pagina, marca, estado, stock } = req.query;
+    const lista = await listaPara(req, gestion);
+    // ?oferta=1: solo productos con precio anterior mayor al vigente para su lista.
+    const ids = req.query.oferta === "1" ? await idsProductosEnOferta(lista?.id) : undefined;
     const { productos, pagination } = await listarProductos({
-      categoria, q, pagina, por_pagina, marca,
+      categoria, q, pagina, por_pagina, marca, ids,
       incluirDescendientes: req.query.incluirDescendientes !== "false",
       soloActivos: !gestion,
       // Filtros de la gestión de artículos: un cliente no puede pedir inactivos ni stock.
       estado: gestion && ["activos", "inactivos"].includes(estado) ? estado : undefined,
       stock: gestion && FILTROS_STOCK.includes(stock) ? stock : undefined,
     });
-    return res.json({ ok: true, data: productos, total: pagination.total, pagina: pagination.page, total_paginas: pagination.totalPages });
+    const data = await aplicarListaAProductos(productos, lista);
+    return res.json({ ok: true, data, total: pagination.total, pagina: pagination.page, total_paginas: pagination.totalPages, lista_precio: lista?.nombre ?? null });
   } catch (error) {
     console.error("Error al listar productos:", error);
     return res.status(500).json({ ok: false, mensaje: "Error interno al listar productos" });
@@ -34,9 +43,11 @@ export async function listarProductosController(req, res) {
 
 export async function obtenerProductoController(req, res) {
   try {
-    const producto = await obtenerProductoPorId(req.params.id, { soloActivos: !puedeVerInactivos(req) });
+    const gestion = puedeVerInactivos(req);
+    const producto = await obtenerProductoPorId(req.params.id, { soloActivos: !gestion });
     if (!producto) return res.status(404).json({ ok: false, mensaje: "Producto no encontrado" });
-    return res.json({ ok: true, data: producto });
+    const [data] = await aplicarListaAProductos([producto], await listaPara(req, gestion));
+    return res.json({ ok: true, data });
   } catch (error) {
     console.error("Error al obtener producto:", error);
     return res.status(500).json({ ok: false, mensaje: "Error interno al obtener el producto" });
@@ -121,5 +132,38 @@ export async function ajustarPreciosMasivoController(req, res) {
   } catch (error) {
     console.error("Error al ajustar precios masivamente:", error);
     return res.status(error.status ?? 500).json({ ok: false, mensaje: error.status ? error.message : "Error interno al ajustar los precios" });
+  }
+}
+
+/**
+ * Carrusel de ofertas del home: productos activos en oferta para la lista de
+ * quien mira, del mayor descuento al menor. `?limite=` hasta MAX_OFERTAS.
+ */
+export async function listarOfertasController(req, res) {
+  try {
+    const limite = Math.min(MAX_OFERTAS, Math.max(1, Math.floor(Number(req.query.limite)) || 12));
+    const lista = await listaPara(req, false);
+    // Se piden de más: alguno puede estar inactivo y se descarta al filtrar.
+    const ids = await idsProductosEnOferta(lista?.id, { limite: limite * 2 });
+    if (!ids.length) return res.json({ ok: true, data: [], lista_precio: lista?.nombre ?? null });
+    const { productos } = await listarProductos({ ids, soloActivos: true, por_pagina: limite * 2 });
+    const orden = new Map(ids.map((id, i) => [id, i]));
+    const ordenados = [...productos].sort((a, b) => orden.get(a.id) - orden.get(b.id)).slice(0, limite);
+    return res.json({ ok: true, data: await aplicarListaAProductos(ordenados, lista), lista_precio: lista?.nombre ?? null });
+  } catch (error) {
+    console.error("Error al listar ofertas:", error);
+    return res.status(500).json({ ok: false, mensaje: "Error interno al listar las ofertas" });
+  }
+}
+
+/** Ficha del artículo (gestión): precio especial de cada presentación en otras listas. */
+export async function preciosEnListasController(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return res.status(400).json({ ok: false, mensaje: "Artículo inválido" });
+    return res.json({ ok: true, data: await preciosEnListas(id) });
+  } catch (error) {
+    console.error("Error al listar precios por lista:", error);
+    return res.status(500).json({ ok: false, mensaje: "Error interno al listar los precios por lista" });
   }
 }

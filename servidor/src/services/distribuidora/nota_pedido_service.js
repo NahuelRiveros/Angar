@@ -9,6 +9,7 @@ import { sequelize } from "../../database/sequelize.js";
 import { NotaPedido, NotaPedidoItem, NotaPedidoPago, Persona, Usuario } from "../../models/index.js";
 import { listarItemsCarrito } from "./carrito_distribuidora_service.js";
 import { obtenerPerfil, perfilCompleto } from "./perfil_cliente_service.js";
+import { listaDeUsuario } from "./listas_precio_service.js";
 
 const ESTADOS_QUE_REQUIEREN_PAGO = orderConfig.paymentRequiredStates;
 
@@ -72,11 +73,14 @@ export async function crearNotaPedido(usuario_id, { notas = null, expectedItems,
     }
     validateSnapshot(items, expectedItems);
     const total = items.reduce((sum, i) => sum + Math.round(i.precio * 100) * i.cantidad, 0) / 100;
+    // Los precios de items ya salen de esta lista (listarItemsCarrito); se guarda cuál fue.
+    const lista = await listaDeUsuario(usuario_id, t);
     const nota = await NotaPedido.create({
       usuario_id, estado: "pendiente", estado_pago: "pendiente", monto_pagado: 0, notas, total,
       cuit: perfil.cuit, razon_social: perfil.razon_social, condicion_iva: perfil.condicion_iva,
       direccion: perfil.direccion, provincia: perfil.provincia, departamento: perfil.departamento,
       localidad: perfil.localidad, codigo_postal: perfil.codigo_postal,
+      lista_precio_id: lista?.id ?? null, lista_precio_nombre: lista?.nombre ?? null,
       fecha_alta: new Date(), fecha_mod: new Date(),
     }, { transaction: t });
     await NotaPedidoEstadoLog.create({ nota_pedido_id: nota.id, usuario_id, anterior: null, nuevo: "pendiente", motivo: "Nota enviada por el cliente" }, { transaction: t });

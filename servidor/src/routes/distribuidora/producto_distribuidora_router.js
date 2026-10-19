@@ -3,7 +3,7 @@ import { Router } from "express";
 import {
   listarProductosController, obtenerProductoController, crearProductoController,
   actualizarProductoController, cambiarEstadoProductoController, eliminarProductoController,
-  ajustarPreciosMasivoController,
+  ajustarPreciosMasivoController, listarOfertasController, preciosEnListasController,
 } from "../../controllers/distribuidora/producto_distribuidora_controller.js";
 import { requireAuth, requireRole, optionalAuth } from "../../middleware/auth_middleware.js";
 import { requireModuloHabilitado } from "../../middleware/modulo_middleware.js";
@@ -17,6 +17,8 @@ productoDistribuidoraRouter.use((req, res, next) => req.method === "GET" && clie
 // Rutas específicas ANTES de "/:id" — si no, Express las matchea como id.
 productoDistribuidoraRouter.post("/ajustar-precios", requireRole("admin", "staff"), ajustarPreciosMasivoController);
 
+productoDistribuidoraRouter.get("/ofertas", listarOfertasController); // antes de "/:id"
+productoDistribuidoraRouter.get("/:id/precios-listas", requireRole("admin", "staff"), preciosEnListasController);
 productoDistribuidoraRouter.get("/", listarProductosController);
 productoDistribuidoraRouter.get("/:id", obtenerProductoController);
 productoDistribuidoraRouter.post("/", requireRole("admin", "staff"), crearProductoController);

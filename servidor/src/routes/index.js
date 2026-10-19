@@ -46,6 +46,7 @@ import { perfilClienteRouter } from "./distribuidora/perfil_cliente_router.js";
 import { importacionDistribuidoraRouter } from "./distribuidora/importacion_distribuidora_router.js";
 import { panelDistribuidoraRouter } from "./distribuidora/panel_distribuidora_router.js";
 import { marcasDistribuidoraRouter } from "./distribuidora/marcas_distribuidora_router.js";
+import { listasPrecioRouter } from "./distribuidora/listas_precio_router.js";
 
 const router = Router();
 
@@ -119,5 +120,6 @@ router.use("/distribuidora/mi-perfil",    perfilClienteRouter);           // ←
 router.use("/distribuidora/importacion",  importacionDistribuidoraRouter); // ← carga masiva de productos desde Excel/CSV
 router.use("/distribuidora/panel",        panelDistribuidoraRouter);      // ← resumen del panel de gestión
 router.use("/distribuidora/marcas",       marcasDistribuidoraRouter);     // ← marcas y dónde se ofrecen
+router.use("/distribuidora/listas-precio", listasPrecioRouter);          // ← listas de precios regionales (solo admin)
 
 export default router;

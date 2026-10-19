@@ -54,6 +54,7 @@ export default function NotaPedidoCard({ nota, operatorId, onCambiarEstado, onRe
         <p className="font-semibold">Datos de entrega</p>
         <p className="break-words">{[nota.direccion, nota.localidad, nota.departamento, nota.provincia].filter(Boolean).join(", ")}{nota.codigo_postal ? " · CP " + nota.codigo_postal : ""}</p>
         <p>CUIT: {nota.cuit || "—"} {nota.razon_social}</p>
+        <p>Lista de precios: {nota.lista_precio_nombre ?? "General"}</p>
         {nota.notas && <p className="whitespace-pre-wrap break-words">Observaciones: {nota.notas}</p>}
       </div>
       <ul className="divide-y text-sm">{nota.items?.map((item) => <li key={item.id} className="flex flex-wrap justify-between gap-2 py-2">

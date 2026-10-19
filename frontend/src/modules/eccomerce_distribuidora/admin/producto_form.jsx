@@ -3,6 +3,7 @@ import InputField from "../../../controls/ui/input_field.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import ComboboxField from "../../../controls/ui/combobox_field.jsx";
 import MarcaField from "./marca_field.jsx";
+import PreciosEnListas from "./precios_en_listas.jsx";
 import ImageUploadField from "../../../controls/ui/image_upload_field.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import { UNIDADES, cantidadConUnidad, describirBulto, textoBultos } from "../../../../../unidades_config.js";
@@ -112,6 +113,7 @@ export default function ProductoForm({ onCancelar, onGuardar, onCambio, producto
           <InputField label="Precio anterior — oferta (opcional)" type="number" step="0.01" min="0" value={d.precio_anterior} onChange={set("precio_anterior")}
             placeholder="Ej: 2000" helperText="Se muestra tachado como oferta solo si es mayor al precio de venta." />
           {v?.fecha_cambio_precio && <p className="text-xs text-slate-500">Último cambio de precio: {fecha(v.fecha_cambio_precio)}</p>}
+          {productoEditar && <PreciosEnListas productoId={productoEditar.id} activa={pestana === "precios"} />}
         </div>
 
         <div role="tabpanel" hidden={pestana !== "stock"} className="space-y-4">

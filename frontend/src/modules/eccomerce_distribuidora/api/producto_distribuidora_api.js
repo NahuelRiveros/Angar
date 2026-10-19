@@ -34,3 +34,15 @@ export async function ajustarPreciosMasivo(payload) {
   const { data } = await http.post("/distribuidora/productos/ajustar-precios", payload);
   return data;
 }
+
+// Carrusel del home: productos en oferta para la lista de precios de quien mira.
+export async function getOfertas({ limite = 12 } = {}, options = {}) {
+  const { data } = await http.get("/distribuidora/productos/ofertas", { params: { limite }, ...options });
+  return data;
+}
+
+// Ficha del artículo (gestión): precio especial de sus presentaciones en otras listas.
+export async function getPreciosEnListas(productoId) {
+  const { data } = await http.get(`/distribuidora/productos/${productoId}/precios-listas`);
+  return data.data;
+}

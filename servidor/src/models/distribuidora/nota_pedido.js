@@ -33,6 +33,11 @@ export const NotaPedido = defineModel("NotaPedido", {
   localidad:     { type: DataTypes.STRING(100), allowNull: true },
   codigo_postal: { type: DataTypes.STRING(15), allowNull: true },
 
+  // Lista de precios con que se cobró (copia: el pedido no cambia si la lista
+  // se edita o se borra). null = lista General.
+  lista_precio_id:     { type: DataTypes.INTEGER, allowNull: true },
+  lista_precio_nombre: { type: DataTypes.STRING(80), allowNull: true },
+
   // snapshot de la suma de subtotales de sus items
   total: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
 
