@@ -11,9 +11,7 @@ const CACHE_MS = 5 * 60 * 1000; // 5 minutos
 const RUTAS_SIEMPRE_LIBRES = [
   "/auth",        // login / logout / me
   "/suscripcion", // ver estado y renovar
-  "/consulta",    // página pública Mi Plan (alumnos)
   "/health",      // health check
-  "/ingresos",    // kiosk — el gimnasio debe seguir funcionando
   "/catalogos",   // listas desplegables (necesarias para ver formularios)
 ];
 

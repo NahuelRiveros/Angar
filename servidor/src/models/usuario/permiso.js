@@ -3,9 +3,9 @@ import { defineModel } from "../common/define_model.js";
 
 /**
  * Permiso atómico del sistema.
- * codigo = 'modulo:accion', ej: 'alumnos:editar', 'pagos:registrar'.
+ * codigo = 'modulo:accion', ej: 'usuarios:editar', 'stock:registrar'.
  *
- * El middleware requirePermiso('alumnos:editar') resuelve así:
+ * El middleware requirePermiso('usuarios:editar') resuelve así:
  *   1. Obtiene roles del JWT del usuario
  *   2. Busca en rol_permiso si algún rol tiene ese permiso
  *   3. Pasa o devuelve 403

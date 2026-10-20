@@ -4,7 +4,7 @@ export async function subirImagenController(req, res) {
   try {
     if (!req.file) return res.status(400).json({ ok: false, mensaje: "No se recibió ninguna imagen" });
 
-    const resultado = await subirImagen(req.file.buffer, { folder: "kinetica/productos" });
+    const resultado = await subirImagen(req.file.buffer, { folder: "distribucg/productos" });
     return res.status(201).json({
       ok: true,
       mensaje: "Imagen subida correctamente",

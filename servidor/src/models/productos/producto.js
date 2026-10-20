@@ -2,7 +2,7 @@ import { DataTypes } from "sequelize";
 import { defineModel } from "../common/define_model.js";
 
 // Nombre "ProductoTienda" / tabla "producto_tienda" a propósito — ya existe
-// un modelo "Producto" (tabla "producto") para el kiosco/stock del gym
+// un modelo "Producto" (tabla "producto") para el kiosco/stock (módulo stock)
 // (ver models/kiosco/producto.js), dominio distinto, no reemplaza a este.
 export const ProductoTienda = defineModel("ProductoTienda", {
   categoria_id: {

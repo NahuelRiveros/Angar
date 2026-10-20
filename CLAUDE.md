@@ -12,14 +12,14 @@ del usuario tienen prioridad; no volver a pedir una autorización ya otorgada.
 
 Distribuidora con catálogo, presentaciones de productos, carrito invitado y de cuenta,
 notas de pedido, cobros manuales e importación de productos.
-La base conserva módulos de otros rubros: su presencia no significa que estén activos.
-Este repo es la plantilla base: no borrar módulos inactivos acá (eso se hace en la copia
-de cada cliente; `node scripts/analizar_modulos.mjs` lista sus carpetas sin tocar nada).
+El proyecto es solo distribuidora: gimnasio y kinesiología se eliminaron (código, seeds y
+tablas). El bootstrap borra sus tablas viejas en cada arranque (`TABLAS_RETIRADAS` en
+`database/bootstrap.js`); no volver a agregar código de esos rubros. Quedan, apagados,
+`eccomerce_indumentaria` y `stock`: su presencia no significa que estén activos.
 
-- `gate_config.js`: módulos de la instalación; actualmente solo `eccomerce_distribuidora`
-  está activo. Frontend y servidor (`configuracion_servidor/gate_config.js`) re-exportan
-  este mismo archivo. Decide qué tablas crea el bootstrap y qué crons arranca `server.js`
-  (el de alumnos solo con `gym`); no cambiarlo como un simple ajuste visual.
+- `gate_config.js`: módulos de la instalación; solo `eccomerce_distribuidora` está activo.
+  Frontend y servidor (`configuracion_servidor/gate_config.js`) re-exportan este mismo
+  archivo. Decide qué tablas crea el bootstrap; no cambiarlo como un simple ajuste visual.
 - `client_config.js`: cliente activo, acceso público y políticas del carrito.
 - `order_config.js`: roles de gestión, estados, transiciones y cobros.
 - `catalog_import_config.js`: configuración compartida de importación.
@@ -62,7 +62,6 @@ servidor/src/
   database/                       conexión, bootstrap y seeds
   middleware/                     autenticación, roles y módulos
   validator/                      validadores manuales de body (sin Zod)
-  cron/                           tareas programadas, arrancadas según gate_config
   configuracion_servidor/env.js    configuración de entorno
 servidor/tests/                    node:test y PostgreSQL local
 frontend/tests/browser/           Playwright con API simulada

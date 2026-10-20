@@ -1,7 +1,7 @@
 import { moduloNegocioHabilitado } from "../services/sistema/modulo_negocio_service.js";
 
 /**
- * Gate de licencia por módulo de negocio (gym/kinesiologia) — a diferencia de
+ * Gate de licencia por módulo de negocio (ej. eccomerce_distribuidora) — a diferencia de
  * requireRole(), esto bloquea a CUALQUIER rol, incluido admin, si el módulo
  * está apagado para esta instalación. Va antes o junto a requireRole en la
  * cadena de middleware del router.

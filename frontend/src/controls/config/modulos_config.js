@@ -1,7 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // MÓDULOS DE NEGOCIO — cada instalación puede tener módulos de negocio que se
-// venden y habilitan por separado (ej. "gym", "kinesiologia" en el proyecto
-// original Moovs; en un cliente nuevo, los que correspondan).
+// habilitan por separado (ej. "eccomerce_distribuidora", "stock").
 //
 // El estado real (¿está habilitado el módulo "X" para esta instalación?) no
 // vive acá — se togglea en vivo desde /super-admin/modulos y se guarda en el

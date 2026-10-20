@@ -2,7 +2,7 @@ import { DataTypes } from "sequelize";
 import { defineModel } from "../common/define_model.js";
 
 /**
- * Módulos de negocio que se venden por separado (Gym, Kinesiología). Distinto
+ * Módulos de negocio que se habilitan por separado (ej. distribuidora). Distinto
  * de `Modulo` (usuarios/modulo.js), que es el catálogo de secciones del panel
  * de permisos — acá `habilitado` es un gate real de licencia por instalación,
  * consultado por requireModuloHabilitado() incluso para admin.

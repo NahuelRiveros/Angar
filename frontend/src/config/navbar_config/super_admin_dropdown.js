@@ -1,6 +1,6 @@
 import { Shield, KeyRound, ToggleLeft } from "lucide-react";
 
-// Sin ítems gym/kinesiologia/eccomerce acá adentro. Sin `modulo:` en ninguno
+// Sin ítems de un rubro acá adentro. Sin `modulo:` en ninguno
 // de los dos — tienen que seguir accesibles aunque todo lo demás esté
 // apagado, para poder volver a prenderlo desde /super-admin/modulos.
 export const superAdminDropdown = {

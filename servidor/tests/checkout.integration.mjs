@@ -20,7 +20,7 @@ const { createResetToken } = await import("../src/services/common/auth_tokens.js
 const { resetPassword } = await import("../src/services/usuarios/password_recovery_service.js");
 const { env } = await import("../src/configuracion_servidor/env.js");
 const { guardarPerfil, obtenerPerfil } = await import("../src/services/distribuidora/perfil_cliente_service.js");
-const { crear_indice_busqueda_productos } = await import("../src/database/bootstrap.js");
+const { crear_indice_busqueda_productos, aplicar_ajustes_puntuales, TABLAS_RETIRADAS } = await import("../src/database/bootstrap.js");
 const { obtenerResumenPanel } = await import("../src/services/distribuidora/panel_distribuidora_service.js");
 const productos = await import("../src/services/distribuidora/producto_distribuidora_service.js");
 const { armarListaCarga } = await import("../src/services/distribuidora/lista_carga_service.js");
@@ -339,7 +339,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       assert.deepEqual(await buscar({ estado: "inactivos" }), [lavandina.nombre]);
       assert.deepEqual(await buscar({ marca: "cañuela" }), [nueve.nombre]);
       assert.deepEqual(await buscar({ q: "100%" }), []);                                       // el % no es comodín
-      assert.ok((await productos.listarMarcas()).includes("Cañuela"));
+      assert.ok((await marcasSrv.listarMarcas()).some((m) => m.nombre === "Cañuela"));
       // El catálogo público nunca muestra inactivos aunque pidan el filtro.
       assert.deepEqual((await productos.listarProductos({ categoria: familia.id, estado: "inactivos" })).productos.map((p) => p.nombre), [nueve.nombre]);
 
@@ -510,6 +510,17 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       assert.equal(await listasSrv.listaDeUsuario(id), null);
       await assert.rejects(listasSrv.importarPreciosDeLista(lista.id, [{ cod_ref: "LQA-1", precio: 1 }, { cod_ref: "NO-EXISTE", precio: 2 }]), /NO-EXISTE/);
       assert.equal((await listasSrv.listarPreciosDeLista(lista.id, { solo_especiales: true })).filas.find((f) => f.variedad_id === vYerba.id).precio, 1200);
+    });
+    await t.test("arranque: borra las tablas de gym y kinesiología y sus módulos, sin tocar la distribuidora", async () => {
+      const { QueryTypes } = await import("sequelize");
+      for (const tabla of ["alumno", "ejercicio", "patologia"]) await sequelize.query('CREATE TABLE "' + DB_SCHEMA + '"."' + tabla + '" (id serial PRIMARY KEY)');
+      await models.ModuloNegocio.bulkCreate([{ codigo: "gym", descripcion: "Gym", habilitado: true }, { codigo: "kinesiologia", descripcion: "Kinesiología", habilitado: true }]);
+      await aplicar_ajustes_puntuales();
+      await aplicar_ajustes_puntuales(); // corre en cada arranque: la segunda vez no falla
+      const tablas = (await sequelize.query("SELECT table_name::text AS nombre FROM information_schema.tables WHERE table_schema = :schema", { replacements: { schema: DB_SCHEMA }, type: QueryTypes.SELECT })).map((x) => x.nombre);
+      for (const tabla of TABLAS_RETIRADAS) assert.equal(tablas.includes(tabla), false, tabla);
+      for (const tabla of ["nota_pedido", "producto_distribuidora", "persona"]) assert.ok(tablas.includes(tabla), tabla + " no está: " + tablas.join(", "));
+      assert.deepEqual((await models.ModuloNegocio.findAll()).map((m) => m.codigo), ["eccomerce_distribuidora"]);
     });
   } finally {
     if (created) {

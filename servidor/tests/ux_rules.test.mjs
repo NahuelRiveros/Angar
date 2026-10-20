@@ -63,7 +63,7 @@ test("carrito invitado combina variantes sin superar stock y descarta almacenami
   assert.equal(readGuestCart({ getItem: () => JSON.stringify({ key: "k", items: [], updatedAt: 0 }) }, "key"), null);
 });
 test("navbar filtra árboles por rol y módulo, sin acoplarse a un rubro", () => {
-  for (const modulo of ["gym", "kinesiologia", "eccomerce_indumentaria", "eccomerce_distribuidora"]) {
+  for (const modulo of ["stock", "eccomerce_indumentaria", "eccomerce_distribuidora"]) {
     const config = { links: [{ to: "/", label: "Inicio" }], dropdowns: [{ id: modulo, items: [{ label: "Gestión", children: [{ to: "/admin", roles: ["admin"], modulo, requiereAuth: true }] }] }] };
     assert.equal(filtrarNavbarPorRol(config, null, { [modulo]: true }).dropdowns.length, 0);
     assert.equal(filtrarNavbarPorRol(config, { roles: ["admin"] }, { [modulo]: true }).dropdowns.length, 1);
@@ -169,4 +169,20 @@ test("nombres del catálogo: mayúscula por palabra sin romper códigos, unidade
   const parsed = { columns: [{ key: "c" }, { key: "n" }, { key: "p" }, { key: "m" }, { key: "cat" }], rows: [{ number: 2, values: ["1", "ARROZ LARGO FINO 1KG", "50", "gallo", "almacen > arroz"] }] };
   const [fila] = normalizeRows(parsed, { cod_ref: "c", producto_nombre: "n", precio: "p", marca: "m", categoria: "cat" }, { decimal: "comma", identity: "sku", mode: "upsert", category: "" });
   assert.deepEqual([fila.value.producto_nombre, fila.value.marca, fila.value.categoria], ["Arroz Largo Fino 1kg", "Gallo", "Almacen > Arroz"]);
+});
+
+test("importación: el código de barras se limpia de espacios y se valida (6 a 14 números)", async () => {
+  const { normalizeRows } = await import("../src/services/distribuidora/importacion/normalize.js");
+  const parsed = { columns: [{ key: "a" }, { key: "b" }, { key: "c" }, { key: "d" }], rows: [
+    { number: 2, values: ["000519", "Esponjas surtidas", "1200", "7790 040 001230"] },
+    { number: 3, values: ["002982", "Lavandina", "950", "77-90"] },
+    { number: 4, values: ["002983", "Sin barras", "100", ""] },
+  ] };
+  const mapping = { cod_ref: "a", producto_nombre: "b", precio: "c", codigo_barras: "d" };
+  const [ok, mal, vacio] = normalizeRows(parsed, mapping, { decimal: "comma", identity: "sku", mode: "upsert", category: "Limpieza" });
+  assert.equal(ok.value.codigo_barras, "7790040001230");
+  assert.equal(ok.value.producto_nombre.toLowerCase(), "esponjas surtidas"); // no se pierden las "s"
+  assert.equal(mal.action, "error");
+  assert.ok(mal.message.includes("Código de barras"));
+  assert.equal(vacio.value.codigo_barras, null);
 });

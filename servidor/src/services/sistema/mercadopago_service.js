@@ -47,7 +47,7 @@ export async function crearPreferencia({ suscripcionId, monto, clienteNombre }) 
     items: [
       {
         id:         "plan-mensual-software",
-        title:      `Dynamic Gym Software — Plan Mensual ${periodoLabel}`,
+        title:      `DistribuCG — Plan Mensual ${periodoLabel}`,
         description: `Suscripción mensual para ${clienteNombre || env.SOFTWARE_CLIENTE}`,
         quantity:    1,
         unit_price:  Number(precioUsar),

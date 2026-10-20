@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 /**
  * Estado y handlers compartidos por las páginas "listado + modal de alta/edición"
- * (ver planes_page, patologias_page, productos_tab).
+ * (ver productos_tab).
  * La página sigue armando su propio JSX (columnas de DataGrid, campos del modal,
  * header) — este hook solo evita reescribir cargar/abrir modal/guardar/toggle.
  *

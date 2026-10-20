@@ -36,7 +36,7 @@ export default function Footer() {
     .filter((c) => !esPlaceholder(c.valor));
 
   // Solo tiene sentido en un deploy con la tienda prendida — en un cliente
-  // gym/kinesiología puro este bloque no debería aparecer.
+  // que solo use el panel (sin tienda) este bloque no debería aparecer.
   const comercioActivo = storefrontConfig.enabled;
 
   return (

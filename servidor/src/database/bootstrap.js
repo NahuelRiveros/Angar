@@ -4,14 +4,9 @@ import { projectModules } from "../configuracion_servidor/gate_config.js";
 import { calcularHashEsquema } from "./schema_hash.js";
 import { sincronizarMarcasLegado } from "../services/distribuidora/marcas_distribuidora_service.js";
 import {
-  Sexo, TipoDocumento, TipoPersona, AlumnoEstado, PlanTipo, Rol, Modulo,
-  TipoEjercicio, GrupoMuscular, CategoriaProducto, Patologia, HomeArea,
-  Permiso, Persona, Producto, Ejercicio, HomeContenido,
-  RolPermiso, Alumno, Usuario, PacienteKinesiologia,
-  UsuarioRol, Membresia, MovimientoStock, AsignacionProfesional,
-  RegistroEjercicio, PacientePatologia, AlumnoEstadoLog,
-  FichaKinesiologica, SesionKinesiologia, RecordatorioKinesiologia,
-  Ingreso, ModuloNegocio, BannerAnuncio, HomeTexto, HomePilar, HomeContacto,
+  Sexo, TipoDocumento, TipoPersona, Rol, Modulo, CategoriaProducto, HomeArea,
+  Permiso, Persona, Producto, HomeContenido, RolPermiso, Usuario,
+  UsuarioRol, MovimientoStock, ModuloNegocio, BannerAnuncio, HomeTexto, HomePilar, HomeContacto,
   Categoria, Marca, Talle, Color, ProductoTienda, Stock, EnvioOpcion, CondicionIva,
   Carrito, CarritoItem,
   CategoriaDistribuidora, ProductoDistribuidora, VariedadDistribuidora, MarcaDistribuidora, MarcaCategoriaDistribuidora,
@@ -89,54 +84,32 @@ async function crear_schema() {
   console.log(`✅ Schema "${DB_SCHEMA}" listo`);
 }
 
+// Tablas de gimnasio, kinesiología y seguimiento de ejercicios: esos módulos se sacaron
+// del proyecto (DistribuCG es solo distribuidora). Nombres fijos, solo en nuestro schema;
+// IF EXISTS las hace idempotentes, así que corre en cada arranque sin costo.
+// Primero las que dependen de otras.
+export const TABLAS_RETIRADAS = [
+  "recordatorio_kinesiologia", "sesion_kinesiologia", "ficha_kinesiologica",
+  "paciente_patologia", "paciente_kinesiologia", "patologia",
+  "sesion_kinesiologica_ejercicio", "sesion_kinesiologica", "rutina_ejercicio",
+  "test_funcional", "test_fuerza", "registro_sesion_kinesiologia",
+  "registro_ejercicio", "asignacion_profesional", "ejercicio", "grupo_muscular", "tipo_ejercicio",
+  "ingreso", "alumno_estado_log", "membresia", "alumno", "plan_tipo", "alumno_estado",
+];
+export const MODULOS_RETIRADOS = ["gym", "kinesiologia"];
+
 /**
- * Ajustes puntuales que `sync({ alter: true })` no resuelve solo (ej. cambiar
- * la definición de un índice único ya existente). Cada entrada debe ser
- * idempotente (IF EXISTS / IF NOT EXISTS) para poder correr en cada boot.
+ * Ajustes que `sync({ alter: true })` no resuelve solo. Cada uno es idempotente
+ * para poder correr en cada boot.
  */
-async function aplicar_ajustes_puntuales() {
-  // asignacion_profesional: el único activo pasó de ser por persona_id a
-  // ser por (persona_id, tipo) — así una persona puede tener a la vez un
-  // profesor de gym y un kinesiólogo asignados. sync({ alter:true }) no
-  // reemplaza índices con distinta definición, así que se borra a mano.
-  await sequelize.query(
-    `DROP INDEX IF EXISTS "${DB_SCHEMA}".asignacion_profesional_persona_activa_unq`
-  );
-
-  // Kinesiología: se reemplazó todo el sistema de rutina de ejercicios +
-  // sesiones con escalas de dolor/RIR por sesion_kinesiologia (visita) +
-  // recordatorio_kinesiologia (días + observación colgando de la visita) —
-  // estas tablas ya no se sincronizan y se eliminan (confirmado con el
-  // cliente, sin datos que preservar). IF EXISTS + CASCADE hace la
-  // operación idempotente.
-  for (const tabla of [
-    "sesion_kinesiologica_ejercicio",
-    "sesion_kinesiologica",
-    "rutina_ejercicio",
-    "test_funcional",
-    "test_fuerza",
-    "registro_sesion_kinesiologia",
-  ]) {
-    await sequelize.query(`DROP TABLE IF EXISTS "${DB_SCHEMA}".${tabla} CASCADE`);
+export async function aplicar_ajustes_puntuales() {
+  for (const tabla of TABLAS_RETIRADAS) {
+    await sequelize.query(`DROP TABLE IF EXISTS "${DB_SCHEMA}"."${tabla}" CASCADE`);
   }
-
-  // recordatorio_kinesiologia cambió de esquema durante el desarrollo: la
-  // primera versión colgaba directo de ficha_id, la definitiva cuelga de
-  // sesion_id (ver sesion_kinesiologia.js). sync({alter:true}) no dropea
-  // columnas viejas por sí solo, así que si la tabla todavía tiene el
-  // esquema anterior (sin sesion_id) se dropea UNA sola vez para que el
-  // sync de abajo la recree bien — no hay datos reales cargados todavía
-  // con el esquema viejo. Una vez migrada, esta condición no vuelve a
-  // cumplirse, así que no borra datos futuros.
-  const [{ existe }] = await sequelize.query(`
-    SELECT EXISTS (
-      SELECT 1 FROM information_schema.columns
-      WHERE table_schema = '${DB_SCHEMA}' AND table_name = 'recordatorio_kinesiologia' AND column_name = 'sesion_id'
-    ) AS existe
-  `, { type: QueryTypes.SELECT });
-  if (!existe) {
-    await sequelize.query(`DROP TABLE IF EXISTS "${DB_SCHEMA}".recordatorio_kinesiologia CASCADE`);
-  }
+  // Ya no aparecen en "Módulos habilitados" del super admin. La tabla puede no
+  // existir todavía en el primer arranque (la crea el sync de más abajo).
+  await sequelize.query(`DELETE FROM "${DB_SCHEMA}".modulo_negocio WHERE codigo IN (:codigos)`, { replacements: { codigos: MODULOS_RETIRADOS } })
+    .catch((error) => { if (error.parent?.code !== "42P01") throw error; });
 }
 
 async function sincronizar_modelos() {
@@ -167,40 +140,12 @@ async function sincronizar_modelos() {
     UsuarioRol, // usuario_rol → usuario, rol
   ];
 
-  const MODELOS_GYM = [
-    AlumnoEstado, PlanTipo, // catálogos propios
-    Alumno,          // alumno → persona, alumno_estado
-    Membresia,       // membresia → alumno, plan_tipo, usuario
-    AlumnoEstadoLog, // alumno_estado_log → alumno, alumno_estado, usuario
-    Ingreso,         // ingreso → membresia
-  ];
-
-  const MODELOS_KINESIOLOGIA = [
-    Patologia, // catálogo propio
-    PacienteKinesiologia,     // paciente_kinesiologia → persona
-    PacientePatologia,        // paciente_patologia → paciente_kinesiologia, patologia
-    FichaKinesiologica,       // ficha_kinesiologica → paciente_patologia, usuario
-    SesionKinesiologia,       // sesion_kinesiologia → ficha_kinesiologica, usuario
-    RecordatorioKinesiologia, // recordatorio_kinesiologia → sesion_kinesiologia
-  ];
-
   // módulo "stock" (carpeta models/kiosco/) — backend completo pero sin
   // pantalla propia en el frontend todavía, ver gate_config.js.
   const MODELOS_STOCK = [
     CategoriaProducto, // catálogo propio
     Producto,          // producto → categoria_producto
     MovimientoStock,   // movimiento_stock → producto, usuario
-  ];
-
-  // carpeta models/seguimiento/ — sin service/controller/route ni gate en
-  // modulo_negocio (ver advertencia de scripts/analizar_modulos.mjs). Se
-  // sigue sincronizando para no perder las tablas si ya tienen datos, pero
-  // no pertenece a ningún módulo activo hoy.
-  const MODELOS_SEGUIMIENTO = [
-    TipoEjercicio, GrupoMuscular, // catálogos propios
-    Ejercicio,             // ejercicio → tipo_ejercicio, grupo_muscular
-    AsignacionProfesional, // asignacion_profesional → persona, usuario
-    RegistroEjercicio,     // registro_ejercicio → persona, ejercicio, usuario
   ];
 
   // módulo eccomerce_indumentaria — catálogo de tienda online
@@ -244,15 +189,10 @@ async function sincronizar_modelos() {
   // Mismo gate que decide navbar/rutas del lado del frontend
   // (frontend/src/config/gate_config.js, ver navbar_config/main.js) — acá
   // decide qué tablas se crean. Un módulo en `false` no sincroniza sus
-  // modelos: si el deploy es de un cliente que solo usa distribuidora, no
-  // se crean las tablas de gym/kinesiología/indumentaria. MODELOS_COMPARTIDOS
-  // va siempre. MODELOS_SEGUIMIENTO no tiene módulo propio en el gate (ver
-  // comentario arriba) así que también va siempre, hasta que se le asigne uno.
+  // modelos: con solo distribuidora activa no se crean las tablas de
+  // stock ni de indumentaria. MODELOS_COMPARTIDOS va siempre.
   const modelos_en_orden = [
     ...MODELOS_COMPARTIDOS,
-    ...MODELOS_SEGUIMIENTO,
-    ...(projectModules.gym ? MODELOS_GYM : []),
-    ...(projectModules.kinesiologia ? MODELOS_KINESIOLOGIA : []),
     ...(projectModules.stock ? MODELOS_STOCK : []),
     ...(projectModules.eccomerce_indumentaria ? [...MODELOS_PRODUCTOS, ...MODELOS_CARRITO] : []),
     ...(projectModules.eccomerce_distribuidora ? MODELOS_DISTRIBUIDORA : []),

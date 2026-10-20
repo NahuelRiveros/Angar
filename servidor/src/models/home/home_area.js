@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
 import { defineModel } from "../common/define_model.js";
 
-/** Catálogo de áreas del home (Gym, Kinesiología, General). */
+/** Catálogo de áreas del home (General). */
 export const HomeArea = defineModel("HomeArea", {
   descripcion: { type: DataTypes.STRING(50), allowNull: false, unique: true },
   // Cómo se muestra la galería de esta área en el home público.

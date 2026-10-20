@@ -34,16 +34,6 @@ const { projectModules } = await import(
 
 // codigo (igual a la key de projectModules / a requireModuloHabilitado en el backend) → carpetas
 const MODULOS = {
-  gym: {
-    frontend: ["modules/gym", "config/navbar_config/gym_dropdown.js"],
-    backendModels: ["models/alumno"],
-    backendCapas: ["services/gym", "controllers/gym", "routes/gym"],
-  },
-  kinesiologia: {
-    frontend: ["modules/kinesiologia", "config/navbar_config/kinesiologia_dropdown.js"],
-    backendModels: ["models/kinesiologia"],
-    backendCapas: ["services/kinesiologia", "controllers/kinesiologia", "routes/kinesiologia"],
-  },
   eccomerce_indumentaria: {
     frontend: [
       "modules/eccomerce_indumentaria",
@@ -138,14 +128,3 @@ for (const it of [
 ]) {
   if (it.existe) console.log(`    ${it.rel}`);
 }
-
-console.log("\n=== Advertencias ===\n");
-console.log(
-  "servidor/src/models/seguimiento (Ejercicio, GrupoMuscular, TipoEjercicio,\n" +
-  "RegistroEjercicio, AsignacionProfesional): están en bootstrap.js\n" +
-  "(modelos_en_orden) así que sus tablas se crean en todo deploy, pero no\n" +
-  "tienen NINGÚN service/controller/route ni entrada en modulo_negocio —\n" +
-  "hoy no hay forma de usarlos desde la API. No se tocó nada acá; si no\n" +
-  "vas a retomar esa función pronto, es candidato a sacar de bootstrap.js\n" +
-  "(o a completar con su propio módulo) para no arrastrar tablas muertas."
-);

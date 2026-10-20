@@ -9,7 +9,7 @@ import { defineModel } from "../common/define_model.js";
  * que se crea o anula uno, siempre dentro de la misma transacción.
  *
  * Un pago erróneo se anula (`anulado_por`/`anulado_en`), nunca se borra —
- * mismo criterio que alumno_estado_log: un movimiento de dinero no
+ * un movimiento de dinero no
  * desaparece, queda visible con quién lo anuló y cuándo.
  */
 export const NotaPedidoPago = defineModel("NotaPedidoPago", {

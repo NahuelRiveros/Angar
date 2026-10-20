@@ -1,6 +1,6 @@
 /**
  * Lista un catálogo como opciones {value, label} para selects del frontend.
- * Uso: listarOpciones(TipoDocumento) o listarOpciones(PlanTipo, { where: { activo: true }, extra: ["precio"] }).
+ * Uso: listarOpciones(TipoDocumento) o listarOpciones(CategoriaProducto, { where: { activo: true } }).
  */
 export async function listarOpciones(Model, {
   value = "id",

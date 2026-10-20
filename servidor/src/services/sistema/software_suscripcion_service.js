@@ -1,7 +1,7 @@
 /**
  * software_suscripcion_service.js
  *
- * Gestión de la suscripción mensual al software Dynamic Gym.
+ * Gestión de la suscripción mensual al software DistribuCG.
  * Una sola fila en software_suscripcion por instalación.
  *
  * Ciclo de vida:

@@ -5,7 +5,7 @@ import { crearCrudService } from "../common/crud_service.js";
 // cambiarEstado(id, activo) del helper, así que queda manual.
 const modulosCrud = crearCrudService(ModuloNegocio, { defaultOrder: [["codigo", "ASC"]] });
 
-/** { gym: true, kinesiologia: false, ... } — usado por el frontend (nav/footer) y por el middleware. */
+/** { eccomerce_distribuidora: true, stock: false, ... } — usado por el frontend (nav/footer) y por el middleware. */
 export async function obtenerEstadoModulos() {
   const modulos = await ModuloNegocio.findAll({ attributes: ["codigo", "habilitado"] });
   return Object.fromEntries(modulos.map((m) => [m.codigo, m.habilitado]));

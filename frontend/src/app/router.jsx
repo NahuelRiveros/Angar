@@ -8,8 +8,6 @@ import { generalRoutes } from "./routes/general.routes.jsx";
 import { panelRoutes } from "./routes/panel.routes.jsx";
 import { eccomerceIndumentariaRoutes } from "./routes/eccomerce_indumentaria.routes.jsx";
 import { eccomerceDistribuidoraRoutes } from "./routes/eccomerce_distribuidora.routes.jsx";
-import { gymRoutes } from "./routes/gym.routes.jsx";
-import { kinesiologiaRoutes } from "./routes/kinesiologia.routes.jsx";
 
 const cargando = <p role="status" className="p-8 text-center">Cargando…</p>;
 
@@ -25,8 +23,6 @@ export const router = createBrowserRouter([
       ...generalRoutes,
       ...(projectModules.eccomerce_indumentaria ? eccomerceIndumentariaRoutes : []),
       ...eccomerceDistribuidoraRoutes,
-      ...(projectModules.gym ? gymRoutes : []),
-      ...(projectModules.kinesiologia ? kinesiologiaRoutes : []),
     ],
   },
   {

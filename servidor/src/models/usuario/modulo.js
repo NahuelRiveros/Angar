@@ -2,7 +2,7 @@ import { DataTypes } from "sequelize";
 import { defineModel } from "../common/define_model.js";
 
 /**
- * Secciones funcionales del sistema (alumnos, pagos, estadisticas, etc.).
+ * Secciones funcionales del sistema (usuarios, stock, home, etc.).
  * Agrupa permisos y sirve para renderizar el panel de gestión de roles en la UI.
  * El campo `orden` define el orden de aparición en ese panel.
  */

@@ -1,7 +1,7 @@
 /**
  * suscripcion_router.js
  *
- * Endpoints de suscripción al software Dynamic Gym.
+ * Endpoints de suscripción al software DistribuCG.
  *
  * Rutas autenticadas (admin):
  *   GET  /api/suscripcion/estado          — estado actual + días restantes

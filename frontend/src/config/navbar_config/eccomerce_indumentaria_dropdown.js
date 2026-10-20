@@ -1,6 +1,6 @@
 import { Tags, PackageSearch } from "lucide-react";
 
-// Dropdown de primer nivel (igual forma que gymDropdown/kinesiologiaDropdown
+// Dropdown de primer nivel (igual forma que adminDropdown
 // en sus archivos hermanos) — el gate maestro (catalogConfig.enabled, de
 // catalog_config.js) se aplica en main.js, no acá.
 export const eccomerceIndumentariaDropdown = {

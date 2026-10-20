@@ -10,16 +10,10 @@
 // valores de projectModules.
 //
 // Tocar estos valores alcanza para prender/apagar un módulo entero
-// (rutas, navbar, tablas de base de datos) — es lo primero que se edita
-// al arrancar un proyecto nuevo para un cliente. Ejemplos:
-//   - Solo gimnasio:        { gym: true,  kinesiologia: false, eccomerce_indumentaria: false }
-//   - Gimnasio + kinesio:   { gym: true,  kinesiologia: true,  eccomerce_indumentaria: false }
-//   - Solo tienda de ropa:  { gym: false, kinesiologia: false, eccomerce_indumentaria: true  }
+// (rutas, navbar, tablas de base de datos). DistribuCG es solo distribuidora:
+// gimnasio y kinesiología se sacaron del proyecto (código y tablas).
 //
-// gym y kinesiología no tienen su propio *_config.js del lado del
-// frontend — se lee este objeto directo (projectModules.gym / .kinesiologia)
-// donde haga falta, porque no tienen ningún ajuste fino propio. cart_config.js
-// y catalog_config.js sí leen su flag principal de acá pero además agregan
+// cart_config.js y catalog_config.js leen su flag principal de acá pero además agregan
 // más campos (métodos de pago, si el checkout está listo, textos del menú
 // de catálogo, etc.) — para esos ajustes finos DENTRO de un módulo ya
 // habilitado se sigue tocando el config específico de ese módulo, este
@@ -38,8 +32,6 @@
 // corresponden a cada módulo) y servidor/src/database/bootstrap.js (usa
 // estos flags para no crear tablas de módulos apagados en el deploy).
 export const projectModules = {
-  gym: false,
-  kinesiologia: false,
   eccomerce_indumentaria: false,
   eccomerce_distribuidora: true,
   stock: false,

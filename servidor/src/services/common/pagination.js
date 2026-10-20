@@ -1,7 +1,7 @@
 /**
  * Helpers de paginación compartidos. Pensados para usarse tanto desde
  * crud_service.js (queries por modelo) como desde servicios con SQL crudo
- * que necesiten el mismo cálculo de page/limit/offset (ver lista_alumnos_service.js).
+ * que necesiten el mismo cálculo de page/limit/offset.
  */
 
 export function normalizarPaginacion({ page, limit, maxLimit = 100, defaultLimit = 20 } = {}) {

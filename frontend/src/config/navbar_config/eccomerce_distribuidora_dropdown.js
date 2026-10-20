@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 // Un link de primer nivel + dos dropdowns para el mismo módulo — mismas
-// reglas que gymLinks/gymDropdown/adminDropdown en sus archivos hermanos,
+// reglas que adminDropdown y los demás dropdowns en sus archivos hermanos,
 // todos dueños de su propio árbol acá adentro. El gate maestro
 // (projectModules.eccomerce_distribuidora, de gate_config.js) se aplica en
 // main.js, no acá.

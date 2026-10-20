@@ -1,24 +1,13 @@
 import { Router } from "express";
 import { sequelize } from "../database/sequelize.js"; // 👈 IMPORTANTE
 
-import { personasRouter } from "./usuarios/personas_router.js";
-import { ingresoRouter } from "./gym/ingreso_router.js";
-import { pagosRouter } from "./gym/pagos_router.js";
-import { listaAlumnosRouter } from "./gym/lista_alumnos_router.js";
-import { estadisticasRouter } from "./gym/estadisticas_router.js";
 import { authRouter } from "./usuarios/auth_router.js";
 import { adminUsuariosRouter } from "./usuarios/admin_usuarios_router.js";
 import { catalogosRouter } from "./sistema/catalogos_router.js";
-import { adminAlumnosRouter } from "./gym/admin_alumnos_router.js";
-import { planesRouter } from "./gym/planes_router.js";
 import { staffRouter } from "./usuarios/staff_router.js";
-import { recaudacionRouter } from "./gym/recaudacion_router.js";
-import { consultaPublicaRouter } from "./sistema/consulta_publica_router.js";
 import { suscripcionRouter } from "./sistema/suscripcion_router.js";
-import { promocionesRouter } from "./gym/promociones_router.js";
 import { stockRouter } from "./stock/stock_router.js";
 import { homeRouter } from "./home/home_router.js";
-import { kinesiologiaRouter } from "./kinesiologia/kinesiologia_router.js";
 import { modulosRouter } from "./sistema/modulos_router.js";
 import { ubicacionRouter } from "./ubicacion/ubicacion_router.js";
 import { bannerAnuncioRouter } from "./sistema/banner_anuncio_router.js";
@@ -77,7 +66,7 @@ router.get("/health", async (req, res) => {
 });
 
 // Bloquea todas las rutas operativas si la suscripción está vencida.
-// Siempre pasan: /health, /auth, /suscripcion, /consulta
+// Siempre pasan: /health, /auth, /suscripcion, /catalogos
 router.use(verificarSuscripcion);
 
 /**
@@ -85,22 +74,11 @@ router.use(verificarSuscripcion);
  */
 router.use("/catalogos", catalogosRouter);
 router.use("/admin/usuarios", adminUsuariosRouter);
-router.use("/alumnos", listaAlumnosRouter);
-router.use("/personas", personasRouter);
-router.use("/ingresos", ingresoRouter);
-router.use("/pagos", pagosRouter);
-router.use("/estadisticas", estadisticasRouter);
 router.use("/auth", authRouter);
-router.use("/admin/alumnos", adminAlumnosRouter);
-router.use("/planes", planesRouter);
 router.use("/staff", staffRouter);
-router.use("/recaudacion", recaudacionRouter);
-router.use("/consulta",    consultaPublicaRouter);  // ← público, sin auth
 router.use("/suscripcion", suscripcionRouter);       // ← plan del software
-router.use("/promociones", promocionesRouter);       // ← envío masivo de emails
 router.use("/stock", stockRouter);                   // ← productos y movimientos de stock
 router.use("/home",  homeRouter);                     // ← contenido configurable del home (GET público)
-router.use("/kinesiologia", kinesiologiaRouter);      // ← pacientes de kinesiología
 router.use("/modulos", modulosRouter);                // ← gestión de módulos de negocio habilitados
 router.use("/ubicacion", ubicacionRouter);            // ← provincia/departamento/localidad (público, sin auth)
 router.use("/banner", bannerAnuncioRouter);           // ← cinta de anuncios (GET público, gestión solo super_admin)

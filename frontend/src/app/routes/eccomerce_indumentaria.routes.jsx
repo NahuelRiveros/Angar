@@ -6,7 +6,7 @@ import { protegida } from "./route_helpers.jsx";
 
 // Rutas del módulo opcional eccomerce_indumentaria (ver
 // src/modules/eccomerce_indumentaria/CHANGELOG.md).
-// Igual que gym/kinesiología en su momento: las rutas quedan siempre
+// Las rutas quedan siempre
 // registradas, la visibilidad en el navbar es lo que se apaga por config/rol.
 export const eccomerceIndumentariaRoutes = [
   { path: "/carrito", element: protegida(<CartPage />) },

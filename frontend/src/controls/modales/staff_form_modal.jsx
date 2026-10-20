@@ -7,11 +7,6 @@ import { projectModules } from "../../config/gate_config.js";
 
 const ROLES_PERSONAL = [
   { value: "staff", label: "Staff" },
-  // "profesional": acceso restringido a sus propios clientes/pacientes
-  // asignados. Hoy solo lo consume kinesiología (ver kinesiologia_router.js
-  // en el backend) — si otro módulo lo necesita en el futuro, sumar su
-  // projectModules acá también.
-  ...(projectModules.kinesiologia ? [{ value: "profesional", label: "Profesional" }] : []),
   // "vendedor": ve/procesa notas de pedido pero no toca catálogo. Solo lo
   // consume eccomerce_distribuidora hoy (ver nota_pedido_router.js).
   ...(projectModules.eccomerce_distribuidora ? [{ value: "vendedor", label: "Vendedor" }] : []),

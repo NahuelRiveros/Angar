@@ -1,29 +1,14 @@
-import {
-  TipoDocumento,
-  Sexo,
-  TipoPersona,
-  PlanTipo,
-  CategoriaProducto,
-  Patologia,
-} from "../../models/index.js";
+import { TipoDocumento, Sexo, TipoPersona, CategoriaProducto } from "../../models/index.js";
+import { projectModules } from "../../configuracion_servidor/gate_config.js";
 import { listarOpciones } from "../common/select_options.js";
 
 export async function obtenerCatalogos() {
-  const [tiposDocumento, sexos, tiposPersona, tiposPlan, categoriasProducto, patologias] = await Promise.all([
+  const [tiposDocumento, sexos, tiposPersona, categoriasProducto] = await Promise.all([
     listarOpciones(TipoDocumento),
     listarOpciones(Sexo),
     listarOpciones(TipoPersona),
-    listarOpciones(PlanTipo, { where: { activo: true }, extra: ["dias_totales", "ingresos", "precio"] }),
-    listarOpciones(CategoriaProducto, { where: { activo: true } }),
-    listarOpciones(Patologia, { where: { activo: true } }),
+    // La tabla solo existe con el módulo stock (ver bootstrap.js).
+    projectModules.stock ? listarOpciones(CategoriaProducto, { where: { activo: true } }) : [],
   ]);
-
-  return {
-    tiposDocumento,
-    sexos,
-    tiposPersona,
-    tiposPlan: tiposPlan.map((x) => ({ ...x, precio: Number(x.precio) })),
-    categoriasProducto,
-    patologias,
-  };
+  return { tiposDocumento, sexos, tiposPersona, categoriasProducto };
 }

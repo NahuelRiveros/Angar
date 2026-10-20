@@ -3,7 +3,7 @@ import { defineModel } from "../common/define_model.js";
 
 /**
  * Datos de facturación/entrega del cliente — 1:1 con Usuario, separado de
- * Persona a propósito (Persona la comparten gym/kinesiología, esto es
+ * Persona a propósito (Persona la comparten personal y clientes, esto es
  * específico de este vertical). No se pide en el registro (fricción) — se
  * completa recién al enviar la primera nota de pedido (ver nota_pedido_service.js).
  * `condicion_iva` es un string libre a propósito, sin tabla de catálogo —

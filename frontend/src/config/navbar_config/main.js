@@ -6,14 +6,11 @@ import { catalogConfig } from "../catalog_config.js";
 import CartIcon from "../../controls/carrito/cart_icon.jsx";
 import CarritoDistribuidoraIcon from "../../modules/eccomerce_distribuidora/carrito/carrito_icon.jsx";
 
-import { gymLinks, gymDropdown } from "./gym_dropdown.js";
-import { kinesiologiaDropdown } from "./kinesiologia_dropdown.js";
 import { eccomerceIndumentariaDropdown } from "./eccomerce_indumentaria_dropdown.js";
 import { eccomerceDistribuidoraCatalogoLink } from "./eccomerce_distribuidora_dropdown.js";
 import { panelGestionLink } from "./panel_gestion.js";
 
-// Un archivo por dropdown (gym_dropdown.js, kinesiologia_dropdown.js,
-// eccomerce_indumentaria_dropdown.js, admin_dropdown.js,
+// Un archivo por dropdown (eccomerce_indumentaria_dropdown.js, admin_dropdown.js,
 // super_admin_dropdown.js) — cada uno dueño de todo su árbol, sin
 // importarse cosas entre sí. Este archivo solo ensambla: agrega el import
 // y una línea de spread en `dropdowns`, nunca copia ítems de otro archivo.
@@ -29,12 +26,12 @@ import { panelGestionLink } from "./panel_gestion.js";
 // DOS GATES, uno arriba del otro:
 //   1. gate_config.js (el gate maestro) decide si el módulo EXISTE en este
 //      proyecto — por eso los grupos se arman condicionalmente acá con
-//      spreads (...(projectModules.gym ? [...] : [])). Si es false, ni se
-//      define el ítem: no hay nada que un cliente pueda reactivar por su cuenta.
+//      spreads (...(projectModules.eccomerce_distribuidora ? [...] : [])). Si es
+//      false, ni se define el ítem: no hay nada que un cliente pueda reactivar.
 //   2. Dentro de un módulo ya habilitado en el código, cada ítem lleva
 //      `modulo: "<codigo>"` y se filtra en vivo con moduloHabilitado() contra
 //      la tabla modulo_negocio (togleable desde /super-admin/modulos, sin
-//      redeploy). Así un super_admin puede apagar temporalmente "Gym" y esos
+//      redeploy). Así un super_admin puede apagar temporalmente un módulo y esos
 //      ítems desaparecen aunque gate_config.js siga en true.
 // Los ítems del propio dropdown "super_admin" (Suscripción, Módulos
 // habilitados) NO llevan `modulo:` — tienen que seguir accesibles aunque
@@ -61,7 +58,6 @@ export const navbar_config = {
 
   links: [
     { label: "Inicio", to: "/", exact: true, icon: Home },
-    ...(projectModules.gym ? gymLinks : []),
     ...(projectModules.eccomerce_distribuidora ? [eccomerceDistribuidoraCatalogoLink,
       { label: "Cómo pedir", to: "/#como-pedir", icon: HelpCircle },
       { label: "Contacto", to: "/#contacto", icon: Phone },
@@ -72,8 +68,6 @@ export const navbar_config = {
   ],
 
   dropdowns: [
-    ...(projectModules.gym ? [gymDropdown] : []),
-    ...(projectModules.kinesiologia ? [kinesiologiaDropdown] : []),
     ...(catalogConfig.enabled ? [eccomerceIndumentariaDropdown] : []),
   ],
 };
