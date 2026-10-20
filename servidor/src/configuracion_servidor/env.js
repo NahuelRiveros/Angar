@@ -99,6 +99,11 @@ export const env = {
   // Vacío = ingreso con Google deshabilitado. No se usa el client secret.
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
 
+  // ── Catálogo de demostración ─────────────────────────────────────
+  // true = en cada arranque completa el catálogo del seed y pone precios inventados
+  // (ver database/seed/catalogo_demo.js). Nunca se aplica en el esquema gc_dist.
+  CATALOGO_DEMO_AL_INICIAR: String(process.env.CATALOGO_DEMO_AL_INICIAR || "").toLowerCase() === "true",
+
   // ── Seed: usuario super admin ────────────────────────────────────
   SUPERADMIN_NOMBRE:   process.env.SUPERADMIN_NOMBRE   || "",
   SUPERADMIN_APELLIDO: process.env.SUPERADMIN_APELLIDO || "",

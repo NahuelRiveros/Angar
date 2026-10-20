@@ -558,6 +558,20 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       assert.equal(Number(repuesta.precio), 500);
       assert.deepEqual(await aplicarPreciosDemo({ modelos: models, esquema: DB_SCHEMA }), { productos: 0, ofertas: 0, activados: 0, con_stock: 0 });
     });
+    await t.test("arranque con catálogo de demostración: carga el seed con precios, repetible y nunca en producción", async () => {
+      const { seed_catalogo_demo } = await import("../src/database/seed/catalogo_demo.js");
+      const { PRODUCTOS_INICIALES } = await import("../src/database/seed/seed_productos_distribuidora.js");
+      assert.equal(await seed_catalogo_demo({ esquema: "gc_dist" }), null);
+      const primera = await seed_catalogo_demo();
+      assert.ok(primera.productos >= Object.values(PRODUCTOS_INICIALES).flat().length);
+      const { QueryTypes } = await import("sequelize");
+      const [{ sin_precio, ocultos }] = await sequelize.query(`SELECT
+        count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM variedad_distribuidora v WHERE v.producto_id = p.id AND v.fecha_baja IS NULL))::int AS sin_precio,
+        count(*) FILTER (WHERE NOT p.activo)::int AS ocultos
+        FROM producto_distribuidora p WHERE p.fecha_baja IS NULL`, { type: QueryTypes.SELECT });
+      assert.deepEqual({ sin_precio, ocultos }, { sin_precio: 0, ocultos: 0 });
+      assert.deepEqual(await seed_catalogo_demo(), { productos: 0, ofertas: 0, activados: 0, con_stock: 0 });
+    });
   } finally {
     if (created) {
       assert.equal(DB_SCHEMA, ownedSchema);

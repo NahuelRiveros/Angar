@@ -5,6 +5,8 @@ import { seed_suscripcion } from "./seed_suscripcion.js";
 import { seed_familias_distribuidora } from "./seed_familias_distribuidora.js";
 import { seed_marcas_distribuidora } from "./seed_marcas_distribuidora.js";
 import { seed_productos_distribuidora } from "./seed_productos_distribuidora.js";
+import { seed_catalogo_demo } from "./catalogo_demo.js";
+import { env } from "../../configuracion_servidor/env.js";
 
 /**
  * Seed de catálogos + usuario super admin — idempotente, seguro de correr
@@ -32,5 +34,7 @@ export async function seed_database() {
   await seed_familias_distribuidora(); // solo con el catálogo vacío
   await seed_marcas_distribuidora();   // solo sin marcas; usa las familias de arriba
   await seed_productos_distribuidora(); // solo sin artículos; usa familias y marcas existentes
+  // Solo en ambientes de demostración (nunca en gc_dist): completa el catálogo y pone precios de prueba.
+  if (env.CATALOGO_DEMO_AL_INICIAR) await seed_catalogo_demo();
   console.log("✅ Seed finalizado");
 }
