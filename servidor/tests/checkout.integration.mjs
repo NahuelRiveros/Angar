@@ -522,6 +522,42 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       for (const tabla of ["nota_pedido", "producto_distribuidora", "persona"]) assert.ok(tablas.includes(tabla), tabla + " no está: " + tablas.join(", "));
       assert.deepEqual((await models.ModuloNegocio.findAll()).map((m) => m.codigo), ["eccomerce_distribuidora"]);
     });
+    await t.test("precios de demostración: precio a los cargados sin precio, activa y repone stock, sin repetir", async () => {
+      const { aplicarPreciosDemo } = await import("../src/database/seed/precios_demo_distribuidora.js");
+      const familia = await models.CategoriaDistribuidora.create({ nombre: "Demo", slug: "demo" });
+      const categoria = await models.CategoriaDistribuidora.create({ nombre: "Demo Hija", slug: "demo-hija", padre_id: familia.id });
+      const [sinPrecio1, sinPrecio2, conPrecio, deBaja, sinStock] = await models.ProductoDistribuidora.bulkCreate([
+        { categoria_id: categoria.id, nombre: "Demo Uno", activo: false },
+        { categoria_id: categoria.id, nombre: "Demo Dos", activo: false },
+        { categoria_id: categoria.id, nombre: "Demo Con Precio", activo: false },
+        { categoria_id: categoria.id, nombre: "Demo De Baja", activo: false, fecha_baja: "2026-01-01" },
+        { categoria_id: categoria.id, nombre: "Demo Sin Stock", activo: true },
+      ]);
+      await models.VariedadDistribuidora.create({ producto_id: conPrecio.id, precio: 1234, controla_stock: false, cantidad: 0 });
+      const agotada = await models.VariedadDistribuidora.create({ producto_id: sinStock.id, precio: 500, controla_stock: true, cantidad: 0 });
+
+      await assert.rejects(aplicarPreciosDemo({ modelos: models, esquema: "gc_dist" }), /producción/);
+      const primera = await aplicarPreciosDemo({ modelos: models, esquema: DB_SCHEMA });
+      assert.ok(primera.productos >= 2);
+      for (const producto of [sinPrecio1, sinPrecio2]) {
+        const variedades = await models.VariedadDistribuidora.findAll({ where: { producto_id: producto.id } });
+        assert.equal(variedades.length, 1);
+        assert.ok(Number(variedades[0].precio) >= 800 && Number(variedades[0].precio) <= 9000);
+        assert.equal(variedades[0].controla_stock, false);
+        assert.equal((await models.ProductoDistribuidora.findByPk(producto.id)).activo, true);
+      }
+      // El que ya tenía precio se activa sin cambiar el precio; el dado de baja no se toca.
+      assert.deepEqual((await models.VariedadDistribuidora.findAll({ where: { producto_id: conPrecio.id } })).map((v) => Number(v.precio)), [1234]);
+      assert.equal((await models.ProductoDistribuidora.findByPk(conPrecio.id)).activo, true);
+      assert.ok(primera.activados >= 1);
+      assert.equal(await models.VariedadDistribuidora.count({ where: { producto_id: deBaja.id } }), 0);
+      assert.equal((await models.ProductoDistribuidora.findByPk(deBaja.id)).activo, false);
+      // La presentación agotada recibe stock entre 20 y 200, sin cambiar su precio.
+      const repuesta = await models.VariedadDistribuidora.findByPk(agotada.id);
+      assert.ok(repuesta.cantidad >= 20 && repuesta.cantidad <= 200);
+      assert.equal(Number(repuesta.precio), 500);
+      assert.deepEqual(await aplicarPreciosDemo({ modelos: models, esquema: DB_SCHEMA }), { productos: 0, ofertas: 0, activados: 0, con_stock: 0 });
+    });
   } finally {
     if (created) {
       assert.equal(DB_SCHEMA, ownedSchema);

@@ -186,3 +186,21 @@ test("importación: el código de barras se limpia de espacios y se valida (6 a 
   assert.ok(mal.message.includes("Código de barras"));
   assert.equal(vacio.value.codigo_barras, null);
 });
+
+test("precios de demostración: fijos por producto, en el rango de la familia, ~20 % en oferta y nunca en producción", async () => {
+  const { precioDemo, esquemaPermiteDemo, RANGOS_FAMILIA } = await import("../src/database/seed/precios_demo_distribuidora.js");
+  assert.deepEqual(precioDemo(37, "Golosinas"), precioDemo(37, "Golosinas"));
+  const [min, max] = RANGOS_FAMILIA.Golosinas;
+  let ofertas = 0;
+  for (let id = 1; id <= 1000; id++) {
+    const { precio, precio_anterior } = precioDemo(id, "Golosinas");
+    assert.ok(precio >= min && precio <= max && precio % 10 === 0, "precio " + id);
+    if (precio_anterior != null) {
+      ofertas++;
+      assert.ok(precio_anterior >= precio * 1.14 && precio_anterior <= precio * 1.36, "oferta " + id);
+    }
+  }
+  assert.ok(ofertas > 150 && ofertas < 250, "ofertas: " + ofertas);
+  assert.equal(esquemaPermiteDemo("gc_dist"), false);
+  assert.equal(esquemaPermiteDemo("gc_dist_test"), true);
+});

@@ -91,6 +91,7 @@ No hay package.json raíz ni workspaces; cada paquete instala sus dependencias.
 | Reglas unitarias | `npm --prefix servidor test` |
 | Integración PostgreSQL | `npm --prefix servidor run test:integration` |
 | Navegador | `npm --prefix frontend run test:e2e` |
+| Precios de demostración (escribe en la base del `.env`; nunca en `gc_dist`) | `npm --prefix servidor run seed:precios-demo` (lo corre el usuario) |
 | Revisar los `.env` (solo nombres, sin valores) | `npm --prefix servidor run env:verificar` (lo corre el usuario; lee sus `.env`) |
 
 Un solo test: `node --test --test-name-pattern="carrito" servidor/tests/ux_rules.test.mjs`;

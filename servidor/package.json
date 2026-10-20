@@ -10,6 +10,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed:distribuidora": "node src/database/seed/actualizar_catalogo_distribuidora.js",
+    "seed:precios-demo": "node src/database/seed/aplicar_precios_demo.js",
     "admin:verificar": "node src/database/seed/verificar_super_admin.js"
   },
   "keywords": [],
