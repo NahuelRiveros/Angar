@@ -202,3 +202,119 @@ anteriores), 434 marcas y 929 asociaciones; el artículo previo sigue cargado.
 La repetición agregó cero filas y se compararon las huellas de todos los
 registros de ocho tablas del catálogo, artículos y pedidos antes y después
 de esa repetición: no hubo cambios.
+
+## Productos iniciales (20/10/2026)
+
+`servidor/src/database/seed/seed_productos_distribuidora.js` contiene
+`PRODUCTOS_INICIALES`, una selección ampliable de 254 artículos de 21 familias,
+72 categorías y 118 marcas ya presentes en los seeds de clasificación. No es un
+inventario completo de las 434 marcas ni confirma el surtido del cliente.
+Cada entrada tiene nombre, marca, imagen HTTPS y `fuente_url` para rastrear
+la ficha de origen. La fuente se conserva en el archivo, no en la base.
+
+Se verificó el modelo: `producto_distribuidora` admite nombre (150),
+`categoria_id`, `marca_id`, descripción, imagen (500), estado y fechas.
+El precio obligatorio, código interno, código de barras y unidades/bulto
+pertenecen a `variedad_distribuidora`. Este seed no modifica los modelos ni
+crea presentaciones: deja los artículos con `activo: false`, visibles en la
+gestión de inactivos y ocultos en el catálogo público. Para venderlos hay
+que completar una presentación con precio y luego activar el artículo.
+Los códigos internos deberán ser los del cliente; no se deducen de las URLs.
+
+Corre después de familias y marcas, solo si la tabla de productos está
+vacía, contando también los registros dados de baja. En una instalación
+existente se agregan los faltantes con el comando habitual desde la raíz:
+
+```sh
+npm --prefix servidor run seed:distribuidora
+```
+
+Ese comando escribe en la base configurada. El desarrollo de este seed no
+lo ejecutó contra la base del cliente. La carga manual de familias, marcas y
+productos comparte una transacción; el seed de productos usa el mismo bloqueo
+transaccional también al arrancar. No se descargan imágenes durante el seed.
+
+Los artículos se comparan por nombre normalizado dentro de la categoría.
+Los existentes se conservan enteros (imagen, marca, estado y demás datos),
+y los dados de baja se omiten sin recrearlos. Se reconocen renombres de
+categorías por sus slugs, respetando el padre. Una familia/categoría ausente
+o dada de baja, una marca inexistente o sin asociación aplicable, o datos
+inválidos se informan y se omiten sin detener los demás artículos. La marca
+puede estar asociada directamente a la categoría o heredarse de su familia.
+El nombre de marca guardado se obtiene de `resolverMarcaDeArticulo`, nunca
+del texto de la lista. Los errores de base se propagan y revierten la carga.
+
+### Fuentes de las primeras 12 imágenes
+
+Las URLs directas están junto a cada artículo en `PRODUCTOS_INICIALES`.
+Son recursos externos, por lo que pueden cambiar; reemplazar una URL del
+seed solo afecta altas futuras, y una imagen ya cargada se edita en gestión.
+
+| Artículo | Ficha de origen |
+| --- | --- |
+| 9 de Oro Agridulces 200 g | [Pampa Drugstore](https://www.pampadrugstore.net/es/galletitas/bizcochos-agridulces-9-de-oro-200-grs.html) |
+| Quilmes 330 ml | [Pampa Drugstore](https://www.pampadrugstore.net/es/bebidas-con-alcohol/cerveza-quilmes-355-ml.html); el nombre vigente indica 330 ml aunque la URL conserve 355 |
+| CBSé Naranja 500 g | [Pampa Drugstore](https://www.pampadrugstore.net/es/yerba-mate/yerba-mate-cbse-naranja-x-500-g.html) |
+| Playadito Despalada 500 g | [Pampa Drugstore](https://www.pampadrugstore.net/es/yerba-mate/yerba-mate-playadito-despalada-x-500-grs.html) |
+| Taragüi con Palo 1 kg | [Pampa Drugstore](https://www.pampadrugstore.net/es/yerba-mate/yerba-mate-taraguei-x-1-kg.html) |
+| Havanna Mixtos x 12 | [Pampa Drugstore](https://www.pampadrugstore.net/es/alfajores-argentinos/alfajor-havanna-mixto-caja-x-12.html) |
+| Arcor Bon o Bon Blanco 15 g | [Pampa Drugstore](https://www.pampadrugstore.net/es/golosinas/bon-o-bon-chocolate-blanco-15-grs.html) |
+| Arcor Turrón de Maní x 10 | [Pampa Drugstore](https://www.pampadrugstore.net/es/golosinas/turron-de-mani-arcor-x-10-uds.html) |
+| Vacalin Original 450 g | [Vacalin](https://www.vacalin.com/productos/original/1) |
+| Vacalin Repostero 400 g | [Vacalin](https://www.vacalin.com/productos/repostero/3) |
+| Ayudín Gel Expert Floral 700 ml | [Disco](https://www.disco.com.ar/ayudin-lavandina-en-gel-floral-700ml/p) |
+| Ayudín Gel Expert Original 700 ml | [Farmacity](https://www.farmacity.com/ayudin-lavandina-gel-expert-original-x-700-ml/p) |
+
+Las pruebas de `servidor/tests/seed_distribuidora.test.mjs` usan repositorios
+en memoria, sin leer el `.env` ni conectar a PostgreSQL. Incluyen la selección
+real contrastada con las listas de familias y marcas, repetición, bajas,
+renombres, asociación heredada, imágenes inválidas y errores de persistencia.
+
+### Ampliación a un mínimo de 200 productos
+
+El seed contiene 254 productos de las 21 familias existentes,
+72 categorías y 118 marcas. Conserva los 12 artículos iniciales y
+agrega 242 fichas del catálogo público de Disco. Cada entrada conserva su
+`fuente_url` específica para revisar el nombre, la presentación y la imagen.
+Las asociaciones de marcas y las familias originales no se modificaron.
+
+Se revisaron las coincidencias de marca, la categoría y los nombres. Se
+descartaron fichas con marcas contradictorias, nombres ambiguos o artículos
+repetidos; los alimentos húmedos, el pan para panchos y la pasta de maní se
+ubicaron en sus categorías específicas. No se importaron precios, stock,
+códigos internos ni códigos de barras de los comercios de origen.
+
+Las 254 URLs se comprobaron por HTTPS: respuesta correcta, tipo de contenido
+de imagen y firma de archivo JPEG/PNG/WebP. Esta comprobación verifica la
+disponibilidad actual del recurso, no garantiza que el proveedor mantenga
+la imagen en el futuro. El seed sigue funcionando sin consultar esas webs.
+
+| Familia | Productos |
+| --- | ---: |
+| Alimentos Naturales | 8 |
+| Almacén | 64 |
+| Bazar | 3 |
+| Bebés | 5 |
+| Bebidas | 25 |
+| Congelados | 4 |
+| Desayuno y Merienda | 14 |
+| Ferretería | 4 |
+| Fiambres | 2 |
+| Golosinas | 11 |
+| Higiene Personal | 8 |
+| Lácteos | 15 |
+| Librería | 2 |
+| Limpieza | 31 |
+| Mascotas | 8 |
+| Panificados | 7 |
+| Papelera | 11 |
+| Pastas Frescas y Tapas | 4 |
+| Perfumería | 16 |
+| Repostería | 6 |
+| Snacks | 6 |
+| **Total** | **254** |
+
+La prueba de la selección real exige al menos 200 productos y comprueba
+que todos pueden cargarse con las familias y marcas existentes, sin
+omisiones ni duplicados al repetir la carga. No se ejecutó el seed sobre
+la base configurada del cliente.

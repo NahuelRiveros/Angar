@@ -4,6 +4,7 @@ import { seed_super_admin } from "./seed_super_admin.js";
 import { seed_suscripcion } from "./seed_suscripcion.js";
 import { seed_familias_distribuidora } from "./seed_familias_distribuidora.js";
 import { seed_marcas_distribuidora } from "./seed_marcas_distribuidora.js";
+import { seed_productos_distribuidora } from "./seed_productos_distribuidora.js";
 
 /**
  * Seed de catálogos + usuario super admin — idempotente, seguro de correr
@@ -30,5 +31,6 @@ export async function seed_database() {
   await seed_suscripcion();
   await seed_familias_distribuidora(); // solo con el catálogo vacío
   await seed_marcas_distribuidora();   // solo sin marcas; usa las familias de arriba
+  await seed_productos_distribuidora(); // solo sin artículos; usa familias y marcas existentes
   console.log("✅ Seed finalizado");
 }

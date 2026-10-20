@@ -2,6 +2,7 @@ import { sequelize, DB_SCHEMA } from "../sequelize.js";
 import { projectModules } from "../../configuracion_servidor/gate_config.js";
 import { seed_familias_distribuidora } from "./seed_familias_distribuidora.js";
 import { seed_marcas_distribuidora } from "./seed_marcas_distribuidora.js";
+import { seed_productos_distribuidora } from "./seed_productos_distribuidora.js";
 
 // Ejecutar desde servidor: npm run seed:distribuidora.
 // Usa el .env habitual; no ejecuta bootstrap, sync ni los demás seeds.
@@ -14,7 +15,8 @@ try {
     await sequelize.query("SELECT pg_advisory_xact_lock(741923, 1)", { transaction });
     const familias = await seed_familias_distribuidora({ completar: true, transaction });
     const marcas = await seed_marcas_distribuidora({ completar: true, transaction });
-    return { familias, marcas };
+    const productos = await seed_productos_distribuidora({ completar: true, transaction });
+    return { familias, marcas, productos };
   });
   console.log(`✅ Agregadas: ${resultado.familias.familias} familias, ${resultado.familias.categorias} categorías, ${resultado.marcas.marcas} marcas y ${resultado.marcas.asociaciones} asociaciones.`);
   if (resultado.familias.omitidas.length) console.warn(`Categorías dadas de baja respetadas: ${resultado.familias.omitidas.join(", ")}`);
