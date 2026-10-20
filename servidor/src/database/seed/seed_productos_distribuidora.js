@@ -811,6 +811,140 @@ export const PRODUCTOS_INICIALES = {
       "fuente_url": "https://www.disco.com.ar/yerba-mate-playadito-suave-1-kg/p"
     }
   ],
+  "Ferretería › Adhesivos": [
+    {
+      "nombre": "Adhesivo Transparente Poxipol 16 Gr",
+      "marca": "Poxipol",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/883305/Adhesivo-Transparente-Poxipol-16-Gr-1-6328.jpg?v=638932881681570000",
+      "fuente_url": "https://www.disco.com.ar/adhesivo-transparente-poxipol-16-gr/p"
+    },
+    {
+      "nombre": "Adhesivo Soldadura en Frío 21 Grs Gris Poxipol",
+      "marca": "Poxipol",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/883306/Epoxi-Met-lico-Poxipol-21-Gr-1-6398.jpg?v=638932881716600000",
+      "fuente_url": "https://www.disco.com.ar/epoxi-metalico-poxipol-21-gr/p"
+    },
+    {
+      "nombre": "Adhesivo Instantáneo Gel 3 Grs Transparente La Gotita",
+      "marca": "La Gotita",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/882949/44110113007.jpg?v=638926832629300000",
+      "fuente_url": "https://www.disco.com.ar/adhesivo-instantaneo-gel-la-gotita-3-ml/p"
+    },
+    {
+      "nombre": "Adhesivo Instantáneo 2 Ml Transparente La Gotita",
+      "marca": "La Gotita",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/882948/44110113008.jpg?v=638926831865600000",
+      "fuente_url": "https://www.disco.com.ar/adhesivo-instantaneo-la-gotita-2-ml/p"
+    }
+  ],
+  "Ferretería › Baterías": [
+    {
+      "nombre": "Batería Alcalina 9 Volt blister de 1 Un Duracell",
+      "marca": "Duracell",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/932629/44330501002-1.jpg?v=639262896992370000",
+      "fuente_url": "https://www.disco.com.ar/bateria-alcalina-9-volt-blister-de-1-un-duracell/p"
+    },
+    {
+      "nombre": "Pila Recargable Energizer Aa",
+      "marca": "Energizer",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/167814/Pila-Energizer-Recargable-Aa-X-2-Pila-Recargable-Energizer-Aa-1-12720.jpg?v=636383099071970000",
+      "fuente_url": "https://www.disco.com.ar/pila-energizer-recargable-aa-x-2/p"
+    },
+    {
+      "nombre": "Pila Recargable Rayovac X 2uni",
+      "marca": "Rayovac",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/168554/Pila-Recargable-Rayovac-X-2uni-1-13462.jpg?v=636383106778000000",
+      "fuente_url": "https://www.disco.com.ar/pila-recargable-rayovac-x-2uni/p"
+    }
+  ],
+  "Ferretería › Cintas": [
+    {
+      "nombre": "Cinta Aisladora Temflex165 3m X 9m Negra",
+      "marca": "3M",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/760012/Cinta-Aisladora-Temflex165-3m-X-9m-Negra-1-941363.jpg?v=638043826247700000",
+      "fuente_url": "https://www.disco.com.ar/cinta-aisladora-temflex165-3m-x-9m-negra/p"
+    },
+    {
+      "nombre": "Cinta Temflex 1550 3m Negra 18mmx 10m",
+      "marca": "3M",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/193380/Cinta-Aisladora-Pvc-10-Mts-Negra-Temflex-Cinta-Aisladora-Negra-Temflex-Pvc-10-M-1-29736.jpg?v=636383542761770000",
+      "fuente_url": "https://www.disco.com.ar/cinta-temflex-1550-3m-negra-18mmx-10m-2/p"
+    }
+  ],
+  "Ferretería › Electricidad": [
+    {
+      "nombre": "Prolongador 8 Tomas con Cable 5 Mts Sica",
+      "marca": "Sica",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/885530/Prolongador-8-Tomas-Con-Cable-5-Mts-1-1048744.jpg?v=638949189989900000",
+      "fuente_url": "https://www.disco.com.ar/prolongador-sica-8-tomas-con-cable-5-mts/p"
+    },
+    {
+      "nombre": "Prolongador 5 Tomas Con Cable 5 Mts Sica",
+      "marca": "Sica",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/885528/Prolongador-5-Tomas-Con-Cable-5-Mts-Sica-1-1048742.jpg?v=638949189983630000",
+      "fuente_url": "https://www.disco.com.ar/prolongador-sica-5-tomas-con-cable-5-mts/p"
+    }
+  ],
+  "Ferretería › Herramientas": [
+    {
+      "nombre": "Destornillador Stanley",
+      "marca": "Stanley",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/294065/Destornillador-Stanley-1-180993.jpg?v=636389886096470000",
+      "fuente_url": "https://www.disco.com.ar/destornillador-stanley/p"
+    },
+    {
+      "nombre": "Destornillador Phillips Tramontina 2",
+      "marca": "Tramontina",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/796073/Destornillador-Ph-Tramontina-2-1-997772.jpg?v=638315446231730000",
+      "fuente_url": "https://www.disco.com.ar/destornillador-ph-tramontina-2/p"
+    },
+    {
+      "nombre": "Martillo Tramontina",
+      "marca": "Tramontina",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/311649/Martillo-Tramontina-Galponero-25-Cm-X-Un-1-205029.jpg?v=636390813850500000",
+      "fuente_url": "https://www.disco.com.ar/martillo-tramontina-2/p"
+    },
+    {
+      "nombre": "Martillo Galponero Tramontina",
+      "marca": "Tramontina",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/796082/Martillo-Galponero-Tramontina-1-997791.jpg?v=638315446266800000",
+      "fuente_url": "https://www.disco.com.ar/martillo-galponero-tramontina/p"
+    }
+  ],
+  "Ferretería › Lámparas": [
+    {
+      "nombre": "Lámpara Led Philips",
+      "marca": "Philips",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/164165/Lampara-Led-Philips-1-9048.jpg?v=636383059124130000",
+      "fuente_url": "https://www.disco.com.ar/lampara-led-philips/p"
+    },
+    {
+      "nombre": "Lámpara Led Luminaria Osram",
+      "marca": "Osram",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/335128/LAmpara-Led-Luminaria-Osram-1-232054.jpg?v=636392637486330000",
+      "fuente_url": "https://www.disco.com.ar/lampara-led-luminaria-osram/p"
+    },
+    {
+      "nombre": "Lámpara Led Philips Filament",
+      "marca": "Philips",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/177354/Lampara-Led-Philips-Filament-LAmpara-Led-Philips-Filament-1-3629.jpg?v=636383347472070000",
+      "fuente_url": "https://www.disco.com.ar/lampara-led-philips-filament/p"
+    }
+  ],
+  "Ferretería › Lubricantes": [
+    {
+      "nombre": "Lubricante Multiuso 155 Grs WD-40",
+      "marca": "WD-40",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/790359/Lubricante-Wd-40-155-Gr-1-6324.jpg?v=638272893645670000",
+      "fuente_url": "https://www.disco.com.ar/lubricante-wd-40-155-gr/p"
+    },
+    {
+      "nombre": "Lubricante WD-40 187 Cc",
+      "marca": "WD-40",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/365275/Lubricante-Wd-40-X-187-Cc-1-104190.jpg?v=636440094978900000",
+      "fuente_url": "https://www.disco.com.ar/lubricante-wd-40-87187/p"
+    }
+  ],
   "Ferretería › Pilas": [
     {
       "nombre": "Pilas Alcalinas Aaa Blister De 4 Un Duracell",
@@ -897,6 +1031,26 @@ export const PRODUCTOS_INICIALES = {
       "fuente_url": "https://www.disco.com.ar/caramelo-rellenos-miel-arcor-80-gr/p"
     }
   ],
+  "Golosinas › Chicles": [
+    {
+      "nombre": "Chicle Beldent Confitado Menta 54 Gr- 28 U",
+      "marca": "Beldent",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/916634/7622202012204-1.jpg?v=639159448254230000",
+      "fuente_url": "https://www.disco.com.ar/chicle-beldent-confitado-menta-54-gr-28-u-2/p"
+    },
+    {
+      "nombre": "Chicle Top Line 7 Atomic Strong 14,7 Gr",
+      "marca": "Topline",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/440063/Chicle-Top-Line-7-Atomic-Strong-147-Gr-1-18904.jpg?v=636520206226200000",
+      "fuente_url": "https://www.disco.com.ar/chicle-top-line-7-atomic-strong-14-7-gr/p"
+    },
+    {
+      "nombre": "Chicles Beldent Infinit Mentol 13,3 Gr",
+      "marca": "Beldent",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/923932/7622201448226.jpg?v=639223205503770000",
+      "fuente_url": "https://www.disco.com.ar/chicles-beldent-infinit-mentol-13-3-gr-2/p"
+    }
+  ],
   "Golosinas › Chocolates": [
     {
       "nombre": "Arcor Bon o Bon Chocolate Blanco 15 g",
@@ -917,12 +1071,110 @@ export const PRODUCTOS_INICIALES = {
       "fuente_url": "https://www.disco.com.ar/chocolate-lindt-swiss-premium-chocolate-con-leche-x300g/p"
     }
   ],
+  "Golosinas › Chupetines": [
+    {
+      "nombre": "Chupetines Surtidos 180 G Arcor",
+      "marca": "Arcor",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/921447/11852508054.jpg?v=639195655665800000",
+      "fuente_url": "https://www.disco.com.ar/chupetin-180g-arcor/p"
+    },
+    {
+      "nombre": "Chupetines Mr. Pops Frutal 125 Gr",
+      "marca": "Arcor",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/582937/Chupetines-Mr-Pops-Frutal-125-Gr-1-1300.jpg?v=637234676217970000",
+      "fuente_url": "https://www.disco.com.ar/chupetines-mr-pops-frutal-125-gr/p"
+    },
+    {
+      "nombre": "Chupetín Lheritier Chupetín-cito X 12 Un.",
+      "marca": "Lheritier",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/361250/Chupetin-Lheritier-Chupetin-cito-X-12-Un-1-97559.jpg?v=636439858680000000",
+      "fuente_url": "https://www.disco.com.ar/chupetines-lheritier-2-917/p"
+    }
+  ],
+  "Golosinas › Confites": [
+    {
+      "nombre": "Confites Bon O Bon De Chocolate 130 Grs",
+      "marca": "Bon o Bon",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/922088/Confites-Bon-O-Bon-De-Chocolate-130-Grs-1-1060847.jpg?v=639198346021100000",
+      "fuente_url": "https://www.disco.com.ar/confites-bon-o-bon-de-chocolate-130-grs/p"
+    },
+    {
+      "nombre": "Confites Sabor Chocolate 40 Grs Rocklets",
+      "marca": "Rocklets",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/582989/Confites-Rocklets-De-Chocolate-40-Gr-1-14133.jpg?v=637234676341130000",
+      "fuente_url": "https://www.disco.com.ar/confites-rocklets-de-chocolate-40-gr/p"
+    },
+    {
+      "nombre": "Confites de Maní con Chocolate 130 Grs Rocklets",
+      "marca": "Rocklets",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/922234/Mani-Con-Chocolate-Rocklets-130-Grs-1-1061412.jpg?v=639198346557800000",
+      "fuente_url": "https://www.disco.com.ar/mani-con-chocolate-rocklets-130-grs/p"
+    }
+  ],
+  "Golosinas › Gomitas": [
+    {
+      "nombre": "Gomitas Mogul Gusanitos Extreme 80gr",
+      "marca": "Mogul",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/918475/Gomitas-Mogul-Gusanitos-Extreme-80gr-1-1059700.jpg?v=639246660664130000",
+      "fuente_url": "https://www.disco.com.ar/gomitas-mogul-gusanitos-extreme-80gr/p"
+    },
+    {
+      "nombre": "Gomitas Haribo Worms 160 Gr",
+      "marca": "Haribo",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/831862/Gomitas-Haribo-Worms-160-Gr-1-1023063.jpg?v=638605749814530000",
+      "fuente_url": "https://www.disco.com.ar/gomitas-haribo-worms-160-gr/p"
+    },
+    {
+      "nombre": "Gomitas Mogul Tiburoncito 30 Gr",
+      "marca": "Mogul",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/446006/Gomitas-Mogul-Tiburoncito-30-Gr-1-33884.jpg?v=636554730076000000",
+      "fuente_url": "https://www.disco.com.ar/gomitas-mogul-tiburoncito-30-gr-2/p"
+    }
+  ],
+  "Golosinas › Obleas": [
+    {
+      "nombre": "Oblea 27g Mantecol",
+      "marca": "Mantecol",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/868654/Oblea-27g-Mantecol-1-1038530.jpg?v=638838626576030000",
+      "fuente_url": "https://www.disco.com.ar/oblea-27g-mantecol-2/p"
+    },
+    {
+      "nombre": "Oblea Sabor Oreo 45 Grs Milka",
+      "marca": "Milka",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/803293/Oblea-Chocopause-Milka-Con-Oreo-45g-1-884199.jpg?v=638379382727700000",
+      "fuente_url": "https://www.disco.com.ar/chocolate-milka-oreo-chocopause-45-gr-2/p"
+    },
+    {
+      "nombre": "Oblea Twit Sabor Limón 20 Grs Arcor",
+      "marca": "Arcor",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/865561/Oblea-Arcor-20gr-1-1037433.jpg?v=638814675383670000",
+      "fuente_url": "https://www.disco.com.ar/oblea-20-gr-arcor/p"
+    }
+  ],
   "Golosinas › Turrones": [
     {
       "nombre": "Arcor Turrón de Maní Pack x 10",
       "marca": "Arcor",
       "imagen_url": "https://www.pampadrugstore.net/1775-thickbox_default/turron-de-mani-arcor-x-10-uds.jpg",
       "fuente_url": "https://www.pampadrugstore.net/es/golosinas/turron-de-mani-arcor-x-10-uds.html"
+    },
+    {
+      "nombre": "Turrón Sabor Maní 25 Grs Arcor",
+      "marca": "Arcor",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/583130/Turron-De-Mani-Arcor-25-Gr-1-46858.jpg?v=637234676827830000",
+      "fuente_url": "https://www.disco.com.ar/turron-de-mani-arcor-25-gr/p"
+    },
+    {
+      "nombre": "Turrón Sabor Cacao 26 Grs Mantecol",
+      "marca": "Mantecol",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/640856/Postre-Mantecol-26g-1-870435.jpg?v=637557378316200000",
+      "fuente_url": "https://www.disco.com.ar/postre-mantecol-26-gr/p"
+    },
+    {
+      "nombre": "Turrón Billiken 25 Gr",
+      "marca": "Billiken",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/574604/Turron-Billiken-25g-1-844893.jpg?v=637169442078630000",
+      "fuente_url": "https://www.disco.com.ar/turron-billiken-25-gr/p"
     }
   ],
   "Higiene Personal › Cepillos Dentales": [
@@ -1091,6 +1343,96 @@ export const PRODUCTOS_INICIALES = {
       "fuente_url": "https://www.disco.com.ar/lapices-maped-caja-carton-cortos/p"
     }
   ],
+  "Limpieza › Antihumedad": [
+    {
+      "nombre": "Antihumedad Airwick Lavanda 80 Gr",
+      "marca": "Air Wick",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/429706/Antihumedad-Airwick-Lavanda-80-Gr-1-30446.jpg?v=636501203785200000",
+      "fuente_url": "https://www.disco.com.ar/antihumedad-airwick-lavanda-80-gr/p"
+    },
+    {
+      "nombre": "Antihumedad Air Wick Lavanda 180 Gr",
+      "marca": "Air Wick",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/429707/Antihumedad-Air-Wick-Lavanda-180-Gr-1-30491.jpg?v=636501203789400000",
+      "fuente_url": "https://www.disco.com.ar/antihumedad-air-wick-lavanda-180-gr/p"
+    }
+  ],
+  "Limpieza › Aprestos": [
+    {
+      "nombre": "Apresto Líquido 450 Ml Robin",
+      "marca": "Robin",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/846373/Apresto-Robin-Repuesto-Doypack-X-450-Ml-1-1025757.jpg?v=638676597707330000",
+      "fuente_url": "https://www.disco.com.ar/apresto-robin-repuesto-doypack-x-450-ml/p"
+    },
+    {
+      "nombre": "Robin Apresto Gatillo Doypack 900ml",
+      "marca": "Robin",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/516261/Apresto-Robin-Repuesto-900-Ml-1-19967.jpg?v=636840693022000000",
+      "fuente_url": "https://www.disco.com.ar/robin-apresto-gatillo-doypack-900ml/p"
+    }
+  ],
+  "Limpieza › Baldes": [
+    {
+      "nombre": "Balde con Escurridor 12 Lts Virulana",
+      "marca": "Virulana",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/868418/Balde-Virulana-Con-Escurridor-12-L-1-1038014.jpg?v=638834277724530000",
+      "fuente_url": "https://www.disco.com.ar/balde-con-escurridor-12-l-virulana/p"
+    }
+  ],
+  "Limpieza › Bolsas de Residuos": [
+    {
+      "nombre": "Bolsas de Residuos Mortimer 45x55 cm x 15 Un",
+      "marca": "Mortimer",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/880433/Bolsa-Rollo-Normal-45x55-x15U-Mortimer-Bolsa-Rollo-Mortimer-Normal-45x55-X15u-1-1044812.jpg?v=638912145789200000",
+      "fuente_url": "https://www.disco.com.ar/bolsa-rollo-mortimer-45x60-15u/p"
+    },
+    {
+      "nombre": "Bolsas de Residuos Virulana Reforzadas 45x60 Cm x 30 Un",
+      "marca": "Virulana",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/890176/Bolsa-Rollo-Virulana-S-X30-1-1051246.jpg?v=638984723294100000",
+      "fuente_url": "https://www.disco.com.ar/bolsa-rollo-s-x-30-un-virulana/p"
+    },
+    {
+      "nombre": "Bolsas de Residuos Virulana Reforzadas 60x90 Cm x 10 Un",
+      "marca": "Virulana",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/890175/Bolsa-Rollo-Virulana-L-X10-1-1051245.jpg?v=638984723290100000",
+      "fuente_url": "https://www.disco.com.ar/bolsa-rollo-l-x-10-un-virulana/p"
+    }
+  ],
+  "Limpieza › Cabos": [
+    {
+      "nombre": "Cabo Virulana",
+      "marca": "Virulana",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/849848/Cabo-Virulana-1-1031266.jpg?v=638701626090830000",
+      "fuente_url": "https://www.disco.com.ar/cabo-virulana-2/p"
+    },
+    {
+      "nombre": "Cabo Samantha",
+      "marca": "Samantha",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/258271/Cabo-Samantha-Autorroscante-X-Un-1-118711.jpg?v=636388768946400000",
+      "fuente_url": "https://www.disco.com.ar/cabo-samantha/p"
+    }
+  ],
+  "Limpieza › Ceras para Pisos": [
+    {
+      "nombre": "Cera para Pisos Plastificados y Flotantes 850 Ml Suiza",
+      "marca": "Suiza",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/785416/Lustre-Suiza-L-quido-5-Litros-1-159835.jpg?v=638224401841600000",
+      "fuente_url": "https://www.disco.com.ar/cera-para-piso-liquido-850-ml-suiza/p"
+    },
+    {
+      "nombre": "Cera Líquida Pisos Cerámicos Incoloro 750 Ml Blem",
+      "marca": "Blem",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/918978/7790520031914-1.jpg?v=639174062737600000",
+      "fuente_url": "https://www.disco.com.ar/cera-liquida-pisos-ceramicos-incoloro-750-ml-blem/p"
+    },
+    {
+      "nombre": "Cera Líquida Pisos Cerámicos Rojo Botella 750 Ml Blem",
+      "marca": "Blem",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/904522/7790520032027.jpg?v=639114319029600000",
+      "fuente_url": "https://www.disco.com.ar/cera-liquida-pisos-ceramicos-rojo-botella-750-ml-blem/p"
+    }
+  ],
   "Limpieza › Desinfectantes": [
     {
       "nombre": "Desinfectante Bebé Aerosol 360ml Lysoform",
@@ -1109,6 +1451,32 @@ export const PRODUCTOS_INICIALES = {
       "marca": "Lysoform",
       "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900154/Desinfectante-Concentrado-Pisos-Original-900ml-Lysoform-1-870781.jpg?v=639074797337470000",
       "fuente_url": "https://www.disco.com.ar/limpiador-desinfectante-original-800-ml-lysoform/p"
+    }
+  ],
+  "Limpieza › Desodorantes de Ambiente": [
+    {
+      "nombre": "Desodorante de Ambiente Lavanda 9 Grs Poett",
+      "marca": "Poett",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/565801/Aromatizador-De-Ambiente-Poett-Intense-Lavanda-9-Gr-1-20482.jpg?v=637130136535530000",
+      "fuente_url": "https://www.disco.com.ar/aromatizante-de-ambiente-intense-lavanda-atomizador-9-gr-poett/p"
+    },
+    {
+      "nombre": "Desodorante de Ambiente Lavanda 360 Ml Poett",
+      "marca": "Poett",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/645191/Desodorante-De-Ambiente-Poett-Frescura-De-Lavanda-360-Ml-1-858699.jpg?v=637578553180470000",
+      "fuente_url": "https://www.disco.com.ar/desodorante-de-ambiente-poett-frescura-de-lavanda-360-ml/p"
+    },
+    {
+      "nombre": "Desodorante de Ambiente Suavidad de Algodón 360 Ml Poett",
+      "marca": "Poett",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/638503/Deo-De-Ambiente-Poett-Suavidad-Algodon-360ml-1-858694.jpg?v=637547442781530000",
+      "fuente_url": "https://www.disco.com.ar/desodorante-de-ambiente-poett-suavidad-de-algodon-360-ml/p"
+    },
+    {
+      "nombre": "Desodorante de Ambiente Huellitas de Frescura 400 Cc Poett",
+      "marca": "Poett",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/928669/Desodorante-Ambiente-Natural-Blends-Huellitas-400ml-Poett-1-1062413.jpg?v=639250185700400000",
+      "fuente_url": "https://www.disco.com.ar/desodorante-ambiente-natural-blends-huellitas-400ml-poett/p"
     }
   ],
   "Limpieza › Detergentes": [
@@ -1137,6 +1505,40 @@ export const PRODUCTOS_INICIALES = {
       "fuente_url": "https://www.disco.com.ar/detergente-ultra-limon-cremoso-x-500-ml-magistral/p"
     }
   ],
+  "Limpieza › Escobas": [
+    {
+      "nombre": "Escoba Samantha",
+      "marca": "Samantha",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/293211/Escoba-Samantha-Super--1-U-1-177277.jpg?v=636389873855630000",
+      "fuente_url": "https://www.disco.com.ar/escoba-samantha/p"
+    },
+    {
+      "nombre": "Escoba Task",
+      "marca": "Task",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/249545/Escoba-Task-Escoba-Task-Angular-Sin-Cabo-371201-S-e-1-Un-1-102868.jpg?v=636386460530700000",
+      "fuente_url": "https://www.disco.com.ar/escoba-task/p"
+    }
+  ],
+  "Limpieza › Escobillones": [
+    {
+      "nombre": "Escobillón de Interior Virulana",
+      "marca": "Virulana",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/849864/Escobillon-Interior-Virulana-Clasico-1-1031292.jpg?v=638701626145330000",
+      "fuente_url": "https://www.disco.com.ar/escobillon-interior-virulana-clasico-2/p"
+    },
+    {
+      "nombre": "Escobillón Barrendero Virulana Exterior 45 Cm x 1 Un",
+      "marca": "Virulana",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/896012/Escobillon-Exterior-45-Cm-X-1-Un-Virulana-1-1054087.jpg?v=639050601820130000",
+      "fuente_url": "https://www.disco.com.ar/escobillon-exterior-45-cm-x-1-un-virulana/p"
+    },
+    {
+      "nombre": "Escobillon Task",
+      "marca": "Task",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/275859/Escobillon-Task-Con-Cabo-X-Un-1-144146.jpg?v=636389360170500000",
+      "fuente_url": "https://www.disco.com.ar/escobillon-task/p"
+    }
+  ],
   "Limpieza › Esponjas": [
     {
       "nombre": "Esponja Clasica Scotch Brite",
@@ -1161,6 +1563,60 @@ export const PRODUCTOS_INICIALES = {
       "marca": "Virulana",
       "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/178397/Esponja-Virulana-De-Bronce-Esponja-Virulana-De-Bronce-223-Paquete-1-U-1-6041.jpg?v=636383362509600000",
       "fuente_url": "https://www.disco.com.ar/esponja-virulana-de-bronce-223/p"
+    }
+  ],
+  "Limpieza › Franelas": [
+    {
+      "nombre": "Franela Task",
+      "marca": "Task",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/246218/Franela-Task-Franela-Task-40-X-60-A100005-S-e-1-Un-1-95797.jpg?v=636386394423270000",
+      "fuente_url": "https://www.disco.com.ar/franela-task-2/p"
+    }
+  ],
+  "Limpieza › Guantes de Limpieza": [
+    {
+      "nombre": "Guantes de Limpieza Chico Task",
+      "marca": "Task",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/598306/Guante-Tradicional-Chico-1-851774.jpg?v=637327134981100000",
+      "fuente_url": "https://www.disco.com.ar/guante-task-tradicional-chico-1-par/p"
+    },
+    {
+      "nombre": "Guantes de Limpieza Grande Task",
+      "marca": "Task",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/598307/Guante-Tradicional-Grande-1-851776.jpg?v=637327134984400000",
+      "fuente_url": "https://www.disco.com.ar/guante-task-tradicional-grande-1-par/p"
+    },
+    {
+      "nombre": "Guantes de Limpieza Defense Talle M Virulana",
+      "marca": "Virulana",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/698199/Guante-Defense-M-1-887864.jpg?v=637866922443200000",
+      "fuente_url": "https://www.disco.com.ar/guante-defense-m-2/p"
+    }
+  ],
+  "Limpieza › Insecticidas": [
+    {
+      "nombre": "Insecticida Moscas Mosquitos Liquido Electrico 32 Ml Raid",
+      "marca": "Raid",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/933245/7790520009746_0.jpg?v=639270696544400000",
+      "fuente_url": "https://www.disco.com.ar/insecticida-moscas-mosquitos-liquido-electrico-32-ml-raid/p"
+    },
+    {
+      "nombre": "Insecticida Moscas Mosquitos Sin Olor Aerosol 360 Ml Raid",
+      "marca": "Raid",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900118/Insecticida-Mata-Moscas-Y-Mosquitos-Sin-Olor-Aerosol-360ml-Raid-1-25005.jpg?v=639174064560330000",
+      "fuente_url": "https://www.disco.com.ar/insecticida-moscas-mosquitos-sin-olor-aerosol-360-ml-raid/p"
+    },
+    {
+      "nombre": "Insecticida Polillas Aero 360 Ml Raid",
+      "marca": "Raid",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900231/Insecticida-Mata-Polillas-Larvas-En-Aerosol-360cc-Raid-1-999922.jpg?v=639074797667330000",
+      "fuente_url": "https://www.disco.com.ar/insecticida-polillas-aero-360-ml-raid/p"
+    },
+    {
+      "nombre": "Insecticida Max Cucarachas Aero 360 Ml Raid",
+      "marca": "Raid",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900229/Insecticida-Max-Cucarachas-Ara-as-Aerosol-360cc-Raid-1-998051.jpg?v=639074797658400000",
+      "fuente_url": "https://www.disco.com.ar/insecticida-max-cucarachas-aero-360-ml-raid/p"
     }
   ],
   "Limpieza › Jabones para Ropa": [
@@ -1221,6 +1677,60 @@ export const PRODUCTOS_INICIALES = {
       "fuente_url": "https://www.disco.com.ar/lavandina-ayudin-original-4-l/p"
     }
   ],
+  "Limpieza › Limpiadores de Baño": [
+    {
+      "nombre": "Limpiador de Baño Antisarro 900 Ml Ayudin",
+      "marca": "Ayudín",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/683214/Limpiador-De-Ba-o-Ayud-n-Limpieza-Activa-envase-Econ-mico-900-Ml-1-880064.jpg?v=637768318176530000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-de-bano-ayudin-limpieza-activa-envase-economico-900-ml/p"
+    },
+    {
+      "nombre": "Limpiador Desinfectante Baño 450 Ml Lysoform",
+      "marca": "Lysoform",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900196/Limpiador-De-Ba-o-L-quido-Repuesto-450ml-Lysoform-1-888255.jpg?v=639074797518670000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-desinfectante-bano-450-ml-lysoform/p"
+    },
+    {
+      "nombre": "Limpiador para Baño Expert 500 Ml Cif",
+      "marca": "Cif",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/932330/Limpiador-Para-Ba-o-500-Ml-Gatillo-Cif-Expert-1-1000397.jpg?v=639259475343900000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-para-bano-500-ml-gatillo-cif-expert/p"
+    }
+  ],
+  "Limpieza › Limpiadores de Cocina": [
+    {
+      "nombre": "Limpiador Antigrasa Cocina 450 Ml Zorro",
+      "marca": "Zorro",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/892893/Limpiador-Antigrasa-Zorro-Cocina-Doy-Pack-450ml-1-941792.jpg?v=639003731378400000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-pequenas-superficies-antigrasa-450-ml-zorro/p"
+    },
+    {
+      "nombre": "Limpiador para Cocina Poder Activo 450 Ml Ayudin",
+      "marca": "Ayudín",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/683212/Limpiador-De-Cocina-Ayud-n-Poder-Activo-envase-Econ-mico-450-Ml-1-880062.jpg?v=637768318170270000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-de-cocina-ayudin-poder-activo-envase-economico-450-ml/p"
+    },
+    {
+      "nombre": "Limpiador Platinum Cocina Limón Repuesto 450 Ml Mr. Músculo",
+      "marca": "Mr. Músculo",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900195/Limpiador-Extra-Power-Lim-n-Repuesto-450ml-Mr-M-sculo-1-887575.jpg?v=639074797515030000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-platinum-cocina-limon-repuesto-450-ml-mr-musculo/p"
+    }
+  ],
+  "Limpieza › Limpiadores de Inodoros": [
+    {
+      "nombre": "Limpiador de Inodoros Gel Removedor de Sarro 500 Cc Harpic",
+      "marca": "Harpic",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/820737/Harpic-Gel-Limpiador-De-Inodoros-Desinfectante-100-Removedor-De-Sarro-500ml-1-31851.jpg?v=638500990124470000",
+      "fuente_url": "https://www.disco.com.ar/harpic-gel-limpiador-de-inodoros-desinfectante-100-removedor-de-sarro-500ml/p"
+    },
+    {
+      "nombre": "Limpiador de Inodoros Power Plus 500 Cc Harpic",
+      "marca": "Harpic",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/720264/Limpiador-Harpic-Gel-Plus-500-Ml-1-41348.jpg?v=637992095963530000",
+      "fuente_url": "https://www.disco.com.ar/harpic-gel-limpiador-de-inodoros-desinfectante-power-plus-original-500ml/p"
+    }
+  ],
   "Limpieza › Limpiadores de Pisos": [
     {
       "nombre": "Limpiador de Pisos Espíritu Play 1.8 Lts Poett",
@@ -1247,6 +1757,80 @@ export const PRODUCTOS_INICIALES = {
       "fuente_url": "https://www.disco.com.ar/limpiador-pisos-cif-bioactive-oxygel-botella-750-ml/p"
     }
   ],
+  "Limpieza › Limpiavidrios": [
+    {
+      "nombre": "Limpiavidrios Multiuso 900 Ml Cif",
+      "marca": "Cif",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/802881/Limpiador-Vidrios-Y-Mulitiuso-Cif-Expert-900-Ml-Doypack-1-1000411.jpg?v=638375620206030000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-vidrios-y-mulitiuso-900-ml-doypack-cif-expert/p"
+    },
+    {
+      "nombre": "Limpiavidrios y Multiuso 500 Ml Zorro",
+      "marca": "Zorro",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/892845/Limpiador-Zorro-Vidrios-Multiuso-Gatillo-500ml-1-881030.jpg?v=639003731188230000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-pequenas-superficies-vidrios-500-ml-zorro/p"
+    },
+    {
+      "nombre": "Limpiavidrios y Multiusos 500 Ml Mr Musculo",
+      "marca": "Mr. Músculo",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/933306/7790520018632_0.jpg?v=639270707079030000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-vidrios-y-multiusos-gatillo-500-cc-mr-musculo/p"
+    }
+  ],
+  "Limpieza › Paños": [
+    {
+      "nombre": "Paño Multiuso Mortimer Multicolor 3 U",
+      "marca": "Mortimer",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/565830/Paño-Mortimer-Multiuso-Multicolor-1-40038.jpg?v=637130136660700000",
+      "fuente_url": "https://www.disco.com.ar/pano-multiuso-mortimer-multicolor-3-u/p"
+    },
+    {
+      "nombre": "Paño Multiuso Ultra X3 Task",
+      "marca": "Task",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/889843/Pa-o-Multiuso-Ultra-X3-Task-2-1050136.jpg?v=638984721976330000",
+      "fuente_url": "https://www.disco.com.ar/pano-task-multiuso-ultra-x3/p"
+    }
+  ],
+  "Limpieza › Pastillas para Inodoros": [
+    {
+      "nombre": "Limpiador Inodoro Pastillas Lavanda 25 Gr Glade",
+      "marca": "Glade",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900256/Limpiador-Liquido-Multisuperficies-Floral-875ml-Glade-1-1020887.jpg?v=639074797773730000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-inodoro-pastillas-lavanda-25-gr-glade/p"
+    },
+    {
+      "nombre": "Limpiador Inodoro Pastillas Lavanda 25 Gr Pato",
+      "marca": "Pato",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900257/Limpiador-L-quido-Multisuperficies-Bosque-De-Pino-875ml-Glade-1-1020889.jpg?v=639074797778300000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-inodoro-pastillas-lavanda-25-gr-pato/p"
+    },
+    {
+      "nombre": "Limpiador Inodoro Discos Activos Marina 36 Ml Pato",
+      "marca": "Pato",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/933262/7790520010506_0.jpg?v=639270701030370000",
+      "fuente_url": "https://www.disco.com.ar/limpiador-inodoro-discos-activos-marina-36-ml-pato/p"
+    }
+  ],
+  "Limpieza › Perfumantes para Ropa": [
+    {
+      "nombre": "Perfumante Para Ropa Poett",
+      "marca": "Poett",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/564445/Perfumante-Para-Ropa-Poett-Suavidad-De-Bebe-250-Ml-1-22845.jpg?v=637118041560700000",
+      "fuente_url": "https://www.disco.com.ar/perfumante-para-ropa-poett-4/p"
+    },
+    {
+      "nombre": "Perfumante Para Ropa Querubin",
+      "marca": "Querubín",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/482045/Perfumante-Para-Ropa-Querubin-flores-Citricas-repuesto-doy-ml-250-1-32069.jpg?v=636719754449400000",
+      "fuente_url": "https://www.disco.com.ar/perfumante-para-ropa-querubin/p"
+    },
+    {
+      "nombre": "Perfumante Para Ropa Querubin 500ml",
+      "marca": "Querubín",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/210746/Perfumante-Para-Ropa-Querubin-500ml-1-47154.jpg?v=636383744325170000",
+      "fuente_url": "https://www.disco.com.ar/perfumante-para-ropa-querubin-500ml-2/p"
+    }
+  ],
   "Limpieza › Quitamanchas": [
     {
       "nombre": "Quitamanchas Prelavado 400 Ml Vanish",
@@ -1265,6 +1849,60 @@ export const PRODUCTOS_INICIALES = {
       "marca": "Vanish",
       "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/720234/Quitamanchas-Vanish-120-Gr-1-12817.jpg?v=637992095859070000",
       "fuente_url": "https://www.disco.com.ar/quitamanchas-vanish-polvo-rosa-120g/p"
+    }
+  ],
+  "Limpieza › Rejillas de Limpieza": [
+    {
+      "nombre": "Rejilla Económica Task",
+      "marca": "Task",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/204808/Rejilla-Task-Rejilla--task--EconOmica-1-41203.jpg?v=636383672963170000",
+      "fuente_url": "https://www.disco.com.ar/rejilla-task-economica/p"
+    },
+    {
+      "nombre": "Rejilla Bar Suiza",
+      "marca": "Suiza",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/886863/Rejilla-Bar-Suiza-1-1037470.jpg?v=638961393737000000",
+      "fuente_url": "https://www.disco.com.ar/rejilla-bar-suiza/p"
+    }
+  ],
+  "Limpieza › Repelentes": [
+    {
+      "nombre": "Repelente Para Mosquitos Aerosol 170 Cc Fuyi",
+      "marca": "Fuyi",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900223/Repelente-Para-Mosquitos-Aerosol-170cc-Fuyi-1-987523.jpg?v=639074797632670000",
+      "fuente_url": "https://www.disco.com.ar/repelente-para-mosquitos-aerosol-170-cc-fuyi/p"
+    },
+    {
+      "nombre": "Repelente Para Mosquitos Family Aerosol 170 Cc Off!",
+      "marca": "Off!",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900202/Repelente-Para-Mosquitos-Family-Aerosol-170cc-Off-1-891952.jpg?v=639074797544030000",
+      "fuente_url": "https://www.disco.com.ar/repelente-para-mosquitos-family-aerosol-170-cc-off/p"
+    },
+    {
+      "nombre": "Repelente Para Mosquitos Family Crema 196 Gr Off!",
+      "marca": "Off!",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/900201/Repelente-Para-Mosquitos-Family-Crema-196g-Off-1-891949.jpg?v=639074797539800000",
+      "fuente_url": "https://www.disco.com.ar/repelente-para-mosquitos-family-crema-196-gr-off/p"
+    }
+  ],
+  "Limpieza › Secadores de Piso": [
+    {
+      "nombre": "Secador de Pisos Secarrapid 40 Cm Virulana",
+      "marca": "Virulana",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/193900/Secarrapid-Virulana-X-40cm-Secarrapid-Virulana-X-40cm-s-e-un-1-1-30259.jpg?v=636383547974770000",
+      "fuente_url": "https://www.disco.com.ar/secador-piso-virulana-secarrapid-40cm/p"
+    },
+    {
+      "nombre": "Secador Piso Virulana Secarrapid 30cm",
+      "marca": "Virulana",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/193815/Secarrapid-Virulana-X-30cm-Secarrapid-Virulana-X-30cm-s-e-un-1-1-30174.jpg?v=636383546589500000",
+      "fuente_url": "https://www.disco.com.ar/secador-piso-virulana-secarrapid-30cm/p"
+    },
+    {
+      "nombre": "Secador Samantha",
+      "marca": "Samantha",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/293570/Secador-Samantha-Piso-50-Cm-172--1-U-1-178751.jpg?v=636389878733100000",
+      "fuente_url": "https://www.disco.com.ar/secador-samantha/p"
     }
   ],
   "Limpieza › Suavizantes": [
@@ -1291,6 +1929,14 @@ export const PRODUCTOS_INICIALES = {
       "marca": "Downy",
       "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/915621/Suavizante-Downy-Tropical-500ml-1-1058552.jpg?v=639148989893900000",
       "fuente_url": "https://www.disco.com.ar/suavizante-tropical-500-ml-downy/p"
+    }
+  ],
+  "Limpieza › Trapos de Piso": [
+    {
+      "nombre": "Trapo De Piso Task",
+      "marca": "Task",
+      "imagen_url": "https://jumboargentina.vteximg.com.br/arquivos/ids/293183/Trapo-De-Piso-Task-Gris-X-Un-1-177175.jpg?v=636389873507700000",
+      "fuente_url": "https://www.disco.com.ar/trapo-de-piso-task/p"
     }
   ],
   "Mascotas › Alimentos Húmedos para Gatos": [

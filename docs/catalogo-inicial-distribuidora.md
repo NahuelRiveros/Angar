@@ -318,3 +318,27 @@ La prueba de la selección real exige al menos 200 productos y comprueba
 que todos pueden cargarse con las familias y marcas existentes, sin
 omisiones ni duplicados al repetir la carga. No se ejecutó el seed sobre
 la base configurada del cliente.
+
+### Ampliación de Limpieza, Golosinas y Ferretería (20/10/2026)
+
+Se agregaron 96 productos (total: 350 en 107 categorías), priorizando el
+surtido del reporte del cliente. Fuente: catálogo público de Disco; cada
+entrada conserva su `fuente_url`. Solo marcas que ya existían: no se crearon
+marcas nuevas. Se revisaron a mano los resultados y se descartaron productos
+de otro rubro que coincidían por texto (acondicionadores "sellador",
+helados "balde", bloques de inodoro "adhesivo", suavizantes en "broches"),
+combos y presentaciones casi repetidas. Algunos nombres se corrigieron solo
+en formato (ej. "Rocklet´S" → "Rocklets") o para incluir la marca.
+
+| Familia | Productos | Categorías con productos | Siguen vacías |
+| --- | ---: | ---: | --- |
+| Limpieza | 89 | 31/34 | Palanganas, Broches para Ropa, Repasadores |
+| Golosinas | 29 | 9/9 | — |
+| Ferretería | 24 | 8/10 | Pinturas, Selladores |
+
+Las categorías vacías solo tenían en Disco marcas que no están en
+`MARCAS_INICIALES` (ej. Krea, Plaver, Fastix, Siloc). Para que el seed no
+omitiera los nuevos productos se asociaron 18 marcas existentes a las
+categorías donde se los encontró (ej. Task → Escobillones, Virulana →
+Bolsas de Residuos, Air Wick → Antihumedad). Las 96 imágenes se comprobaron
+por HTTPS (respuesta correcta y tipo de contenido de imagen).
