@@ -27,11 +27,10 @@ import { clienteActivo, brandConfig } from "./brand_config.js";
 const clientes = {
   gc: {
     textos: {
-      // El hero ya no tiene H1 propio — "Quiénes somos" (arriba del hero en
-      // home_page.jsx) es lo primero que se ve y ya trae el titular grande
-      // con la marca. Esta bajada es la única línea de texto del hero.
+      hero_titulo: "Todo para abastecer",
+      hero_titulo_resaltado: "tu negocio.",
       hero_subtitulo:
-        "Miles de productos, stock actualizado y despacho puntual — armá tu pedido online y nosotros nos encargamos del resto.",
+        "Explorá nuestros productos, encontrá ofertas y armá tu pedido mayorista o minorista en un solo lugar.",
       hero_cta_primario: "Ver catálogo",
       hero_cta_secundario: "Cómo pedir",
       // Sección "Quiénes somos" — el nombre de la empresa NO va acá adentro
@@ -117,6 +116,8 @@ const clientes = {
   // reusar/pisar la de "gc".
   moovs: {
     textos: {
+      hero_titulo: brandConfig.nombre,
+      hero_titulo_resaltado: brandConfig.tagline,
       hero_subtitulo: "Completá este texto en home_config.js antes de activar este cliente.",
       hero_cta_primario: "Conocé más",
       hero_cta_secundario: "Contacto",
@@ -150,3 +151,19 @@ export const HOME_VALOR = contenido.valor;
 export const HOME_COMO_PEDIR = contenido.comoPedir;
 export const HOME_PILARES = contenido.pilares;
 export const HOME_CONTACTOS = contenido.contactos;
+
+export const HOME_TIENDA = {
+  buscarPlaceholder: "Producto, marca o código",
+  promoEtiqueta: "Ofertas destacadas",
+  promoTitulo: "Oportunidades para tu próximo pedido.",
+  promoTexto: "Descubrí los productos con precio especial y sumalos a tu compra.",
+  promoCta: "Explorar ofertas",
+  catalogoEtiqueta: "Nuestro catálogo",
+  catalogoTitulo: "Todo en un solo pedido.",
+  catalogoTexto: "Descubrí nuestros productos y encontrá lo que necesitás para tu negocio o tu casa.",
+  catalogoCta: "Explorar productos",
+  familiasEtiqueta: "Encontrá lo que necesitás",
+  familiasTitulo: "Comprá por categoría",
+  productosEtiqueta: "Seguí explorando",
+  productosTitulo: "Productos para tu pedido",
+};

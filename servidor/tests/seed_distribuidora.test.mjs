@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { runInNewContext } from "node:vm";
 import { completarProductos } from "../src/database/seed/completar_productos_distribuidora.js";
 import { PRODUCTOS_INICIALES } from "../src/database/seed/seed_productos_distribuidora.js";
+import { PRODUCTOS_POR_FAMILIA } from "../src/database/seed/productos_distribuidora/index.js";
 import { claveMarca } from "../src/services/common/formato_nombre.js";
 import { completarFamilias, completarMarcas } from "../src/database/seed/completar_catalogo_distribuidora.js";
 
@@ -282,9 +283,40 @@ test("productos: toda la selección usa rutas y marcas del catálogo real y se p
       total++;
     }
   }
-  assert(total >= 200, "El catálogo inicial debe tener al menos 200 productos");
+  assert(total >= 400, "El catálogo inicial debe tener al menos 400 productos");
   assert.deepEqual(await ctx.completar(PRODUCTOS_INICIALES), { productos: total, existentes: 0, omitidos: [] });
   const anteriores = structuredClone(ctx.datos);
   assert.deepEqual(await ctx.completar(PRODUCTOS_INICIALES), { productos: 0, existentes: total, omitidos: [] });
   assert.deepEqual(ctx.datos, anteriores);
+});
+
+test("productos: todos los archivos por familia están incluidos una sola vez en el índice", async () => {
+  const carpeta = new URL("../src/database/seed/productos_distribuidora/", import.meta.url);
+  const archivos = (await readdir(carpeta)).filter((nombre) => nombre.endsWith(".js") && nombre !== "index.js");
+  const catalogos = Object.values(PRODUCTOS_POR_FAMILIA);
+  assert.equal(archivos.length, catalogos.length);
+  const incluidos = new Set();
+  for (const archivo of archivos) {
+    const modulo = await import(new URL(archivo, carpeta).href);
+    const listas = Object.entries(modulo).filter(([nombre]) => nombre.startsWith("PRODUCTOS_"));
+    assert.equal(listas.length, 1, archivo);
+    const lista = listas[0][1];
+    assert(catalogos.includes(lista), `Falta incluir ${archivo} en el índice`);
+    assert(!incluidos.has(lista), `Catálogo repetido: ${archivo}`);
+    incluidos.add(lista);
+  }
+  const rutas = new Set();
+  let cantidad = 0;
+  for (const [familia, catalogo] of Object.entries(PRODUCTOS_POR_FAMILIA)) {
+    assert(Object.keys(catalogo).length > 0, familia);
+    for (const [ruta, productos] of Object.entries(catalogo)) {
+      assert(ruta.startsWith(`${familia} › `), ruta);
+      assert(!rutas.has(ruta), `Categoría repetida: ${ruta}`);
+      assert(productos.length > 0, ruta);
+      rutas.add(ruta);
+      cantidad += productos.length;
+    }
+  }
+  assert.deepEqual([...rutas].sort(), Object.keys(PRODUCTOS_INICIALES).sort());
+  assert.equal(cantidad, Object.values(PRODUCTOS_INICIALES).flat().length);
 });

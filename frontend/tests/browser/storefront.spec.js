@@ -650,7 +650,7 @@ test("ofertas: carrusel en el home con precios de la zona y filtro en el catálo
     return route.fulfill({ json: { ok: true, data: [oferta], total: 1, pagina: 1, total_paginas: 1 } });
   });
   await page.goto("/");
-  const seccion = page.getByRole("region", { name: "Aprovechá los precios de esta semana" });
+  const seccion = page.getByRole("region", { name: "Ofertas para aprovechar" });
   await expect(seccion.getByText("Yerba en oferta")).toBeVisible();
   await expect(seccion.getByText("Precios para tu zona: Interior Norte")).toBeVisible();
   await expect(seccion.getByText("-20%")).toBeVisible();
@@ -662,4 +662,60 @@ test("ofertas: carrusel en el home con precios de la zona y filtro en el catálo
   await expect.poll(() => consultas.at(-1)?.oferta).toBe("1");
   await page.getByRole("button", { name: "Ofertas" }).click(); // vuelve al catálogo completo
   await expect.poll(() => consultas.at(-1)?.oferta).toBeUndefined();
+});
+
+test("home comercial: categorías, búsqueda y acceso a promociones", async ({ page }, info) => {
+  await mockApi(page);
+  const familias = ["Almacén", "Bebidas", "Limpieza", "Golosinas", "Mascotas", "Congelados"].map((nombre, i) => ({ id: i + 1, nombre, padre_id: null }));
+  await page.route("**/api/distribuidora/catalogos/categorias", (route) => route.fulfill({ json: { ok: true, data: [...familias, { id: 90, nombre: "Arroces", padre_id: 1 }] } }));
+  const seleccion = Array.from({ length: 8 }, (_, i) => ({ ...product, id: i + 1, nombre: ["Arroz largo fino", "Yerba mate", "Aceite de girasol", "Galletitas surtidas", "Harina 000", "Fideos secos", "Azúcar", "Sal fina"][i] }));
+  await page.route("**/api/distribuidora/productos?**", (route) => route.fulfill({ json: { ok: true, data: seleccion, total: 8, total_paginas: 1 } }));
+  await page.route("**/api/distribuidora/productos/ofertas**", (route) => route.fulfill({ json: { ok: true, data: seleccion.slice(0, 3).map((p) => ({ ...p, variedades: [{ ...p.variedades[0], precio_anterior: 1500 }] })) } }));
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Todo para abastecer\s*tu negocio\./);
+  const familiasRegion = page.getByRole("region", { name: "Comprá por categoría" });
+  await expect(familiasRegion.getByRole("link", { name: "Almacén", exact: true })).toBeVisible();
+  await expect(familiasRegion.getByRole("link", { name: "Arroces", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "Promociones destacadas" })).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("home-comercial.png"), fullPage: true });
+  await familiasRegion.getByRole("link", { name: "Almacén", exact: true }).click();
+  await expect(page).toHaveURL(/catalogo\?categoria=1$/);
+  await page.goto("/");
+  await page.getByRole("search", { name: "Buscar en el catálogo" }).getByRole("searchbox").fill("yerba & té");
+  await page.getByRole("button", { name: "Buscar", exact: true }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("yerba & té");
+  await page.goto("/");
+  await page.getByRole("complementary", { name: "Promociones destacadas" }).getByRole("link", { name: "Explorar ofertas", exact: true }).click();
+  await expect(page).toHaveURL(/catalogo\?oferta=1$/);
+});
+
+test("home comercial: sin ofertas ni productos mantiene navegación y contacto", async ({ page }) => {
+  await mockApi(page);
+  await page.route("**/api/distribuidora/productos/ofertas**", (route) => route.fulfill({ json: { ok: true, data: [] } }));
+  await page.route("**/api/distribuidora/productos?**", (route) => route.fulfill({ json: { ok: true, data: [], total: 0 } }));
+  await page.goto("/");
+  await expect(page.getByText("Estamos preparando el catálogo.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Ofertas para aprovechar" })).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "Promociones destacadas" })).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "Explorá el catálogo" }).getByRole("link", { name: "Explorar productos" })).toHaveAttribute("href", "/distribuidora/catalogo");
+  await expect(page.getByRole("heading", { name: "Hacé tu pedido", exact: true })).toBeVisible();
+  await noOverflow(page);
+});
+
+test("home comercial: permite reintentar si falla el catálogo", async ({ page }) => {
+  await mockApi(page);
+  let fallar = true;
+  await page.route("**/api/distribuidora/productos?**", (route) => route.fulfill(fallar
+    ? { status: 503, json: { ok: false, mensaje: "No disponible" } }
+    : { json: { ok: true, data: [product], total: 1 } }));
+  await page.route("**/api/distribuidora/productos/ofertas**", (route) => route.fulfill({ status: 503, json: { ok: false } }));
+  await page.goto("/");
+  const seccion = page.getByRole("region", { name: "Productos para tu pedido" });
+  await expect(seccion.getByText("No pudimos cargar los productos.")).toBeVisible({ timeout: 15000 });
+  fallar = false;
+  await seccion.getByRole("button", { name: "Reintentar", exact: true }).click();
+  await expect(seccion.getByRole("link", { name: "Arroz largo fino", exact: true })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Promociones destacadas" })).toHaveCount(0);
+  await noOverflow(page);
 });

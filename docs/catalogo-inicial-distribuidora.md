@@ -270,9 +270,9 @@ en memoria, sin leer el `.env` ni conectar a PostgreSQL. Incluyen la selección
 real contrastada con las listas de familias y marcas, repetición, bajas,
 renombres, asociación heredada, imágenes inválidas y errores de persistencia.
 
-### Ampliación a un mínimo de 200 productos
+### Primera ampliación a un mínimo de 200 productos
 
-El seed contiene 254 productos de las 21 familias existentes,
+La primera ampliación dejó 254 productos de las 21 familias existentes,
 72 categorías y 118 marcas. Conserva los 12 artículos iniciales y
 agrega 242 fichas del catálogo público de Disco. Cada entrada conserva su
 `fuente_url` específica para revisar el nombre, la presentación y la imagen.
@@ -342,3 +342,57 @@ omitiera los nuevos productos se asociaron 18 marcas existentes a las
 categorías donde se los encontró (ej. Task → Escobillones, Virulana →
 Bolsas de Residuos, Air Wick → Antihumedad). Las 96 imágenes se comprobaron
 por HTTPS (respuesta correcta y tipo de contenido de imagen).
+
+### Organización del catálogo por familia
+
+El catálogo actual contiene **524 productos**, **21 familias**, **149 categorías** y **200 marcas**. Se conservaron los 350 artículos anteriores y se agregaron 174 fichas revisadas del catálogo público de Disco. Las 174 imágenes nuevas respondieron por HTTPS con contenido y firma de imagen válidos. Cada producto conserva su ficha de origen en `fuente_url`.
+
+Los datos están en `servidor/src/database/seed/productos_distribuidora/`: un archivo JavaScript por familia y un `index.js` con las importaciones explícitas. El README de esa carpeta explica cómo agregar productos. `seed_productos_distribuidora.js` conserva la ejecución y reexporta la lista completa; el comando manual y la condición de tabla vacía no cambian.
+
+Las pruebas exigen al menos 400 productos y verifican que todos los archivos de familia estén incluidos, que no haya rutas duplicadas o fuera de su familia, que las marcas sean válidas y que repetir la carga no modifique datos. No se ejecutó el seed sobre la base del cliente.
+
+| Familia | Productos actuales |
+| --- | ---: |
+| Alimentos Naturales | 8 |
+| Almacén | 106 |
+| Bazar | 13 |
+| Bebés | 5 |
+| Bebidas | 48 |
+| Congelados | 13 |
+| Desayuno y Merienda | 23 |
+| Ferretería | 24 |
+| Fiambres | 12 |
+| Golosinas | 29 |
+| Higiene Personal | 34 |
+| Lácteos | 15 |
+| Librería | 11 |
+| Limpieza | 102 |
+| Mascotas | 8 |
+| Panificados | 7 |
+| Papelera | 11 |
+| Pastas Frescas y Tapas | 11 |
+| Perfumería | 25 |
+| Repostería | 10 |
+| Snacks | 9 |
+| **Total** | **524** |
+
+### Ampliación de Ferretería (21/10/2026)
+
+Se agregaron 29 artículos: Ferretería pasa de 24 a 53 y el catálogo completo de 524 a 553 productos. Se conservan todos los artículos anteriores y no se agregan ni modifican lácteos.
+
+| Categoría | Artículos agregados |
+| --- | ---: |
+| Lubricantes | 7 |
+| Electricidad | 8 |
+| Lámparas | 5 |
+| Selladores | 4 |
+| Herramientas | 4 |
+| Cintas | 1 |
+
+La selección incorpora WD-40 de 220 y 311 g, aceite multiuso Revigal, lubricantes Penetrit (multiuso, desoxidante y cadenas), cables unipolares Prysmian e IMSA, focos LED E27 cálidos y fríos Candela, precintos TACSA, selladores Suprabond, pinzas, cinta métrica y llave ajustable Stanley, y cinta de teflón Flustem.
+
+Se agregan siete marcas con asociaciones puntuales: Penetrit y Revigal a Lubricantes; Prysmian, IMSA y TACSA a Electricidad; Candela a Lámparas; Flustem a Cintas. Se reutilizan las categorías existentes y se cubre Selladores, antes vacía.
+
+Fuente: catálogo público de Easy Argentina. Cada entrada conserva nombre, marca, imagen HTTPS y ficha específica en fuente_url. Las imágenes se comprobaron por respuesta HTTP, tipo de contenido y firma JPEG/PNG/WebP. No se incorporan precios, stock ni códigos del comercio de origen.
+
+La ampliación modifica únicamente los archivos del seed. No se ejecutó la carga sobre la base configurada. El comando seed:distribuidora agrega los faltantes como inactivos y sin presentaciones; para venderlos hay que completar sus datos desde gestión.
