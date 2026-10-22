@@ -2,7 +2,7 @@ import { orderConfig } from "../../../../order_config.js";
 import ExcelJS from "exceljs";
 import {
   crearNotaPedido, listarPropias, listarTodas, obtenerDetalle,
-  cambiarEstado, registrarPago, anularPago,
+  cambiarEstado, cancelarPropia, registrarPago, anularPago,
 } from "../../services/distribuidora/nota_pedido_service.js";
 
 export async function crearNotaPedidoController(req, res) {
@@ -53,6 +53,28 @@ export async function cambiarEstadoController(req, res) {
       ok: false,
       codigo: error.codigo,
       mensaje: error.status ? error.message : "Error interno al actualizar el pedido",
+    });
+  }
+}
+
+export async function cancelarMiNotaController(req, res) {
+  try {
+    if (!/^\d+$/.test(req.params.id)) return res.status(404).json({ ok: false, mensaje: "Pedido no encontrado" });
+    const { motivo, volverAlCarrito } = req.body ?? {};
+    const resultado = await cancelarPropia(req.user.usuario_id, Number(req.params.id), { motivo, volverAlCarrito: volverAlCarrito === true });
+    if (!resultado) return res.status(404).json({ ok: false, mensaje: "Pedido no encontrado" });
+    return res.json({
+      ok: true,
+      mensaje: volverAlCarrito === true ? "Pedido cancelado. Sus productos volvieron a tu carrito." : "Pedido cancelado",
+      data: resultado.nota,
+      omitidos: resultado.omitidos,
+    });
+  } catch (error) {
+    console.error("Error al cancelar nota de pedido:", error);
+    return res.status(error.status ?? 500).json({
+      ok: false,
+      codigo: error.codigo,
+      mensaje: error.status ? error.message : "Error interno al cancelar el pedido",
     });
   }
 }

@@ -7,11 +7,12 @@ import { cartError, validQuantity, validateSnapshot } from "../common/cart_rules
 import { CarritoDistribuidoraItem, VariedadDistribuidora, ProductoDistribuidora } from "../../models/index.js";
 import { sequelize } from "../../database/sequelize.js";
 import { NotaPedido, NotaPedidoItem, NotaPedidoPago, Persona, Usuario } from "../../models/index.js";
-import { listarItemsCarrito } from "./carrito_distribuidora_service.js";
+import { listarItemsCarrito, reponerEnCarrito } from "./carrito_distribuidora_service.js";
 import { obtenerPerfil, perfilCompleto } from "./perfil_cliente_service.js";
 import { listaDeUsuario } from "./listas_precio_service.js";
 
 const ESTADOS_QUE_REQUIEREN_PAGO = orderConfig.paymentRequiredStates;
+const nombreItem = (item) => item.nombre_producto + (item.variedad_nombre ? " (" + item.variedad_nombre + ")" : "");
 
 // Consultas separadas por asociación evitan multiplicar items × cobros × historial.
 // Se cargan en lote para toda la página, sin una consulta por pedido.
@@ -137,6 +138,47 @@ export async function obtenerDetalle(id) {
   });
 }
 
+/**
+ * Resta (sentido -1) o devuelve (+1) las cantidades del pedido en las presentaciones
+ * que controlan stock. Bloquea las variedades en orden de id, como el envío del pedido,
+ * para que dos confirmaciones simultáneas no dejen el stock negativo.
+ */
+async function moverStock(nota, sentido, t) {
+  const items = await NotaPedidoItem.findAll({ where: { nota_pedido_id: nota.id }, transaction: t });
+  const porVariedad = new Map();
+  for (const item of items) {
+    if (!item.variedad_id) continue;
+    const previo = porVariedad.get(item.variedad_id);
+    porVariedad.set(item.variedad_id, {
+      cantidad: (previo?.cantidad ?? 0) + item.cantidad,
+      nombre: nombreItem(item),
+    });
+  }
+  if (!porVariedad.size) return;
+  const variedades = await VariedadDistribuidora.findAll({
+    where: { id: { [Op.in]: [...porVariedad.keys()] }, controla_stock: true },
+    transaction: t, lock: t.LOCK.UPDATE, order: [["id", "ASC"]],
+  });
+  if (sentido < 0) {
+    const faltantes = variedades.filter((v) => v.cantidad < porVariedad.get(v.id).cantidad)
+      .map((v) => `${porVariedad.get(v.id).nombre}: hay ${v.cantidad}, el pedido lleva ${porVariedad.get(v.id).cantidad}`);
+    if (faltantes.length) throw cartError("No hay stock suficiente para confirmar. " + faltantes.join("; ") + ".", 409, "STOCK_INSUFICIENTE");
+  }
+  for (const variedad of variedades) {
+    await variedad.increment("cantidad", { by: sentido * porVariedad.get(variedad.id).cantidad, transaction: t });
+  }
+}
+
+// Solo entrar o salir del grupo de estados con stock lo mueve: pasar de "en preparación"
+// a "entregado" no vuelve a descontar, y un pedido viejo sin descuento no devuelve nada.
+async function ajustarStockPorEstado(nota, estado, t) {
+  const antes = orderConfig.stockStates.includes(nota.estado);
+  const despues = orderConfig.stockStates.includes(estado);
+  if (!antes && despues) { await moverStock(nota, -1, t); return true; }
+  if (antes && !despues && nota.stock_descontado) { await moverStock(nota, 1, t); return false; }
+  return nota.stock_descontado;
+}
+
 export async function cambiarEstado(id, estado, { usuario_id, motivo = null, expectedState } = {}) {
   if (motivo != null && (typeof motivo !== "string" || motivo.length > 500)) throw cartError("El motivo puede tener hasta 500 caracteres.");
   return sequelize.transaction(async (t) => {
@@ -146,9 +188,37 @@ export async function cambiarEstado(id, estado, { usuario_id, motivo = null, exp
     if (expectedState !== nota.estado) throw cartError("Otro operador actualizó este pedido. Actualizá la lista.", 409);
     const problem = transitionProblem(nota.estado, estado, motivo, nota.estado_pago);
     if (problem) throw cartError(problem, 409);
+    const stock_descontado = await ajustarStockPorEstado(nota, estado, t);
     await NotaPedidoEstadoLog.create({ nota_pedido_id: nota.id, usuario_id, anterior: nota.estado, nuevo: estado, motivo: motivo?.trim() || null }, { transaction: t });
-    await nota.update({ estado, fecha_mod: new Date() }, { transaction: t });
+    await nota.update({ estado, stock_descontado, fecha_mod: new Date() }, { transaction: t });
     return nota;
+  });
+}
+
+/**
+ * El comprador cancela su propio pedido mientras el equipo no lo tomó
+ * (orderConfig.buyerCancelableStates). Con volverAlCarrito, sus productos vuelven
+ * al carrito al precio de hoy; lo que ya no está disponible se informa en `omitidos`.
+ * Toma el lock del carrito: un doble clic encuentra el pedido ya cancelado y no
+ * repone dos veces.
+ */
+export async function cancelarPropia(usuario_id, id, { motivo, volverAlCarrito = false } = {}) {
+  if (typeof motivo !== "string" || motivo.trim().length < 3 || motivo.length > 500) throw cartError("Contanos el motivo de la cancelación (3 a 500 caracteres).");
+  return withCart(usuario_id, async (carrito, t) => {
+    const nota = await NotaPedido.findOne({ where: { id, usuario_id }, transaction: t, lock: t.LOCK.UPDATE });
+    if (!nota) return null;
+    if (nota.estado === "cancelada") throw cartError("El pedido ya está cancelado.", 409, "PEDIDO_CANCELADO");
+    if (!orderConfig.buyerCancelableStates.includes(nota.estado)) throw cartError("Tu pedido ya está en proceso. Para cancelarlo, comunicate con nosotros.", 409, "PEDIDO_EN_PROCESO");
+    const stock_descontado = await ajustarStockPorEstado(nota, "cancelada", t);
+    await NotaPedidoEstadoLog.create({ nota_pedido_id: nota.id, usuario_id, anterior: nota.estado, nuevo: "cancelada", motivo: "Cancelado por el cliente: " + motivo.trim() }, { transaction: t });
+    await nota.update({ estado: "cancelada", stock_descontado, fecha_mod: new Date() }, { transaction: t });
+    if (!volverAlCarrito) return { nota, omitidos: [] };
+    const items = await NotaPedidoItem.findAll({ where: { nota_pedido_id: nota.id }, order: [["id", "ASC"]], transaction: t });
+    const omitidos = await reponerEnCarrito(carrito, items.map((i) => ({
+      producto_id: i.producto_id, variedad_id: i.variedad_id, cantidad: i.cantidad,
+      nombre: nombreItem(i),
+    })), t);
+    return { nota, omitidos };
   });
 }
 

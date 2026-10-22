@@ -67,6 +67,33 @@ async function addToCart(cart, payload, t) {
   }
   await cart.update({ fecha_mod: new Date() }, { transaction: t });
 }
+/**
+ * Vuelve a cargar las líneas de un pedido cancelado en el carrito ya bloqueado.
+ * Ajusta cada cantidad a lo disponible hoy; lo que no entra (o entra en parte)
+ * se devuelve para avisarle al comprador, en vez de abortar toda la reposición.
+ */
+export async function reponerEnCarrito(cart, lineas, t) {
+  const omitidos = [];
+  for (const { producto_id, variedad_id, cantidad, nombre } of lineas) {
+    const variant = producto_id && variedad_id
+      ? await VariedadDistribuidora.findOne({ where: { id: variedad_id, producto_id, fecha_baja: null }, transaction: t })
+      : null;
+    const enCarrito = variant ? (await CarritoDistribuidoraItem.findOne({ where: { carrito_id: cart.id, variedad_id }, transaction: t }))?.cantidad ?? 0 : 0;
+    const libre = !variant ? 0 : variant.controla_stock ? variant.cantidad - enCarrito : cantidad;
+    const aCargar = Math.min(cantidad, libre);
+    if (aCargar >= 1) {
+      try {
+        await addToCart(cart, { producto_id, variedad_id, cantidad: aCargar }, t);
+      } catch (error) {
+        if (!error.status) throw error;
+        omitidos.push({ nombre, pedido: cantidad, cargado: 0 });
+        continue;
+      }
+    }
+    if (aCargar < cantidad) omitidos.push({ nombre, pedido: cantidad, cargado: Math.max(0, aCargar) });
+  }
+  return omitidos;
+}
 export async function agregarItem(usuario_id, payload) {
   return withCart(usuario_id, async (cart, t) => { await addToCart(cart, payload, t); return listarItemsCarrito(cart.id, t); });
 }

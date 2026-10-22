@@ -2,7 +2,7 @@ import { orderConfig } from "../../../../order_config.js";
 import { Router } from "express";
 import {
   crearNotaPedidoController, listarMisNotasController, listarTodasController,
-  cambiarEstadoController, registrarPagoController, anularPagoController,
+  cambiarEstadoController, cancelarMiNotaController, registrarPagoController, anularPagoController,
   exportarNotaPedidoController,
 } from "../../controllers/distribuidora/nota_pedido_controller.js";
 import { listaCargaController } from "../../controllers/distribuidora/lista_carga_controller.js";
@@ -21,6 +21,8 @@ notaPedidoRouter.get("/lista-carga", requireRole(...ROLES_VENTAS), listaCargaCon
 
 notaPedidoRouter.get("/", listarMisNotasController);
 notaPedidoRouter.post("/", crearNotaPedidoController);
+// Sin rol de gestión: el servicio solo encuentra pedidos del usuario de la sesión.
+notaPedidoRouter.post("/:id/cancelar", cancelarMiNotaController);
 notaPedidoRouter.put("/:id/estado", requireRole(...ROLES_VENTAS), cambiarEstadoController);
 notaPedidoRouter.get("/:id/export", requireRole(...ROLES_VENTAS), exportarNotaPedidoController);
 notaPedidoRouter.post("/:id/pagos", requireRole(...ROLES_VENTAS), registrarPagoController);

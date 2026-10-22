@@ -3,20 +3,29 @@ export const orderConfig = {
   managementRoles: ["admin", "staff", "vendedor"],
   states: {
     pendiente: { label: "Recibido", tone: "warning" },
+    confirmado: { label: "Confirmado", tone: "accent" },
     en_curso: { label: "En preparación", tone: "info" },
     entregado: { label: "Entregado", tone: "success" },
     cancelada: { label: "Cancelado", tone: "danger" },
   },
   transitions: {
-    pendiente: ["en_curso", "cancelada"],
-    en_curso: ["pendiente", "entregado", "cancelada"],
+    pendiente: ["confirmado", "cancelada"],
+    confirmado: ["pendiente", "en_curso", "cancelada"],
+    en_curso: ["confirmado", "entregado", "cancelada"],
     entregado: ["en_curso"],
     cancelada: ["pendiente"],
   },
+  // El stock se descuenta al entrar a estos estados y vuelve al salir de ellos.
+  stockStates: ["confirmado", "en_curso", "entregado"],
+  // Antes de que el equipo lo revise, el comprador puede cancelarlo él mismo.
+  buyerCancelableStates: ["pendiente"],
   // Preparación/entrega y cobro son ejes independientes; permite venta a cuenta.
   // Para exigir un cobro previo en otro cliente: ["entregado"], por ejemplo.
   paymentRequiredStates: [],
-  reasonRequired: ["en_curso:pendiente", "entregado:en_curso", "cancelada:pendiente", "pendiente:cancelada", "en_curso:cancelada"],
+  reasonRequired: [
+    "confirmado:pendiente", "en_curso:confirmado", "entregado:en_curso", "cancelada:pendiente",
+    "pendiente:cancelada", "confirmado:cancelada", "en_curso:cancelada",
+  ],
   paymentMethods: [
     { value: "efectivo", label: "Efectivo" },
     { value: "transferencia", label: "Transferencia" },

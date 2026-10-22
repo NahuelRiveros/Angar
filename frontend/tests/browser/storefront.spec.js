@@ -470,10 +470,10 @@ test("staff gestiona notas y registra cobros con historial en cualquier pantalla
   await expect(page.getByRole("heading", { name: "Notas de pedido", exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Pedido #123/ }).click();
   await noOverflow(page);
-  await page.getByRole("button", { name: "Pasar a en preparación" }).click();
-  await expect(page.getByRole("dialog")).toContainText("Recibido → En preparación");
+  await page.getByRole("button", { name: "Pasar a confirmado" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Recibido → Confirmado");
   await page.getByRole("button", { name: "Confirmar cambio", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Historial de estados" })).toContainText("Recibido → En preparación");
+  await expect(page.getByRole("region", { name: "Historial de estados" })).toContainText("Recibido → Confirmado");
   await page.getByLabel(/^Importe recibido/).fill("1000");
   await page.getByLabel("Referencia u observación (opcional)").fill("Recibo 001");
   await page.getByRole("button", { name: "Registrar cobro recibido", exact: true }).click();
@@ -487,6 +487,52 @@ test("staff gestiona notas y registra cobros con historial en cualquier pantalla
   await noOverflow(page);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: info.outputPath("gestion-pedidos.png"), fullPage: true });
+});
+
+test("comprador cancela un pedido recibido y lo vuelve a armar; el confirmado no se puede cancelar", async ({ page }, info) => {
+  await mockApi(page);
+  await page.addInitScript(() => localStorage.setItem("token", "mock-session"));
+  const base = { estado_pago: "pendiente", monto_pagado: 0, fecha_alta: "2026-10-20T12:00:00Z", direccion: "Av. Prueba 123", localidad: "La Plata", provincia: "Buenos Aires", pagos: [] };
+  const pedidos = [
+    { ...base, id: 200, estado: "pendiente", total: 6000, items: [{ id: 1, cantidad: 5, nombre_producto: product.nombre, variedad_nombre: "Paquete 1 kg", subtotal: 6000 }] },
+    { ...base, id: 201, estado: "confirmado", total: 1200, items: [{ id: 2, cantidad: 1, nombre_producto: product.nombre, subtotal: 1200 }] },
+  ];
+  const cancelaciones = [];
+  let carrito = [];
+  await page.route("**/api/distribuidora/notas-pedido", (route) => route.fulfill({ json: { ok: true, data: pedidos } }));
+  await page.route("**/api/distribuidora/carrito", (route) => route.fulfill({ json: { ok: true, data: carrito } }));
+  await page.route("**/api/distribuidora/notas-pedido/200/cancelar", (route) => {
+    cancelaciones.push(route.request().postDataJSON());
+    // El primer intento simula que el equipo lo tomó justo antes; el segundo cancela.
+    if (cancelaciones.length === 1) return route.fulfill({ status: 409, json: { ok: false, mensaje: "Probá de nuevo en unos segundos." } });
+    pedidos[0].estado = "cancelada";
+    carrito = [{ item_id: 60, producto_id: 1, variedad_id: 11, cantidad: 3, nombre: product.nombre, variante: "Paquete 1 kg", precio: 1200, precio_al_agregar: 1200, stock_disponible: 3, activo: true, variante_disponible: true }];
+    return route.fulfill({ json: { ok: true, mensaje: "Pedido cancelado. Sus productos volvieron a tu carrito.", data: pedidos[0], omitidos: [{ nombre: "Arroz largo fino (Paquete 1 kg)", pedido: 5, cargado: 3 }] } });
+  });
+  await page.goto("/distribuidora/mis-pedidos");
+  await expect(page.getByRole("heading", { name: "Pedido #201" })).toBeVisible();
+  // Solo el pedido recibido ofrece cancelar; el confirmado ya está en manos del equipo.
+  await expect(page.getByRole("button", { name: "Cancelar o cambiar pedido" })).toHaveCount(1);
+  await page.getByRole("button", { name: "Cancelar o cambiar pedido" }).click();
+  const dialogo = page.getByRole("dialog");
+  await expect(dialogo).toContainText("Cancelar pedido #200");
+  await dialogo.getByRole("button", { name: "Cancelar y volver a armar" }).click();
+  await expect(dialogo).toContainText("Contanos el motivo");
+  expect(cancelaciones).toHaveLength(0);
+  await dialogo.getByLabel("¿Por qué lo cancelás?").fill("Me olvidé el azúcar");
+  await dialogo.getByRole("button", { name: "Cancelar y volver a armar" }).click();
+  await expect(dialogo.getByRole("alert")).toContainText("Probá de nuevo en unos segundos.");
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("cancelar-pedido-dialogo.png") });
+  await dialogo.getByRole("button", { name: "Cancelar y volver a armar" }).click();
+  await expect(dialogo).toBeHidden();
+  expect(cancelaciones[1]).toEqual({ motivo: "Me olvidé el azúcar", volverAlCarrito: true });
+  const aviso = page.getByRole("status").filter({ hasText: "Pedido cancelado" });
+  await expect(aviso).toContainText("Arroz largo fino (Paquete 1 kg): pediste 5, cargamos 3");
+  await expect(aviso.getByRole("link", { name: "Ir al carrito" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancelar o cambiar pedido" })).toHaveCount(0);
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("cancelar-pedido.png"), fullPage: true });
 });
 
 const CATEGORIAS = [

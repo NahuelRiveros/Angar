@@ -15,7 +15,7 @@ const { sequelize, DB_SCHEMA } = await import("../src/database/sequelize.js");
 const models = await import("../src/models/index.js");
 const { registrarCliente, login, loginConGoogle } = await import("../src/services/usuarios/auth_service.js");
 const { obtenerCarrito, agregarItem, fusionarCarrito, actualizarCantidad, vaciarCarrito } = await import("../src/services/distribuidora/carrito_distribuidora_service.js");
-const { crearNotaPedido, cambiarEstado, registrarPago, anularPago, listarTodas } = await import("../src/services/distribuidora/nota_pedido_service.js");
+const { crearNotaPedido, cambiarEstado, cancelarPropia, registrarPago, anularPago, listarTodas } = await import("../src/services/distribuidora/nota_pedido_service.js");
 const { createResetToken } = await import("../src/services/common/auth_tokens.js");
 const { resetPassword } = await import("../src/services/usuarios/password_recovery_service.js");
 const { env } = await import("../src/configuracion_servidor/env.js");
@@ -83,15 +83,21 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
     await t.test("gestión: transiciones, auditoría y cobro independiente", async () => {
       const note = await models.NotaPedido.findOne();
       await assert.rejects(cambiarEstado(note.id, "entregado", { usuario_id: id, expectedState: "pendiente" }), /permitido/);
-      await cambiarEstado(note.id, "en_curso", { usuario_id: id, expectedState: "pendiente" });
+      await assert.rejects(cambiarEstado(note.id, "en_curso", { usuario_id: id, expectedState: "pendiente" }), /permitido/);
+      await cambiarEstado(note.id, "confirmado", { usuario_id: id, expectedState: "pendiente" });
+      // Confirmar descuenta las 2 unidades del pedido; avanzar dentro de los estados con stock no vuelve a descontar.
+      assert.equal((await variant.reload()).cantidad, 98);
+      assert.equal((await note.reload()).stock_descontado, true);
+      await cambiarEstado(note.id, "en_curso", { usuario_id: id, expectedState: "confirmado" });
       await assert.rejects(cambiarEstado(note.id, "cancelada", { usuario_id: id, expectedState: "en_curso" }), /motivo/);
       await assert.rejects(cambiarEstado(note.id, "entregado", { usuario_id: id, expectedState: "pendiente" }), /operador/);
       await cambiarEstado(note.id, "entregado", { usuario_id: id, expectedState: "en_curso" });
+      assert.equal((await variant.reload()).cantidad, 98);
       assert.equal((await note.reload()).estado_pago, "pendiente");
-      assert.equal(await models.NotaPedidoEstadoLog.count(), 3);
+      assert.equal(await models.NotaPedidoEstadoLog.count(), 4);
       const list = await listarTodas({ q: "#" + note.id, estado: "entregado", estado_pago: "pendiente" });
       assert.equal(list.total, 1);
-      assert.equal(list.data[0].historial_estados.length, 3);
+      assert.equal(list.data[0].historial_estados.length, 4);
       assert.equal((await listarTodas({ q: "NadieExiste" })).total, 0);
     });
     await t.test("cobros: reintentos, saldo máximo y anulación auditada", async () => {
@@ -115,6 +121,9 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       await cambiarEstado(note.id, "en_curso", { usuario_id: id, expectedState: "entregado", motivo: "Corregir entrega" });
       await cambiarEstado(note.id, "cancelada", { usuario_id: id, expectedState: "en_curso", motivo: "Solicita cliente" });
       await assert.rejects(registrarPago(note.id, { ...payment, key: randomUUID(), monto: 1 }), /Reabrí/);
+      // Cancelar un pedido que había descontado devuelve el stock una sola vez.
+      assert.equal((await variant.reload()).cantidad, 100);
+      assert.equal((await note.reload()).stock_descontado, false);
     });
     await t.test("un cambio concurrente se serializa con el envío", async () => {
       await agregarItem(id, payload);
@@ -125,6 +134,78 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       ]);
       // O se envió el snapshot y el cambio no encuentra ítem, o el envío detectó el cambio.
       assert.equal(results.filter((r) => r.status === "rejected").length, 1);
+    });
+    // Arma un pedido de una sola línea con el carrito real de Ana.
+    async function pedirAna(producto, variedad, cantidad) {
+      await vaciarCarrito(id);
+      await agregarItem(id, { producto_id: producto.id, variedad_id: variedad.id, cantidad });
+      return crearNotaPedido(id, { key: randomUUID(), expectedItems: await obtenerCarrito(id) });
+    }
+    const productoEscaso = await models.ProductoDistribuidora.create({ categoria_id: category.id, nombre: "Té en hebras" });
+    const escasa = await models.VariedadDistribuidora.create({ producto_id: productoEscaso.id, nombre: "500 g", precio: 50, controla_stock: true, cantidad: 5 });
+    await t.test("stock: confirmar descuenta, sin stock no confirma y los pedidos viejos no devuelven", async () => {
+      // Los dos pedidos entran porque enviar no reserva; el segundo choca al confirmar.
+      const a = await pedirAna(productoEscaso, escasa, 4);
+      const b = await pedirAna(productoEscaso, escasa, 4);
+      await cambiarEstado(a.id, "confirmado", { usuario_id: id, expectedState: "pendiente" });
+      assert.equal((await escasa.reload()).cantidad, 1);
+      await assert.rejects(cambiarEstado(b.id, "confirmado", { usuario_id: id, expectedState: "pendiente" }), /stock suficiente.*Té en hebras \(500 g\): hay 1, el pedido lleva 4/);
+      assert.equal((await b.reload()).estado, "pendiente");
+      assert.equal((await escasa.reload()).cantidad, 1);
+      // Volver a "Recibido" devuelve lo descontado y libera el stock para el otro pedido.
+      await assert.rejects(cambiarEstado(a.id, "pendiente", { usuario_id: id, expectedState: "confirmado" }), /motivo/);
+      await cambiarEstado(a.id, "pendiente", { usuario_id: id, expectedState: "confirmado", motivo: "Revisar precios" });
+      assert.equal((await escasa.reload()).cantidad, 5);
+      await cambiarEstado(b.id, "confirmado", { usuario_id: id, expectedState: "pendiente" });
+      assert.equal((await escasa.reload()).cantidad, 1);
+      // Confirmaciones simultáneas del stock restante: solo una puede pasar.
+      await escasa.update({ cantidad: 4 });
+      const c = await pedirAna(productoEscaso, escasa, 3);
+      await cambiarEstado(a.id, "cancelada", { usuario_id: id, expectedState: "pendiente", motivo: "Duplicado" });
+      const d = await pedirAna(productoEscaso, escasa, 3);
+      const resultados = await Promise.allSettled([c, d].map((n) => cambiarEstado(n.id, "confirmado", { usuario_id: id, expectedState: "pendiente" })));
+      assert.equal(resultados.filter((r) => r.status === "rejected").length, 1);
+      assert.equal((await escasa.reload()).cantidad, 1);
+      // Pedido en preparación de antes de este cambio: nunca descontó, cancelarlo no suma stock.
+      const viejo = await models.NotaPedido.create({ usuario_id: id, estado: "en_curso", total: 50 });
+      await models.NotaPedidoItem.create({ nota_pedido_id: viejo.id, producto_id: productoEscaso.id, variedad_id: escasa.id, nombre_producto: "Té en hebras", precio_unitario: 50, cantidad: 1, subtotal: 50 });
+      await cambiarEstado(viejo.id, "cancelada", { usuario_id: id, expectedState: "en_curso", motivo: "Pedido viejo" });
+      assert.equal((await escasa.reload()).cantidad, 1);
+    });
+    await t.test("comprador: cancela en Recibido, vuelve a armar una sola vez y no toca pedidos ajenos ni en proceso", async () => {
+      const nota = await pedirAna(product, variant, 3);
+      const otro = await registrarCliente({ nombre: "Beto", apellido: "Ajeno", email: "beto@example.test", password: "Clave1234" });
+      assert.equal(await cancelarPropia(otro.usuario_id, nota.id, { motivo: "No es mío" }), null);
+      await assert.rejects(cancelarPropia(id, nota.id, { motivo: " " }), /motivo/);
+      await variant.update({ precio: 120 });
+      // Doble clic: cualquiera de los dos puede ganar el lock, el otro encuentra el pedido cancelado.
+      const intentos = await Promise.allSettled([
+        cancelarPropia(id, nota.id, { motivo: "Me equivoqué", volverAlCarrito: true }),
+        cancelarPropia(id, nota.id, { motivo: "Me equivoqué", volverAlCarrito: true }),
+      ]);
+      const ok = intentos.filter((r) => r.status === "fulfilled");
+      const rechazos = intentos.filter((r) => r.status === "rejected");
+      assert.equal(ok.length, 1);
+      assert.deepEqual(ok[0].value.omitidos, []);
+      assert.match(rechazos[0].reason.message, /ya está cancelado/);
+      const carrito = await obtenerCarrito(id);
+      assert.equal(carrito.length, 1);
+      assert.equal(carrito[0].cantidad, 3, "el doble clic no repone dos veces");
+      assert.equal(carrito[0].precio, 120, "vuelve con el precio de hoy");
+      const log = await models.NotaPedidoEstadoLog.findOne({ where: { nota_pedido_id: nota.id, nuevo: "cancelada" } });
+      assert.match(log.motivo, /^Cancelado por el cliente: Me equivoqué$/);
+      // Lo que ya no alcanza vuelve ajustado y se informa.
+      const escasaNota = await pedirAna(productoEscaso, escasa, 1);
+      await escasa.update({ cantidad: 0 });
+      await vaciarCarrito(id);
+      const { omitidos } = await cancelarPropia(id, escasaNota.id, { motivo: "Cambio de idea", volverAlCarrito: true });
+      assert.deepEqual(omitidos, [{ nombre: "Té en hebras (500 g)", pedido: 1, cargado: 0 }]);
+      assert.equal((await obtenerCarrito(id)).length, 0);
+      // Una vez confirmado ya no lo cancela el comprador.
+      const confirmada = await pedirAna(product, variant, 1);
+      await cambiarEstado(confirmada.id, "confirmado", { usuario_id: id, expectedState: "pendiente" });
+      await assert.rejects(cancelarPropia(id, confirmada.id, { motivo: "Tarde" }), /en proceso/);
+      assert.equal((await confirmada.reload()).estado, "confirmado");
     });
     await t.test("HTTP: cliente no gestiona notas y staff sí, con permisos actuales", async () => {
       const express = (await import("express")).default;
@@ -143,7 +224,10 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
         assert.equal((await fetch(url + "/todas", { headers })).status, 403);
         assert.equal((await fetch(url + "/1/estado", { headers, method: "PUT", body: JSON.stringify({ estado: "en_curso", expectedState: "pendiente" }) })).status, 403);
         assert.equal((await fetch(url, { headers })).status, 200);
-        const staff = await models.Rol.create({ codigo: "staff", descripcion: "Staff" });
+        const cancelar = (ruta) => fetch(url + ruta, { headers, method: "POST", body: JSON.stringify({ motivo: "Prueba" }) });
+        assert.equal((await cancelar("/999999/cancelar")).status, 404);
+        assert.equal((await cancelar("/abc/cancelar")).status, 404);
+        const staff =await models.Rol.create({ codigo: "staff", descripcion: "Staff" });
         await models.UsuarioRol.create({ usuario_id: id, rol_id: staff.id });
         const response = await fetch(url + "/todas", { headers });
         assert.equal(response.status, 200);

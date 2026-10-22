@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createResetToken, verifyResetToken, passwordVersion } from "../src/services/common/auth_tokens.js";
 import { validQuantity, validateSnapshot } from "../src/services/common/cart_rules.js";
+import { orderConfig, transitionProblem } from "../../order_config.js";
 import { safeReturnTo } from "../../frontend/src/controls/acceso/return_to.js";
 import { readGuestCart, mergeGuestItems } from "../../frontend/src/controls/carrito/guest_storage.js";
 import { filtrarNavbarPorRol } from "../../frontend/src/controls/layout/navbar/navbar_permissions.js";
@@ -54,6 +55,18 @@ test("stock, enteros y snapshot protegen el envío ante datos obsoletos", () => 
   assert.doesNotThrow(() => validateSnapshot(items, items));
   assert.throws(() => validateSnapshot(items, [{ ...items[0], precio: 400 }]), /precio|cantidad/);
   assert.throws(() => validateSnapshot(items, []));
+});
+test("pedido: se confirma antes de preparar, retroceder pide motivo y el comprador solo cancela lo recibido", () => {
+  assert.match(transitionProblem("pendiente", "en_curso", null, "pendiente"), /permitido/);
+  assert.equal(transitionProblem("pendiente", "confirmado", null, "pendiente"), null);
+  assert.equal(transitionProblem("confirmado", "en_curso", null, "pendiente"), null);
+  for (const [desde, hacia] of [["confirmado", "pendiente"], ["en_curso", "confirmado"], ["confirmado", "cancelada"]]) {
+    assert.match(transitionProblem(desde, hacia, "", "pendiente"), /motivo/, `${desde} → ${hacia}`);
+    assert.equal(transitionProblem(desde, hacia, "Falta stock", "pendiente"), null);
+  }
+  // Todo estado alcanzable descuenta stock salvo los dos que no lo tienen comprometido.
+  assert.deepEqual(Object.keys(orderConfig.states).filter((e) => !orderConfig.stockStates.includes(e)), ["pendiente", "cancelada"]);
+  assert.deepEqual(orderConfig.buyerCancelableStates, ["pendiente"]);
 });
 test("carrito invitado combina variantes sin superar stock y descarta almacenamiento corrupto", () => {
   const item = { variedad_id: 1, cantidad: 2, stock_disponible: 3 };

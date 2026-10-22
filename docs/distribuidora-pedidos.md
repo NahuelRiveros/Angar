@@ -6,16 +6,16 @@
 2. El carrito invitado se conserva en ese navegador. Al ingresar o registrarse se combina con el carrito de la cuenta.
 3. Antes de enviar se completan los datos de entrega y se revisan productos, cantidades y total.
 4. El servidor vuelve a validar disponibilidad, precios y cantidades. Crea una nota con un snapshot y vacía el carrito en la misma transacción.
-5. El equipo encuentra la nota en **Distribuidora · Gestión → Notas de pedido**, confirma disponibilidad, coordina entrega y registra los cobros recibidos.
-6. El cliente consulta el estado y saldo en **Mi cuenta → Mis pedidos**.
+5. El equipo encuentra la nota en **Distribuidora · Gestión → Notas de pedido**, revisa disponibilidad, precios y entrega y la pasa a **Confirmado**. Después coordina la entrega y registra los cobros recibidos.
+6. El cliente consulta el estado y saldo en **Mi cuenta → Mis pedidos**. Mientras la nota siga en **Recibido** puede cancelarla indicando un motivo, o elegir **Cancelar y volver a armar**: sus productos vuelven al carrito al precio de hoy, ajustados a lo disponible, y se le informa lo que no entró. No puede editar una nota enviada.
 
 No hay pasarela de pago. Registrar un cobro declara dinero ya recibido por efectivo, transferencia u otro medio; anular ese registro no devuelve dinero. Los registros se conservan para auditoría.
 
-La nota **no reserva ni descuenta stock**. La disponibilidad se comprueba al agregar y enviar, pero debe confirmarla el equipo. El descuento de inventario no forma parte de este flujo. Los importes y datos de entrega de una nota enviada permanecen iguales aunque se edite después el producto o el perfil.
+Enviar la nota **no reserva stock**: la disponibilidad se comprueba al agregar y enviar. El stock de las presentaciones con “controla stock” **se descuenta al pasar a Confirmado** y se devuelve si la nota sale de los estados con stock (`stockStates`: Confirmado, En preparación, Entregado) volviendo a Recibido o cancelándose. Si no alcanza, la confirmación se rechaza indicando qué falta. `nota_pedido.stock_descontado` registra si la nota tiene stock restado; las notas anteriores a este cambio quedan en `false`, así que cancelarlas no devuelve stock que nunca se descontó. Los importes y datos de entrega de una nota enviada permanecen iguales aunque se edite después el producto o el perfil.
 
 ## Estados y cobros
 
-El recorrido habitual es **Recibido → En preparación → Entregado**. Un pedido recibido o en preparación puede cancelarse. Se permite corregir una entrega volviendo a preparación y reabrir una cancelación volviendo a recibido.
+El recorrido habitual es **Recibido → Confirmado → En preparación → Entregado**. Un pedido recibido, confirmado o en preparación puede cancelarse. Se permite volver un paso atrás (Confirmado → Recibido, En preparación → Confirmado, Entregado → En preparación) y reabrir una cancelación volviendo a recibido. El comprador solo cancela en los estados de `buyerCancelableStates` (Recibido); su motivo queda en el historial como “Cancelado por el cliente: …”.
 
 Retroceder, cancelar o reabrir requiere motivo. Se guarda estado anterior/nuevo, fecha y usuario. Si dos operadores actúan a la vez, se verifica el estado que vio cada uno antes de modificarlo.
 
@@ -65,7 +65,9 @@ La gestión consulta páginas de hasta 50 notas, permite buscar por número, nom
 
 El backend incorpora `nota_pedido_estado_log`, `operacion_carrito` y las columnas `metodo` y `anulacion_motivo` de `nota_pedido_pago`, además de la presentación y los datos de entrega usados por el snapshot. El bootstrap existente sincroniza los modelos al detectar cambios. Reiniciar el backend y publicar frontend/backend de la misma versión después de verificar la actualización contra una copia de la base. No se ejecutó bootstrap sobre la base de negocio durante estas pruebas.
 
-Los permisos de gestión predeterminados son `admin`, `staff` y `vendedor`, aplicados tanto en rutas como en API. El catálogo público puede deshabilitarse en config; agregar, enviar y gestionar requieren las autorizaciones correspondientes.
+El backend también incorpora `nota_pedido.stock_descontado` (booleano, `false` por defecto), que el bootstrap agrega al detectar el cambio del modelo.
+
+Los permisos de gestión predeterminados son `admin`, `staff` y `vendedor`, aplicados tanto en rutas como en API. `POST /distribuidora/notas-pedido/:id/cancelar` no exige rol: solo encuentra notas del usuario de la sesión. El catálogo público puede deshabilitarse en config; agregar, enviar y gestionar requieren las autorizaciones correspondientes.
 
 Recuperar una contraseña usa un enlace temporal y de un solo uso, no un email como autorización para reemplazarla. Configurar `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` y `VERCEL_FRONTEND_URL`. Sin SMTP el formulario informa indisponibilidad. El envío real de email necesita validarse con el proveedor de la instalación. Cambiar contraseña invalida sesiones anteriores; los tokens antiguos sin versión de contraseña requieren iniciar sesión nuevamente.
 

@@ -16,6 +16,10 @@ export const NotaPedido = defineModel("NotaPedido", {
   },
 
   estado: { type: DataTypes.STRING(20), allowNull: false, defaultValue: "pendiente" },
+  // true mientras sus cantidades estén restadas del stock (al confirmar). Los
+  // pedidos anteriores a este cambio quedan en false: cancelarlos no devuelve
+  // stock que nunca se descontó.
+  stock_descontado: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
 
   // "pendiente" | "parcial" | "pagado" — derivado de la suma de pagos
   // activos en NotaPedidoPago, nunca se escribe directo salvo al crear.

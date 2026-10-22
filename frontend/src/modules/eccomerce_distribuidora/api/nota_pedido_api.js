@@ -10,6 +10,12 @@ export async function getMisNotasPedido() {
   return data.data;
 }
 
+// El comprador cancela su pedido; con volverAlCarrito sus productos vuelven al carrito.
+export async function cancelarMiNotaPedido(id, { motivo, volverAlCarrito = false } = {}) {
+  const { data } = await http.post(`/distribuidora/notas-pedido/${id}/cancelar`, { motivo, volverAlCarrito });
+  return data;
+}
+
 // Gestión: permisos definidos en order_config.js
 export async function getTodasLasNotasPedido(params) {
   const { data } = await http.get("/distribuidora/notas-pedido/todas", { params });

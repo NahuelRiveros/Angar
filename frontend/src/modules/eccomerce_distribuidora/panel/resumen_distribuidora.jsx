@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ClipboardList, PackageX, Timer, TrendingUp, Wallet } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, ClipboardList, PackageX, Timer, TrendingUp, Wallet } from "lucide-react";
 import { useAuth } from "../../../auth/auth_context.jsx";
 import { ESTADOS, orderConfig } from "../../../config/order_config.js";
 import { money } from "../../../controls/pedidos/order_format.js";
@@ -23,9 +23,13 @@ function Pedidos({ pedidos }) {
   return (
     <section aria-labelledby="panel-pedidos" className="space-y-4">
       <h2 id="panel-pedidos" className="text-lg font-bold text-(--kt-ink)">{por_cobrar ? "Pedidos y cobros" : "Pedidos"}</h2>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* auto-fit: el vendedor ve 3 tarjetas y el admin 5, sin huecos en ninguno de los dos. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]">
         <TarjetaEnlace to={`${RUTA_NOTAS}?estado=pendiente`}>
           <AdminStatCard icon={ClipboardList} iconBg="bg-amber-50" iconColor="text-amber-700" label={`${ESTADOS.pendiente?.label ?? "Recibidos"} (para atender)`} value={por_estado.pendiente ?? 0} sub="Ver pedidos recibidos" />
+        </TarjetaEnlace>
+        <TarjetaEnlace to={`${RUTA_NOTAS}?estado=confirmado`}>
+          <AdminStatCard icon={ClipboardCheck} iconBg="bg-violet-50" iconColor="text-violet-700" label={ESTADOS.confirmado?.label ?? "Confirmados"} value={por_estado.confirmado ?? 0} sub="Ver pedidos para preparar" />
         </TarjetaEnlace>
         <TarjetaEnlace to={`${RUTA_NOTAS}?estado=en_curso`}>
           <AdminStatCard icon={Timer} iconBg="bg-blue-50" iconColor="text-blue-700" label={ESTADOS.en_curso?.label ?? "En preparación"} value={por_estado.en_curso ?? 0} sub="Ver pedidos en preparación" />
