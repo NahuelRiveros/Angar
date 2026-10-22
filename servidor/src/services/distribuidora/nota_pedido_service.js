@@ -10,6 +10,7 @@ import { NotaPedido, NotaPedidoItem, NotaPedidoPago, Persona, Usuario } from "..
 import { listarItemsCarrito, reponerEnCarrito } from "./carrito_distribuidora_service.js";
 import { obtenerPerfil, perfilCompleto } from "./perfil_cliente_service.js";
 import { listaDeUsuario } from "./listas_precio_service.js";
+import { avisarPedidoNuevo, avisarCambioEstado, avisarCancelacionCliente } from "./avisos_pedido_service.js";
 
 const ESTADOS_QUE_REQUIEREN_PAGO = orderConfig.paymentRequiredStates;
 const nombreItem = (item) => item.nombre_producto + (item.variedad_nombre ? " (" + item.variedad_nombre + ")" : "");
@@ -55,7 +56,9 @@ async function recomputarEstadoPago(nota_pedido_id, t) {
  */
 export async function crearNotaPedido(usuario_id, { notas = null, expectedItems, key } = {}) {
   if (notas != null && (typeof notas !== "string" || notas.length > 2000)) throw cartError("Las notas pueden tener hasta 2000 caracteres.");
-  return withCart(usuario_id, async (carrito, t) => idempotent(usuario_id, "order:" + key, { notas, expectedItems }, t, async () => {
+  // Solo la ejecución que crea la nota avisa; un reintento con la misma clave no repite mails.
+  let creada = null;
+  const resultado = await withCart(usuario_id, async (carrito, t) => idempotent(usuario_id, "order:" + key, { notas, expectedItems }, t, async () => {
     const perfil = await obtenerPerfil(usuario_id);
     if (!perfilCompleto(perfil)) throw cartError("Completá tus datos (nombre, apellido, celular y entrega) antes de enviar el pedido.", 400, "PERFIL_INCOMPLETO");
     // Bloquear precios y disponibilidad hasta completar el snapshot. El pedido no reserva stock.
@@ -91,8 +94,11 @@ export async function crearNotaPedido(usuario_id, { notas = null, expectedItems,
       cantidad: i.cantidad, subtotal: Math.round(i.precio * 100) * i.cantidad / 100,
     })), { transaction: t });
     await CarritoDistribuidoraItem.destroy({ where: { carrito_id: carrito.id }, transaction: t });
+    creada = nota.id;
     return nota;
   }));
+  if (creada) avisarPedidoNuevo(creada);
+  return resultado;
 }
 
 export async function listarPropias(usuario_id) {
@@ -181,7 +187,8 @@ async function ajustarStockPorEstado(nota, estado, t) {
 
 export async function cambiarEstado(id, estado, { usuario_id, motivo = null, expectedState } = {}) {
   if (motivo != null && (typeof motivo !== "string" || motivo.length > 500)) throw cartError("El motivo puede tener hasta 500 caracteres.");
-  return sequelize.transaction(async (t) => {
+  let cambio = false;
+  const resultado = await sequelize.transaction(async (t) => {
     const nota = await NotaPedido.findByPk(id, { transaction: t, lock: t.LOCK.UPDATE });
     if (!nota) return null;
     if (nota.estado === estado) return nota;
@@ -191,8 +198,11 @@ export async function cambiarEstado(id, estado, { usuario_id, motivo = null, exp
     const stock_descontado = await ajustarStockPorEstado(nota, estado, t);
     await NotaPedidoEstadoLog.create({ nota_pedido_id: nota.id, usuario_id, anterior: nota.estado, nuevo: estado, motivo: motivo?.trim() || null }, { transaction: t });
     await nota.update({ estado, stock_descontado, fecha_mod: new Date() }, { transaction: t });
+    cambio = true;
     return nota;
   });
+  if (cambio) avisarCambioEstado(resultado.id, { nuevo: estado, motivo: motivo?.trim() || null });
+  return resultado;
 }
 
 /**
@@ -204,7 +214,7 @@ export async function cambiarEstado(id, estado, { usuario_id, motivo = null, exp
  */
 export async function cancelarPropia(usuario_id, id, { motivo, volverAlCarrito = false } = {}) {
   if (typeof motivo !== "string" || motivo.trim().length < 3 || motivo.length > 500) throw cartError("Contanos el motivo de la cancelación (3 a 500 caracteres).");
-  return withCart(usuario_id, async (carrito, t) => {
+  const resultado = await withCart(usuario_id, async (carrito, t) => {
     const nota = await NotaPedido.findOne({ where: { id, usuario_id }, transaction: t, lock: t.LOCK.UPDATE });
     if (!nota) return null;
     if (nota.estado === "cancelada") throw cartError("El pedido ya está cancelado.", 409, "PEDIDO_CANCELADO");
@@ -220,6 +230,8 @@ export async function cancelarPropia(usuario_id, id, { motivo, volverAlCarrito =
     })), t);
     return { nota, omitidos };
   });
+  if (resultado) avisarCancelacionCliente(resultado.nota.id, motivo.trim());
+  return resultado;
 }
 
 // Registro de dinero YA recibido fuera de la web; no ejecuta un cobro.

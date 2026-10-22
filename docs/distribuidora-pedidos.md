@@ -69,7 +69,22 @@ El backend también incorpora `nota_pedido.stock_descontado` (booleano, `false` 
 
 Los permisos de gestión predeterminados son `admin`, `staff` y `vendedor`, aplicados tanto en rutas como en API. `POST /distribuidora/notas-pedido/:id/cancelar` no exige rol: solo encuentra notas del usuario de la sesión. El catálogo público puede deshabilitarse en config; agregar, enviar y gestionar requieren las autorizaciones correspondientes.
 
-Recuperar una contraseña usa un enlace temporal y de un solo uso, no un email como autorización para reemplazarla. Configurar `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` y `VERCEL_FRONTEND_URL`. Sin SMTP el formulario informa indisponibilidad. El envío real de email necesita validarse con el proveedor de la instalación. Cambiar contraseña invalida sesiones anteriores; los tokens antiguos sin versión de contraseña requieren iniciar sesión nuevamente.
+Recuperar una contraseña usa un enlace temporal y de un solo uso, no un email como autorización para reemplazarla. Sin correo configurado el formulario informa indisponibilidad. El envío real de email necesita validarse con el proveedor de la instalación. Cambiar contraseña invalida sesiones anteriores; los tokens antiguos sin versión de contraseña requieren iniciar sesión nuevamente.
+
+## Avisos por correo
+
+`services/distribuidora/avisos_pedido_service.js` envía, siempre después de confirmar la transacción:
+
+| Evento | Destinatarios | Contenido |
+| --- | --- | --- |
+| Pedido nuevo | Equipo: usuarios activos con un rol de `orderConfig.managementRoles` y email, sin repetir | Cliente, contacto, detalle, total y enlace a la gestión |
+| Pedido nuevo | Comprador | Detalle, total, entrega y enlace a "Mis pedidos" |
+| Cambio de estado (gestión) | Comprador | Nuevo estado; el motivo solo si es una cancelación (los demás son internos) |
+| Cancelación del comprador | Equipo | Motivo y enlace al pedido |
+
+Un mail que falla no deshace ni frena el pedido: queda en el log del servidor. El reintento de un envío con la misma clave de idempotencia no repite avisos, y un cambio al mismo estado tampoco. Los textos están en `avisos_pedido_plantillas.js` y escapan todo lo que escribe el cliente.
+
+Proveedor: con `CLAVE_API_BREVO` se usa la API HTTPS de Brevo (**obligatorio en Render gratis, que bloquea los puertos SMTP**); `CORREO_REMITENTE` debe estar verificado en Brevo y `NOMBRE_REMITENTE` es el nombre visible. Sin Brevo se usa el SMTP de `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` y `SMTP_FROM`, útil en desarrollo local. `VERCEL_FRONTEND_URL` arma los enlaces. Sin ninguno de los dos, no se envía nada y se registra un aviso en el log. Las pruebas vacían estas variables y simulan Brevo: nunca envían correos reales.
 
 ## Verificación
 

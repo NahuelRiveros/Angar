@@ -22,6 +22,11 @@ CORS_ORIGIN=https://distribu-cg.vercel.app
 VERCEL_FRONTEND_URL=https://distribu-cg.vercel.app
 RENDER_APP_URL=https://distribucg.onrender.com
 GOOGLE_CLIENT_ID=EL_MISMO_CLIENT_ID_PUBLICO_DE_VERCEL
+# Correo (avisos de pedidos y recuperación de contraseña). Render gratis bloquea
+# el SMTP: usar la API de Brevo. Ver servidor/.env.example.
+CLAVE_API_BREVO=[COMPLETAR]
+CORREO_REMITENTE=[COMPLETAR con el correo verificado en Brevo]
+NOMBRE_REMITENTE=[COMPLETAR, ej. Distribuidora EJEMPLO]
 ```
 
 No agregar `/api` al origen de CORS. Los dominios adicionales autorizados

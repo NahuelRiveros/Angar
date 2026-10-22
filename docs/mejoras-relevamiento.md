@@ -33,12 +33,14 @@ Cada etapa se prueba y se revisa antes de pasar a la siguiente.
 
 1. **Flujo del pedido**: estado Confirmado, descuento y devolución de stock, cancelación por el
    comprador y "volver a armar".
-2. **Mails**: aviso al personal y al comprador (requiere configurar la cuenta de envío SMTP).
+2. **Mails**: aviso al personal y al comprador (por la API de Brevo, porque Render gratis bloquea el SMTP).
 3. **Pago por transferencia**: datos de la cuenta (EJEMPLO a reemplazar), carga del comprobante,
    estado de pago y revisión por el personal.
 4. **Compra**: monto mínimo, selector caja/unidad, reparto o retiro y costos de envío por localidad.
 5. **Permisos por rol**: panel de permisos, staff → Supervisor.
 6. **Datos fiscales** y documento de ARCA.
+
+Avance: etapa 1 terminada; etapa 2 terminada en código, falta cargar las variables de Brevo en Render.
 
 ## Pendientes con el cliente
 
@@ -46,3 +48,4 @@ Cada etapa se prueba y se revisa antes de pasar a la siguiente.
 - Confirmar el monto mínimo de $50.000.
 - Datos reales de la cuenta para transferencias y dirección y horario del local para retiros.
 - Costos de envío por localidad.
+- Cuenta de Brevo y correo remitente para los avisos (variables `CLAVE_API_BREVO`, `CORREO_REMITENTE` y `NOMBRE_REMITENTE`).

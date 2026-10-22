@@ -9,6 +9,9 @@ process.env.BD_URL = "";
 process.env.GOOGLE_CLIENT_ID = "cliente-de-prueba";
 process.env.DB_HOST = "127.0.0.1";
 process.env.DB_SSL = "false";
+// Nunca enviar correos reales: el .env local puede tener SMTP o Brevo cargados.
+// dotenv no pisa variables ya definidas, así que vacías quedan vacías.
+for (const clave of ["SMTP_USER", "SMTP_PASS", "CLAVE_API_BREVO", "CORREO_REMITENTE"]) process.env[clave] = "";
 const ownedSchema = "codex_ux_test_" + randomUUID().replaceAll("-", "");
 process.env.DB_SCHEMA = ownedSchema;
 const { sequelize, DB_SCHEMA } = await import("../src/database/sequelize.js");
@@ -239,6 +242,71 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
         await models.UsuarioRol.destroy({ where: { usuario_id: id, rol_id: staff.id } });
         assert.equal((await fetch(url + "/todas", { headers })).status, 403);
       } finally { await new Promise((resolve) => server.close(resolve)); }
+    });
+    await t.test("avisos: pedido nuevo al equipo y al comprador una sola vez; estados y cancelación; Brevo caído no frena el pedido", async () => {
+      const { esperarAvisos } = await import("../src/services/distribuidora/avisos_pedido_service.js");
+      const { mailConfigured } = await import("../src/services/common/mail_service.js");
+      assert.equal(mailConfigured(), false, "las pruebas arrancan sin ningún correo real configurado");
+      const previo = { ...env };
+      const fetchReal = globalThis.fetch;
+      const mails = [];
+      let brevoCaido = false;
+      // Solo se intercepta Brevo; cualquier otra petición sigue su curso.
+      globalThis.fetch = async (url, opciones) => {
+        if (!String(url).startsWith("https://api.brevo.com/")) return fetchReal(url, opciones);
+        if (brevoCaido) return new Response("caído", { status: 503 });
+        mails.push(JSON.parse(opciones.body));
+        return new Response("{}", { status: 201 });
+      };
+      Object.assign(env, { CLAVE_API_BREVO: "clave-de-prueba", CORREO_REMITENTE: "pedidos@example.test" });
+      try {
+        const [rolStaff] = await models.Rol.findOrCreate({ where: { codigo: "staff" }, defaults: { descripcion: "Staff" } });
+        const [rolVendedor] = await models.Rol.findOrCreate({ where: { codigo: "vendedor" }, defaults: { descripcion: "Vendedor" } });
+        const eva = await registrarCliente({ nombre: "Eva", apellido: "Equipo", email: "eva@example.test", password: "Clave1234" });
+        const suspendido = await registrarCliente({ nombre: "Sol", apellido: "Suspendida", email: "sol@example.test", password: "Clave1234" });
+        await models.UsuarioRol.bulkCreate([{ usuario_id: eva.usuario_id, rol_id: rolStaff.id }, { usuario_id: eva.usuario_id, rol_id: rolVendedor.id }, { usuario_id: suspendido.usuario_id, rol_id: rolVendedor.id }]);
+        await models.Usuario.update({ activo: false }, { where: { id: suspendido.usuario_id } });
+
+        await vaciarCarrito(id);
+        await agregarItem(id, payload);
+        const key = randomUUID();
+        const expectedItems = await obtenerCarrito(id);
+        const nota = await crearNotaPedido(id, { key, expectedItems });
+        await crearNotaPedido(id, { key, expectedItems }); // reintento del navegador
+        await esperarAvisos();
+        assert.equal(mails.length, 2, "un mail al equipo y uno al comprador, sin repetir por el reintento");
+        const alEquipo = mails.find((m) => m.subject.startsWith("Nuevo pedido"));
+        // Eva tiene dos roles de gestión pero recibe uno solo; la usuaria suspendida no recibe.
+        assert.deepEqual(alEquipo.to, [{ email: "eva@example.test" }]);
+        assert.match(alEquipo.subject, new RegExp(`#${nota.id} de Ana Prueba`));
+        assert.deepEqual(mails.find((m) => m.subject === `Recibimos tu pedido #${nota.id}`).to, [{ email: "ana@example.test" }]);
+
+        mails.length = 0;
+        await cambiarEstado(nota.id, "confirmado", { usuario_id: eva.usuario_id, expectedState: "pendiente" });
+        await cambiarEstado(nota.id, "confirmado", { usuario_id: eva.usuario_id, expectedState: "confirmado" }); // sin cambio, sin mail
+        await esperarAvisos();
+        assert.deepEqual(mails.map((m) => [m.subject, m.to[0].email]), [[`Tu pedido #${nota.id}: Confirmado`, "ana@example.test"]]);
+
+        mails.length = 0;
+        const otra = await pedirAna(product, variant, 1);
+        await esperarAvisos();
+        mails.length = 0;
+        await cancelarPropia(id, otra.id, { motivo: "Pedí de más" });
+        await esperarAvisos();
+        assert.equal(mails.length, 1);
+        assert.equal(mails[0].subject, `Ana Prueba canceló el pedido #${otra.id}`);
+        assert.match(mails[0].textContent, /Motivo: Pedí de más/);
+
+        // Si Brevo no responde, el pedido igual se guarda y el error queda solo en el log.
+        brevoCaido = true;
+        const sinMail = await pedirAna(product, variant, 1);
+        await esperarAvisos();
+        assert.equal((await models.NotaPedido.findByPk(sinMail.id)).estado, "pendiente");
+      } finally {
+        await esperarAvisos();
+        Object.assign(env, previo);
+        globalThis.fetch = fetchReal;
+      }
     });
     await t.test("enlace de recuperación se utiliza una vez y el login acepta la nueva clave", async () => {
       const user = await models.Usuario.findByPk(id);

@@ -76,7 +76,14 @@ export const env = {
   // Nombre visible del cliente / gimnasio en la factura MP.
   SOFTWARE_CLIENTE: process.env.SOFTWARE_CLIENTE || "DistribuCG",
 
-  // ── Email / SMTP ───────────────────────────────────────────────
+  // ── Email por API de Brevo (producción en Render) ──────────────
+  // Con CLAVE_API_BREVO cargada se usa Brevo y se ignora el SMTP.
+  // CORREO_REMITENTE tiene que estar verificado como remitente en Brevo.
+  CLAVE_API_BREVO:  process.env.CLAVE_API_BREVO  || "",
+  CORREO_REMITENTE: process.env.CORREO_REMITENTE || "",
+  NOMBRE_REMITENTE: process.env.NOMBRE_REMITENTE || "",
+
+  // ── Email / SMTP (desarrollo local) ────────────────────────────
   SMTP_HOST:   process.env.SMTP_HOST   || "smtp.gmail.com",
   SMTP_PORT:   Number(process.env.SMTP_PORT || 587),
   SMTP_SECURE: String(process.env.SMTP_SECURE || "").toLowerCase() === "true",

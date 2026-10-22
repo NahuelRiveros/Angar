@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { createResetToken, verifyResetToken, passwordVersion } from "../src/services/common/auth_tokens.js";
 import { validQuantity, validateSnapshot } from "../src/services/common/cart_rules.js";
 import { orderConfig, transitionProblem } from "../../order_config.js";
+import { env } from "../src/configuracion_servidor/env.js";
+import { enviarEmail, mailConfigured } from "../src/services/common/mail_service.js";
+import { escapar, mailCambioEstadoCliente, mailCancelacionClienteEquipo, mailPedidoNuevoEquipo, mailPedidoRecibidoCliente } from "../src/services/distribuidora/avisos_pedido_plantillas.js";
 import { safeReturnTo } from "../../frontend/src/controls/acceso/return_to.js";
 import { readGuestCart, mergeGuestItems } from "../../frontend/src/controls/carrito/guest_storage.js";
 import { filtrarNavbarPorRol } from "../../frontend/src/controls/layout/navbar/navbar_permissions.js";
@@ -67,6 +70,59 @@ test("pedido: se confirma antes de preparar, retroceder pide motivo y el comprad
   // Todo estado alcanzable descuenta stock salvo los dos que no lo tienen comprometido.
   assert.deepEqual(Object.keys(orderConfig.states).filter((e) => !orderConfig.stockStates.includes(e)), ["pendiente", "cancelada"]);
   assert.deepEqual(orderConfig.buyerCancelableStates, ["pendiente"]);
+});
+test("mails de pedidos: detalle, enlaces y texto del cliente escapado", () => {
+  const nota = { id: 42, total: 2400, fecha_alta: "2026-10-22T15:00:00Z", direccion: "Av. Siempre Viva 742", localidad: "La Plata", provincia: "Buenos Aires",
+    notas: "<script>alert(1)</script>", items: [{ cantidad: 2, nombre_producto: "Arroz", variedad_nombre: "1 kg", subtotal: 2400 }] };
+  const cliente = { nombre: "Ana <b>", apellido: "Prueba", email: "ana@example.test", celular: "11 2345-6789" };
+  const equipo = mailPedidoNuevoEquipo(nota, cliente);
+  assert.match(equipo.subject, /^Nuevo pedido #42 de Ana <b> Prueba: \$\s?2\.400,00$/);
+  assert.match(equipo.html, /2 × Arroz \(1 kg\)/);
+  assert.match(equipo.html, /notas-pedido\?q=%2342/);
+  assert.match(equipo.html, /22\/10\/26,? 12:00/, "la hora va en Argentina");
+  assert.equal(equipo.html.includes("<script>"), false);
+  assert.equal(equipo.html.includes("Ana <b>"), false);
+  assert.match(equipo.html, /&lt;script&gt;/);
+  assert.match(equipo.text, /Total: \$\s?2\.400,00/);
+  assert.match(mailPedidoRecibidoCliente(nota, cliente).text, /mis-pedidos/);
+  const cancelado = mailCambioEstadoCliente(nota, cliente, { nuevo: "cancelada", motivo: "Sin stock <i>" });
+  assert.equal(cancelado.subject, "Tu pedido #42: Cancelado");
+  assert.match(cancelado.html, /Motivo: Sin stock &lt;i&gt;/);
+  // Los motivos de retroceso son internos: el cliente no los ve.
+  assert.equal(mailCambioEstadoCliente(nota, cliente, { nuevo: "pendiente", motivo: "Revisar precios" }).text.includes("Revisar precios"), false);
+  assert.match(mailCambioEstadoCliente(nota, cliente, { nuevo: "confirmado" }).text, /está confirmado/);
+  assert.match(mailCancelacionClienteEquipo(nota, cliente, "Me equivoqué").text, /canceló el pedido #42.*Motivo: Me equivoqué/);
+  assert.equal(escapar(`"'&`), "&quot;&#39;&amp;");
+});
+test("correo: con clave de Brevo envía por su API HTTPS y explica sus errores", async () => {
+  const previo = { ...env };
+  const fetchOriginal = globalThis.fetch;
+  const llamadas = [];
+  let estado = 201;
+  globalThis.fetch = async (url, opciones) => {
+    llamadas.push({ url, opciones });
+    return new Response(estado === 201 ? JSON.stringify({ messageId: "x" }) : "{\"message\":\"Sender not verified\"}", { status: estado });
+  };
+  try {
+    Object.assign(env, { CLAVE_API_BREVO: "clave-falsa", CORREO_REMITENTE: "", NOMBRE_REMITENTE: "Distribuidora EJEMPLO", SMTP_USER: "", SMTP_PASS: "" });
+    assert.equal(mailConfigured(), true);
+    await assert.rejects(enviarEmail({ to: "a@example.test", subject: "Hola", text: "x" }), /CORREO_REMITENTE/);
+    env.CORREO_REMITENTE = "pedidos@example.test";
+    await enviarEmail({ to: ["a@example.test", "b@example.test"], subject: "Hola", html: "<p>x</p>", text: "x" });
+    assert.equal(llamadas[0].url, "https://api.brevo.com/v3/smtp/email");
+    assert.equal(llamadas[0].opciones.headers["api-key"], "clave-falsa");
+    assert.deepEqual(JSON.parse(llamadas[0].opciones.body), {
+      sender: { email: "pedidos@example.test", name: "Distribuidora EJEMPLO" },
+      to: [{ email: "a@example.test" }, { email: "b@example.test" }], subject: "Hola", htmlContent: "<p>x</p>", textContent: "x",
+    });
+    estado = 400;
+    await assert.rejects(enviarEmail({ to: "a@example.test", subject: "Hola", text: "x" }), /Brevo respondió 400.*Sender not verified/);
+    env.CLAVE_API_BREVO = "";
+    assert.equal(mailConfigured(), false, "sin Brevo ni SMTP no hay correo");
+  } finally {
+    Object.assign(env, previo);
+    globalThis.fetch = fetchOriginal;
+  }
 });
 test("carrito invitado combina variantes sin superar stock y descarta almacenamiento corrupto", () => {
   const item = { variedad_id: 1, cantidad: 2, stock_disponible: 3 };
