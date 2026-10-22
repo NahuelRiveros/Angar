@@ -97,6 +97,11 @@ test("el cliente conserva carrito al registrarse y confirma la cantidad guardada
   await expect(page.getByRole("heading", { name: "¡Pedido #123 enviado!" })).toBeVisible();
   expect(api.submitted).toHaveLength(1);
   expect(api.submitted[0].expectedItems[0].cantidad).toBe(12);
+  // Recién enviado, los datos para transferir ya están a la vista junto con la subida del comprobante.
+  const pago = page.getByRole("region", { name: "Pago por transferencia" });
+  await expect(pago.getByText("$ 14.400,00")).toBeVisible();
+  await expect(pago.getByRole("button", { name: "Copiar CBU" })).toBeVisible();
+  await expect(pago.getByText("Adjuntar comprobante")).toBeVisible();
   await noOverflow(page);
 });
 test("inicia sesión con nombre de usuario y muestra el error de credenciales", async ({ page }) => {
@@ -533,6 +538,98 @@ test("comprador cancela un pedido recibido y lo vuelve a armar; el confirmado no
   await expect(page.getByRole("button", { name: "Cancelar o cambiar pedido" })).toHaveCount(0);
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("cancelar-pedido.png"), fullPage: true });
+});
+
+const PNG_MINIMO = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(16)]);
+
+test("comprador adjunta el comprobante de transferencia, ve el rechazo y lo abre", async ({ page, context }, info) => {
+  await mockApi(page);
+  await page.addInitScript(() => localStorage.setItem("token", "mock-session"));
+  const pedido = { id: 300, estado: "confirmado", estado_pago: "pendiente", total: 6000, monto_pagado: 0, fecha_alta: "2026-10-20T12:00:00Z", pagos: [],
+    items: [{ id: 1, cantidad: 5, nombre_producto: product.nombre, subtotal: 6000 }],
+    comprobantes: [{ id: 9, nombre_archivo: "transferencia-borrosa.jpg", estado: "rechazado", motivo_rechazo: "No se lee el importe", subido_en: "2026-10-20T13:00:00Z" }] };
+  const subidas = [];
+  await page.route("**/api/distribuidora/notas-pedido", (route) => route.fulfill({ json: { ok: true, data: [pedido] } }));
+  await page.route("**/api/distribuidora/notas-pedido/300/comprobantes", (route) => {
+    subidas.push(route.request().headers()["content-type"]);
+    const nuevo = { id: 10, nombre_archivo: "captura.png", estado: "pendiente", subido_en: "2026-10-21T10:00:00Z" };
+    pedido.comprobantes.push(nuevo);
+    return route.fulfill({ status: 201, json: { ok: true, mensaje: "Recibimos tu comprobante. Lo revisamos y te avisamos por mail.", data: nuevo } });
+  });
+  await page.route("**/api/distribuidora/notas-pedido/300/comprobantes/9/enlace", (route) => route.fulfill({ json: { ok: true, data: { url: "https://cloudinary.test/comprobante-9.jpg" } } }));
+  await context.route("https://cloudinary.test/**", (route) => route.fulfill({ contentType: "text/plain", body: "archivo privado" }));
+  await page.goto("/distribuidora/mis-pedidos");
+  const pago = page.getByRole("region", { name: "Pago por transferencia" });
+  await expect(pago.getByText("Motivo: No se lee el importe")).toBeVisible();
+  await pago.getByText("Ver datos para transferir").click();
+  await expect(pago.getByText("$ 6.000,00")).toBeVisible();
+  // Un tipo de archivo no admitido se avisa sin llegar al servidor.
+  await pago.getByLabel("Adjuntar comprobante").setInputFiles({ name: "notas.txt", mimeType: "text/plain", buffer: Buffer.from("hola") });
+  await expect(pago.getByRole("alert")).toContainText("Elegí una foto (JPG, PNG o WEBP) o un PDF.");
+  expect(subidas).toHaveLength(0);
+  await pago.getByLabel("Adjuntar comprobante").setInputFiles({ name: "captura.png", mimeType: "image/png", buffer: PNG_MINIMO });
+  await expect(pago.getByRole("status")).toContainText("Recibimos tu comprobante");
+  expect(subidas[0]).toMatch(/^multipart\/form-data/);
+  await expect(pago.getByText("captura.png")).toBeVisible();
+  await expect(page.getByText("Comprobante en revisión")).toBeVisible();
+  const [pestana] = await Promise.all([page.waitForEvent("popup"), pago.getByRole("listitem").filter({ hasText: "transferencia-borrosa.jpg" }).getByRole("button", { name: "Ver" }).click()]);
+  await expect(pestana).toHaveURL("https://cloudinary.test/comprobante-9.jpg");
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("comprobante-comprador.png"), fullPage: true });
+});
+
+test("gestión revisa comprobantes: staff acepta con el importe o rechaza con motivo; el vendedor no cobra", async ({ page }, info) => {
+  await mockApi(page);
+  await page.addInitScript(() => localStorage.setItem("token", "mock-session"));
+  let roles = ["staff"];
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { ok: true, usuario: { usuario_id: 8, nombre: "Eva", roles } } }));
+  const comprobante = (id, nombre) => ({ id, nombre_archivo: nombre, estado: "pendiente", subido_en: "2026-10-21T10:00:00Z" });
+  const pedido = { id: 400, estado: "confirmado", estado_pago: "pendiente", total: 6000, monto_pagado: 0, fecha_alta: "2026-10-20T12:00:00Z", usuario: { persona: { nombre: "Ana", apellido: "Cliente" } },
+    items: [], pagos: [], historial_estados: [], comprobantes: [comprobante(1, "pago-parcial.pdf"), comprobante(2, "otro-pago.png")] };
+  const acciones = [];
+  const filtros = [];
+  await page.route("**/api/distribuidora/notas-pedido/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/todas")) { filtros.push(url.searchParams.get("comprobante")); return route.fulfill({ json: { ok: true, data: [pedido], page: 1, totalPages: 1, total: 1 } }); }
+    const body = route.request().postDataJSON();
+    acciones.push({ ruta: url.pathname.replace("/api/distribuidora/notas-pedido", ""), body });
+    if (url.pathname.endsWith("/1/aceptar")) { Object.assign(pedido.comprobantes[0], { estado: "aceptado" }); Object.assign(pedido, { monto_pagado: body.monto, estado_pago: "parcial" }); }
+    if (url.pathname.endsWith("/2/rechazar")) Object.assign(pedido.comprobantes[1], { estado: "rechazado", motivo_rechazo: body.motivo });
+    return route.fulfill({ json: { ok: true, data: pedido } });
+  });
+  await page.goto("/distribuidora/admin/notas-pedido");
+  await page.getByLabel("Comprobante").selectOption("por_revisar");
+  await expect.poll(() => filtros.at(-1)).toBe("por_revisar");
+  await page.getByRole("button", { name: /Pedido #400/ }).click();
+  const seccion = page.getByRole("region", { name: "Comprobantes de transferencia" });
+  await expect(seccion).toContainText("2 para revisar");
+  await seccion.getByRole("listitem").filter({ hasText: "pago-parcial.pdf" }).getByRole("button", { name: "Aceptar y registrar cobro" }).click();
+  const dialogo = page.getByRole("dialog");
+  await expect(dialogo.getByLabel(/^Importe acreditado/)).toHaveValue("6000");
+  await dialogo.getByLabel(/^Importe acreditado/).fill("2500");
+  await dialogo.getByRole("button", { name: "Aceptar y registrar cobro" }).click();
+  await expect(dialogo).toBeHidden();
+  expect(acciones[0]).toEqual({ ruta: "/400/comprobantes/1/aceptar", body: { monto: 2500 } });
+  await seccion.getByRole("listitem").filter({ hasText: "otro-pago.png" }).getByRole("button", { name: "Rechazar" }).click();
+  await dialogo.getByRole("button", { name: "Rechazar comprobante" }).click();
+  await expect(dialogo.getByRole("alert")).toContainText("Indicá el motivo");
+  expect(acciones).toHaveLength(1); // sin motivo no se envía
+  await dialogo.getByLabel(/^Motivo/).fill("El importe no coincide");
+  await dialogo.getByRole("button", { name: "Rechazar comprobante" }).click();
+  await expect(seccion).toContainText("Motivo: El importe no coincide");
+  expect(acciones[1]).toEqual({ ruta: "/400/comprobantes/2/rechazar", body: { motivo: "El importe no coincide" } });
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("comprobantes-gestion.png"), fullPage: true });
+
+  // El vendedor ve los comprobantes pero no acepta, ni registra ni anula cobros.
+  roles = ["vendedor"];
+  pedido.comprobantes.push(comprobante(3, "tercero.pdf"));
+  await page.reload();
+  await page.getByRole("button", { name: /Pedido #400/ }).click();
+  await expect(seccion.getByText("tercero.pdf")).toBeVisible();
+  await expect(seccion.getByRole("button", { name: "Aceptar y registrar cobro" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Registrar cobro recibido" })).toHaveCount(0);
+  await expect(seccion).toContainText("Un supervisor o administrador verifica la acreditación");
 });
 
 const CATEGORIAS = [

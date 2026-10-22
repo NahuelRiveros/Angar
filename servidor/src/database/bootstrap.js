@@ -11,7 +11,7 @@ import {
   Carrito, CarritoItem,
   CategoriaDistribuidora, ProductoDistribuidora, VariedadDistribuidora, MarcaDistribuidora, MarcaCategoriaDistribuidora,
   ListaPrecio, ListaPrecioLocalidad, ListaPrecioItem,
-  CarritoDistribuidora, CarritoDistribuidoraItem, NotaPedido, NotaPedidoItem, NotaPedidoPago,
+  CarritoDistribuidora, CarritoDistribuidoraItem, NotaPedido, NotaPedidoItem, NotaPedidoPago, NotaPedidoComprobante,
   PerfilClienteDistribuidora, OperacionCarrito, NotaPedidoEstadoLog, ImportacionCatalogo, ImportacionCatalogoLote,
 } from "../models/index.js";
 
@@ -183,6 +183,7 @@ async function sincronizar_modelos() {
     NotaPedidoEstadoLog,
     NotaPedidoItem, // nota_pedido_item → nota_pedido, producto_distribuidora, variedad_distribuidora
     NotaPedidoPago, // nota_pedido_pago → nota_pedido, usuario
+    NotaPedidoComprobante, // nota_pedido_comprobante → nota_pedido, usuario, nota_pedido_pago
     PerfilClienteDistribuidora, // perfil_cliente_distribuidora → usuario
   ];
 

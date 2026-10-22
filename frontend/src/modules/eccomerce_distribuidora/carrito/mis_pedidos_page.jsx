@@ -11,6 +11,7 @@ import ActionButton from "../../../controls/ui/action_button.jsx";
 import { cancelarMiNotaPedido, getMisNotasPedido } from "../api/nota_pedido_api.js";
 import { useCarritoDistribuidora } from "./carrito_context.jsx";
 import CancelarPedidoModal from "./cancelar_pedido_modal.jsx";
+import PagoTransferencia from "../pedidos/pago_transferencia.jsx";
 export default function MisPedidosPage() {
   const { usuario } = useAuth();
   const cart = useCarritoDistribuidora();
@@ -53,6 +54,7 @@ export default function MisPedidosPage() {
           <p className="mt-3 break-words text-sm">Entrega: {[nota.direccion, nota.localidad, nota.departamento, nota.provincia, nota.codigo_postal].filter(Boolean).join(", ")}</p>
           {nota.notas && <p className="mt-2 whitespace-pre-wrap break-words text-sm">Observaciones: {nota.notas}</p>}
         </details>
+        {(nota.estado !== "cancelada" || nota.comprobantes?.length > 0) && <div className="border-t pt-3"><PagoTransferencia nota={nota} comprobantes={nota.comprobantes ?? []} onSubido={() => queryClient.invalidateQueries({ queryKey: ["mis-pedidos"] })} /></div>}
         {orderConfig.buyerCancelableStates.includes(nota.estado) && <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
           <p className="text-xs text-slate-500">Podés cancelarlo o cambiarlo hasta que lo confirmemos.</p>
           <button type="button" onClick={() => abrirCancelacion(nota)} className="min-h-11 rounded-xl border border-rose-200 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50">Cancelar o cambiar pedido</button>

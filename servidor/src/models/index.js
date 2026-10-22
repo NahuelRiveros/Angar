@@ -72,6 +72,7 @@ import { CarritoDistribuidoraItem } from "./distribuidora/carrito_distribuidora_
 import { NotaPedido }               from "./distribuidora/nota_pedido.js";
 import { NotaPedidoItem }           from "./distribuidora/nota_pedido_item.js";
 import { NotaPedidoPago }           from "./distribuidora/nota_pedido_pago.js";
+import { NotaPedidoComprobante }    from "./distribuidora/nota_pedido_comprobante.js";
 import { PerfilClienteDistribuidora } from "./distribuidora/perfil_cliente_distribuidora.js";
 
 // Cada entrada es una asociación explícita y unidireccional — igual que antes,
@@ -195,6 +196,11 @@ aplicarRelaciones([
   { tipo: "belongsTo", from: NotaPedidoPago, to: Usuario, foreignKey: "registrado_por", as: "registrado_por_usuario" },
   { tipo: "belongsTo", from: NotaPedidoPago, to: Usuario, foreignKey: "anulado_por",    as: "anulado_por_usuario" },
 
+  // ─── NotaPedidoComprobante — transferencias que adjunta el comprador ────
+  { tipo: "hasMany",   from: NotaPedido, to: NotaPedidoComprobante, foreignKey: "nota_pedido_id", as: "comprobantes" },
+  { tipo: "belongsTo", from: NotaPedidoComprobante, to: NotaPedido, foreignKey: "nota_pedido_id", as: "nota_pedido" },
+  { tipo: "belongsTo", from: NotaPedidoComprobante, to: Usuario, foreignKey: "revisado_por", as: "revisado_por_usuario" },
+
   // ─── PerfilClienteDistribuidora ↔ Usuario (1:1) ──────────────────────────
   { tipo: "belongsTo", from: PerfilClienteDistribuidora, to: Usuario, foreignKey: "usuario_id", as: "usuario" },
   { tipo: "hasOne",    from: Usuario, to: PerfilClienteDistribuidora, foreignKey: "usuario_id", as: "perfil_distribuidora" },
@@ -212,6 +218,6 @@ export {
   Carrito, CarritoItem,
   CategoriaDistribuidora, ProductoDistribuidora, VariedadDistribuidora, MarcaDistribuidora, MarcaCategoriaDistribuidora,
   ListaPrecio, ListaPrecioLocalidad, ListaPrecioItem,
-  CarritoDistribuidora, CarritoDistribuidoraItem, NotaPedido, NotaPedidoItem, NotaPedidoPago,
+  CarritoDistribuidora, CarritoDistribuidoraItem, NotaPedido, NotaPedidoItem, NotaPedidoPago, NotaPedidoComprobante,
   PerfilClienteDistribuidora,
 };

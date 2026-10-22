@@ -65,11 +65,21 @@ La gestión consulta páginas de hasta 50 notas, permite buscar por número, nom
 
 El backend incorpora `nota_pedido_estado_log`, `operacion_carrito` y las columnas `metodo` y `anulacion_motivo` de `nota_pedido_pago`, además de la presentación y los datos de entrega usados por el snapshot. El bootstrap existente sincroniza los modelos al detectar cambios. Reiniciar el backend y publicar frontend/backend de la misma versión después de verificar la actualización contra una copia de la base. No se ejecutó bootstrap sobre la base de negocio durante estas pruebas.
 
-El backend también incorpora `nota_pedido.stock_descontado` (booleano, `false` por defecto), que el bootstrap agrega al detectar el cambio del modelo.
+El backend también incorpora la tabla `nota_pedido_comprobante` y `nota_pedido.stock_descontado` (booleano, `false` por defecto), que el bootstrap agrega al detectar el cambio del modelo.
 
 Los permisos de gestión predeterminados son `admin`, `staff` y `vendedor`, aplicados tanto en rutas como en API. `POST /distribuidora/notas-pedido/:id/cancelar` no exige rol: solo encuentra notas del usuario de la sesión. El catálogo público puede deshabilitarse en config; agregar, enviar y gestionar requieren las autorizaciones correspondientes.
 
 Recuperar una contraseña usa un enlace temporal y de un solo uso, no un email como autorización para reemplazarla. Sin correo configurado el formulario informa indisponibilidad. El envío real de email necesita validarse con el proveedor de la instalación. Cambiar contraseña invalida sesiones anteriores; los tokens antiguos sin versión de contraseña requieren iniciar sesión nuevamente.
+
+## Pago por transferencia y comprobantes
+
+El único medio de pago del comprador es la transferencia. Los datos que ve (titular, banco, CBU, alias y CUIT) están en `client_config.js` → `transferencia` y vienen con `[COMPLETAR]`: reemplazarlos por los reales antes de publicar.
+
+- El comprador adjunta comprobantes (JPG, PNG, WEBP o PDF de hasta 5 MB, máximo 5 por pedido) desde la pantalla de pedido enviado o desde "Mis pedidos". No puede hacerlo en pedidos cancelados o ya cobrados (`receiptProblem` en `order_config.js`, compartida por API y pantalla).
+- El servidor reconoce el formato por el contenido del archivo, no por el nombre. El archivo se sube a Cloudinary como **privado** (`distribucg/comprobantes`); su `public_id` nunca sale en la API. "Ver" pide `GET /:id/comprobantes/:cid/enlace`, que devuelve un enlace firmado de 5 minutos solo al dueño del pedido o al equipo de gestión.
+- Estados del comprobante: **En revisión → Aceptado** o **Rechazado** (con motivo, que se le envía al cliente por mail). Aceptar registra en la misma transacción un cobro por transferencia por el importe que indica quien revisa; el estado del comprobante, leído con lock, evita cobrarlo dos veces. Si después se anula ese cobro, el comprobante vuelve a revisión.
+- Aceptar o rechazar comprobantes y registrar o anular cobros quedan para `orderConfig.paymentRoles` (admin y staff). El vendedor ve los comprobantes pero no mueve dinero.
+- La gestión filtra por "Comprobante para revisar" y "Sin comprobante" (sin ninguno o solo con rechazados).
 
 ## Avisos por correo
 
@@ -81,6 +91,8 @@ Recuperar una contraseña usa un enlace temporal y de un solo uso, no un email c
 | Pedido nuevo | Comprador | Detalle, total, entrega y enlace a "Mis pedidos" |
 | Cambio de estado (gestión) | Comprador | Nuevo estado; el motivo solo si es una cancelación (los demás son internos) |
 | Cancelación del comprador | Equipo | Motivo y enlace al pedido |
+| Comprobante nuevo | Equipo | Enlace para revisarlo |
+| Comprobante rechazado | Comprador | Motivo y enlace para adjuntar otro |
 
 Un mail que falla no deshace ni frena el pedido: queda en el log del servidor. El reintento de un envío con la misma clave de idempotencia no repite avisos, y un cambio al mismo estado tampoco. Los textos están en `avisos_pedido_plantillas.js` y escapan todo lo que escribe el cliente.
 

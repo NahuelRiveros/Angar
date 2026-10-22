@@ -39,7 +39,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
     assert.match(DB_SCHEMA, /^codex_ux_test_[a-f0-9]{32}$/);
     await sequelize.query('CREATE SCHEMA "' + DB_SCHEMA + '"');
     created = true;
-    for (const name of ["ModuloNegocio", "Sexo", "TipoDocumento", "TipoPersona", "Persona", "Usuario", "Rol", "UsuarioRol", "CategoriaDistribuidora", "MarcaDistribuidora", "MarcaCategoriaDistribuidora", "ProductoDistribuidora", "VariedadDistribuidora", "ListaPrecio", "ListaPrecioLocalidad", "ListaPrecioItem", "CarritoDistribuidora", "CarritoDistribuidoraItem", "NotaPedido", "NotaPedidoEstadoLog", "NotaPedidoPago", "NotaPedidoItem", "PerfilClienteDistribuidora", "OperacionCarrito"]) await models[name].sync();
+    for (const name of ["ModuloNegocio", "Sexo", "TipoDocumento", "TipoPersona", "Persona", "Usuario", "Rol", "UsuarioRol", "CategoriaDistribuidora", "MarcaDistribuidora", "MarcaCategoriaDistribuidora", "ProductoDistribuidora", "VariedadDistribuidora", "ListaPrecio", "ListaPrecioLocalidad", "ListaPrecioItem", "CarritoDistribuidora", "CarritoDistribuidoraItem", "NotaPedido", "NotaPedidoEstadoLog", "NotaPedidoPago", "NotaPedidoComprobante", "NotaPedidoItem", "PerfilClienteDistribuidora", "OperacionCarrito"]) await models[name].sync();
     await models.ModuloNegocio.create({ codigo: "eccomerce_distribuidora", descripcion: "Distribuidora", habilitado: true });
     await models.TipoDocumento.create({ descripcion: "DNI" });
     await models.Rol.create({ codigo: "cliente", descripcion: "Cliente" });
@@ -306,6 +306,122 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
         await esperarAvisos();
         Object.assign(env, previo);
         globalThis.fetch = fetchReal;
+      }
+    });
+    await t.test("comprobantes: archivo real y privado, rechazo, aceptación con cobro, anulación y permisos", async () => {
+      const { cloudinary } = await import("../src/configuracion_servidor/cloudinary.js");
+      const { Writable } = await import("node:stream");
+      const comprobantes = await import("../src/services/distribuidora/comprobantes_service.js");
+      const { listarPropias } = await import("../src/services/distribuidora/nota_pedido_service.js");
+      const { orderConfig } = await import("../../order_config.js");
+      const originales = { subir: cloudinary.uploader.upload_stream, borrar: cloudinary.uploader.destroy, enlace: cloudinary.utils.private_download_url };
+      const subidas = [];
+      const borrados = [];
+      let alSubir = null;
+      // Cloudinary simulado: ningún archivo sale de la máquina.
+      cloudinary.uploader.upload_stream = (opciones, listo) => new Writable({
+        write(_chunk, _enc, cb) { cb(); },
+        final(cb) {
+          subidas.push(opciones);
+          Promise.resolve(alSubir?.()).then(() => { listo(null, { public_id: `${opciones.folder}/${opciones.public_id}`, resource_type: "image" }); cb(); });
+        },
+      });
+      cloudinary.uploader.destroy = async (publicId, opciones) => { borrados.push({ publicId, opciones }); return { result: "ok" }; };
+      cloudinary.utils.private_download_url = (publicId, formato, opciones) => `https://cloudinary.test/${publicId}.${formato}?expira=${opciones.expires_at}&tipo=${opciones.type}`;
+      const pdf = (texto = "a") => ({ buffer: Buffer.concat([Buffer.from("%PDF-1.7\n"), Buffer.from(texto.padEnd(20, " "))]), originalname: "transferencia.pdf" });
+      const png = { buffer: Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(16)]), originalname: "captura.png" };
+      try {
+        const nota = await pedirAna(product, variant, 2);
+        const total = Number(nota.total);
+        const beto = await models.Usuario.findOne({ include: [{ model: models.Persona, as: "persona", where: { email: "beto@example.test" } }] });
+
+        await assert.rejects(comprobantes.subirComprobante(id, nota.id, { buffer: Buffer.from("MZ ejecutable renombrado.pdf"), originalname: "x.pdf" }), /imagen.*PDF/);
+        await assert.rejects(comprobantes.subirComprobante(id, nota.id, null), /Adjuntá/);
+        assert.equal(await comprobantes.subirComprobante(beto.id, nota.id, pdf()), null, "no adjunta a pedidos ajenos");
+        assert.equal(subidas.length, 0, "nada inválido llega a Cloudinary");
+
+        const primero = await comprobantes.subirComprobante(id, nota.id, pdf());
+        assert.equal(primero.estado, "pendiente");
+        assert.equal(primero.formato, "pdf");
+        assert.deepEqual([subidas[0].type, subidas[0].folder], ["private", "distribucg/comprobantes"]);
+        assert.equal((await listarTodas({ comprobante: "por_revisar" })).data.some((n) => n.id === nota.id), true);
+        assert.equal((await listarTodas({ comprobante: "sin" })).data.some((n) => n.id === nota.id), false);
+        const propio = (await listarPropias(id)).find((n) => n.id === nota.id).toJSON();
+        assert.equal(propio.comprobantes.length, 1);
+        assert.equal("public_id" in propio.comprobantes[0], false, "el id de Cloudinary no sale en la API");
+
+        const enlace = await comprobantes.enlaceComprobante({ usuario_id: id, roles: ["cliente"] }, nota.id, primero.id);
+        assert.match(enlace.url, /^https:\/\/cloudinary\.test\/distribucg\/comprobantes\/pedido-\d+-.+\.pdf\?expira=\d+&tipo=private$/);
+        assert.equal(await comprobantes.enlaceComprobante({ usuario_id: beto.id, roles: ["cliente"] }, nota.id, primero.id), null);
+        assert.ok(await comprobantes.enlaceComprobante({ usuario_id: beto.id, roles: ["vendedor"] }, nota.id, primero.id), "el equipo ve cualquier comprobante");
+
+        await assert.rejects(comprobantes.rechazarComprobante(nota.id, primero.id, { usuario_id: id, motivo: " " }), /motivo/);
+        await comprobantes.rechazarComprobante(nota.id, primero.id, { usuario_id: id, motivo: "No se lee el importe" });
+        assert.equal((await primero.reload()).motivo_rechazo, "No se lee el importe");
+        await assert.rejects(comprobantes.rechazarComprobante(nota.id, primero.id, { usuario_id: id, motivo: "Otra vez" }), /ya fue revisado/);
+        assert.equal((await listarTodas({ comprobante: "sin" })).data.some((n) => n.id === nota.id), true, "un rechazado cuenta como sin comprobante");
+
+        // Aceptar registra el cobro por transferencia; un doble clic no cobra dos veces.
+        const segundo = await comprobantes.subirComprobante(id, nota.id, png);
+        const intentos = await Promise.allSettled([1, 2].map(() => comprobantes.aceptarComprobante(nota.id, segundo.id, { usuario_id: id, monto: total })));
+        assert.equal(intentos.filter((r) => r.status === "fulfilled").length, 1);
+        assert.match(intentos.find((r) => r.status === "rejected").reason.message, /ya fue revisado/);
+        assert.equal((await nota.reload()).estado_pago, "pagado");
+        await segundo.reload();
+        const pago = await models.NotaPedidoPago.findByPk(segundo.pago_id);
+        assert.deepEqual([segundo.estado, pago.metodo, Number(pago.monto), pago.nota], ["aceptado", "transferencia", total, `Comprobante #${segundo.id}`]);
+        await assert.rejects(comprobantes.subirComprobante(id, nota.id, pdf()), /ya figura como cobrado/);
+
+        // Si se anula ese cobro (la plata no llegó), el comprobante vuelve a revisión.
+        await anularPago(pago.id, id, { pedidoId: nota.id, motivo: "No se acreditó" });
+        assert.deepEqual([(await segundo.reload()).estado, segundo.pago_id], ["pendiente", null]);
+        await assert.rejects(comprobantes.aceptarComprobante(nota.id, segundo.id, { usuario_id: id, monto: total + 1 }), /saldo/);
+
+        // Si el pedido cambia mientras se sube el archivo, el registro se cancela y el archivo se borra.
+        alSubir = () => models.NotaPedido.update({ estado: "cancelada" }, { where: { id: nota.id } });
+        await assert.rejects(comprobantes.subirComprobante(id, nota.id, pdf("tarde")), /cancelado/);
+        alSubir = null;
+        assert.equal(borrados.at(-1).publicId, `distribucg/comprobantes/${subidas.at(-1).public_id}`);
+        assert.equal(borrados.at(-1).opciones.type, "private");
+        await models.NotaPedido.update({ estado: "pendiente" }, { where: { id: nota.id } });
+        assert.equal(await models.NotaPedidoComprobante.count({ where: { nota_pedido_id: nota.id } }), 2);
+
+        await models.NotaPedidoComprobante.bulkCreate([1, 2, 3].map(() => ({ nota_pedido_id: nota.id, public_id: "x", resource_type: "image", formato: "pdf", tamano: 1, subido_por: id })));
+        await assert.rejects(comprobantes.subirComprobante(id, nota.id, pdf()), /máximo de 5/);
+
+        // HTTP: el vendedor no cobra, el archivo grande se corta antes de leerse y el id privado no sale.
+        const express = (await import("express")).default;
+        const { notaPedidoRouter } = await import("../src/routes/distribuidora/nota_pedido_router.js");
+        const app = express();
+        app.use(express.json());
+        app.use("/notas", notaPedidoRouter);
+        const server = await new Promise((resolve) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
+        try {
+          const url = `http://127.0.0.1:${server.address().port}/notas`;
+          const vero = await registrarCliente({ nombre: "Vero", apellido: "Ventas", email: "vero@example.test", password: "Clave1234" });
+          const [rolVendedor] = await models.Rol.findOrCreate({ where: { codigo: "vendedor" }, defaults: { descripcion: "Vendedor" } });
+          await models.UsuarioRol.create({ usuario_id: vero.usuario_id, rol_id: rolVendedor.id });
+          const token = async (identificador) => "Bearer " + (await login({ identificador, password: "Clave1234" })).token;
+          const vendedor = { Authorization: await token("vero@example.test"), "Content-Type": "application/json" };
+          assert.equal((await fetch(`${url}/${nota.id}/comprobantes/${segundo.id}/aceptar`, { method: "POST", headers: vendedor, body: JSON.stringify({ monto: 1 }) })).status, 403);
+          assert.equal((await fetch(`${url}/${nota.id}/pagos`, { method: "POST", headers: vendedor, body: JSON.stringify({ monto: 1 }) })).status, 403);
+          assert.equal((await fetch(`${url}/${nota.id}/comprobantes/${segundo.id}/enlace`, { headers: vendedor })).status, 200);
+
+          const nueva = await pedirAna(product, variant, 1);
+          const ana = { Authorization: await token("ana@example.test") };
+          const formulario = (contenido, nombre) => { const f = new FormData(); f.append("archivo", new Blob([contenido]), nombre); return f; };
+          const grande = await fetch(`${url}/${nueva.id}/comprobantes`, { method: "POST", headers: ana, body: formulario(Buffer.alloc(orderConfig.receipts.maxBytes + 1), "enorme.pdf") });
+          assert.equal(grande.status, 413);
+          const subida = await fetch(`${url}/${nueva.id}/comprobantes`, { method: "POST", headers: ana, body: formulario(png.buffer, "captura.png") });
+          assert.equal(subida.status, 201);
+          const cuerpo = await subida.json();
+          assert.equal(cuerpo.data.formato, "png");
+          assert.equal("public_id" in cuerpo.data, false);
+          assert.equal((await fetch(`${url}/abc/comprobantes`, { method: "POST", headers: ana, body: formulario(png.buffer, "x.png") })).status, 404);
+        } finally { await new Promise((resolve) => server.close(resolve)); }
+      } finally {
+        Object.assign(cloudinary.uploader, { upload_stream: originales.subir, destroy: originales.borrar });
+        cloudinary.utils.private_download_url = originales.enlace;
       }
     });
     await t.test("enlace de recuperación se utiliza una vez y el login acepta la nueva clave", async () => {

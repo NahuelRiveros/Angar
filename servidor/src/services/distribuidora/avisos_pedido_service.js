@@ -2,7 +2,10 @@ import { Op } from "sequelize";
 import { orderConfig } from "../../../../order_config.js";
 import { enviarEmail, mailConfigured } from "../common/mail_service.js";
 import { NotaPedido, NotaPedidoItem, Persona, Rol, Usuario } from "../../models/index.js";
-import { mailCambioEstadoCliente, mailCancelacionClienteEquipo, mailPedidoNuevoEquipo, mailPedidoRecibidoCliente } from "./avisos_pedido_plantillas.js";
+import {
+  mailCambioEstadoCliente, mailCancelacionClienteEquipo, mailComprobanteNuevoEquipo, mailComprobanteRechazadoCliente,
+  mailPedidoNuevoEquipo, mailPedidoRecibidoCliente,
+} from "./avisos_pedido_plantillas.js";
 
 /**
  * Mails de pedidos: al equipo (todo usuario activo con rol de gestión) y al comprador.
@@ -76,5 +79,22 @@ export function avisarCancelacionCliente(id, motivo) {
     if (!nota) return;
     const equipo = await correosEquipo();
     if (equipo.length) await enviarTodos([{ to: equipo, ...mailCancelacionClienteEquipo(nota, nota.usuario?.persona, motivo) }]);
+  });
+}
+
+export function avisarComprobanteNuevo(id) {
+  enSegundoPlano(`comprobante del pedido #${id}`, async () => {
+    const nota = await cargarPedido(id);
+    if (!nota) return;
+    const equipo = await correosEquipo();
+    if (equipo.length) await enviarTodos([{ to: equipo, ...mailComprobanteNuevoEquipo(nota, nota.usuario?.persona) }]);
+  });
+}
+
+export function avisarComprobanteRechazado(id, motivo) {
+  enSegundoPlano(`comprobante rechazado del pedido #${id}`, async () => {
+    const nota = await cargarPedido(id);
+    const cliente = nota?.usuario?.persona;
+    if (cliente?.email) await enviarTodos([{ to: cliente.email, ...mailComprobanteRechazadoCliente(nota, cliente, motivo) }]);
   });
 }

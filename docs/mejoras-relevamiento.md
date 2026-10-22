@@ -40,12 +40,12 @@ Cada etapa se prueba y se revisa antes de pasar a la siguiente.
 5. **Permisos por rol**: panel de permisos, staff → Supervisor.
 6. **Datos fiscales** y documento de ARCA.
 
-Avance: etapa 1 terminada; etapa 2 terminada en código, falta cargar las variables de Brevo en Render.
+Avance: etapas 1 y 3 terminadas; etapa 2 terminada en código, falta cargar las variables de Brevo en Render.
 
 ## Pendientes con el cliente
 
 - Punto 4 completo.
 - Confirmar el monto mínimo de $50.000.
-- Datos reales de la cuenta para transferencias y dirección y horario del local para retiros.
+- Datos reales de la cuenta para transferencias (`client_config.js` → `transferencia`) y dirección y horario del local para retiros.
 - Costos de envío por localidad.
 - Cuenta de Brevo y correo remitente para los avisos (variables `CLAVE_API_BREVO`, `CORREO_REMITENTE` y `NOMBRE_REMITENTE`).

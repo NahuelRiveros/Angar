@@ -6,7 +6,7 @@ import { withCart, idempotent } from "./cart_transaction.js";
 import { cartError, validQuantity, validateSnapshot } from "../common/cart_rules.js";
 import { CarritoDistribuidoraItem, VariedadDistribuidora, ProductoDistribuidora } from "../../models/index.js";
 import { sequelize } from "../../database/sequelize.js";
-import { NotaPedido, NotaPedidoItem, NotaPedidoPago, Persona, Usuario } from "../../models/index.js";
+import { NotaPedido, NotaPedidoItem, NotaPedidoPago, NotaPedidoComprobante, Persona, Usuario } from "../../models/index.js";
 import { listarItemsCarrito, reponerEnCarrito } from "./carrito_distribuidora_service.js";
 import { obtenerPerfil, perfilCompleto } from "./perfil_cliente_service.js";
 import { listaDeUsuario } from "./listas_precio_service.js";
@@ -24,6 +24,18 @@ const INCLUDE_PAGOS = {
     { model: Usuario, as: "registrado_por_usuario", attributes: ["id"], include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido"] }] },
     { model: Usuario, as: "anulado_por_usuario", attributes: ["id"], include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido"] }] },
   ],
+};
+// El public_id de Cloudinary no sale de la API: el archivo se ve solo con el enlace firmado.
+const INCLUDE_COMPROBANTES = {
+  model: NotaPedidoComprobante,
+  as: "comprobantes", separate: true, order: [["subido_en", "ASC"], ["id", "ASC"]],
+  attributes: ["id", "nota_pedido_id", "formato", "nombre_archivo", "tamano", "estado", "subido_en", "revisado_en", "motivo_rechazo", "pago_id"],
+  include: [{ model: Usuario, as: "revisado_por_usuario", attributes: ["id"], include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido"] }] }],
+};
+// Filtros de la gestión por situación del comprobante. SQL fijo: no lleva datos del usuario.
+const FILTROS_COMPROBANTE = {
+  por_revisar: { [Op.in]: sequelize.literal("(SELECT nota_pedido_id FROM nota_pedido_comprobante WHERE estado = 'pendiente')") },
+  sin: { [Op.notIn]: sequelize.literal("(SELECT nota_pedido_id FROM nota_pedido_comprobante WHERE estado <> 'rechazado')") },
 };
 
 /**
@@ -105,14 +117,15 @@ export async function listarPropias(usuario_id) {
   return NotaPedido.findAll({
     where: { usuario_id },
     order: [["fecha_alta", "DESC"]],
-    include: [{ model: NotaPedidoItem, as: "items" }, INCLUDE_PAGOS],
+    include: [{ model: NotaPedidoItem, as: "items" }, INCLUDE_PAGOS, INCLUDE_COMPROBANTES],
   });
 }
 
-export async function listarTodas({ q, estado, estado_pago, pagina, por_pagina } = {}) {
+export async function listarTodas({ q, estado, estado_pago, comprobante, pagina, por_pagina } = {}) {
   const where = {};
   if (estado && orderConfig.states[estado]) where.estado = estado;
   if (["pendiente", "parcial", "pagado"].includes(estado_pago)) where.estado_pago = estado_pago;
+  if (Object.hasOwn(FILTROS_COMPROBANTE, comprobante)) where.id = FILTROS_COMPROBANTE[comprobante];
   if (q) {
     const text = "%" + String(q).trim().slice(0, 100) + "%";
     const people = await Persona.findAll({ where: { [Op.or]: [{ nombre: { [Op.iLike]: text } }, { apellido: { [Op.iLike]: text } }, { email: { [Op.iLike]: text } }] }, attributes: ["id"], raw: true });
@@ -123,7 +136,7 @@ export async function listarTodas({ q, estado, estado_pago, pagina, por_pagina }
   const result = await NotaPedido.findAndCountAll({
     where, limit, offset, distinct: true, order: [["fecha_alta", "DESC"], ["id", "DESC"]],
     include: [
-      { model: NotaPedidoItem, as: "items" }, INCLUDE_PAGOS,
+      { model: NotaPedidoItem, as: "items" }, INCLUDE_PAGOS, INCLUDE_COMPROBANTES,
       { model: NotaPedidoEstadoLog, as: "historial_estados", separate: true, order: [["fecha", "ASC"], ["id", "ASC"]], include: [{ model: Usuario, as: "autor", attributes: ["id"], include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido"] }] }] },
       { model: Usuario, as: "usuario", attributes: ["id"], include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido", "email", "celular"] }] },
     ],
@@ -235,22 +248,35 @@ export async function cancelarPropia(usuario_id, id, { motivo, volverAlCarrito =
 }
 
 // Registro de dinero YA recibido fuera de la web; no ejecuta un cobro.
-export async function registrarPago(nota_pedido_id, { monto, nota: notaTexto = null, usuario_id, metodo, key }) {
+/** Importe en centavos: positivo y con hasta dos decimales. */
+export function centavosDeImporte(monto) {
   const amount = Number(monto);
   const cents = Math.round(amount * 100);
   if (!Number.isFinite(amount) || amount <= 0 || Math.abs(amount * 100 - cents) > 0.00001) throw cartError("Ingresá un importe positivo con hasta dos decimales.");
+  return cents;
+}
+
+/**
+ * Registra un cobro sobre un pedido YA bloqueado en la transacción `t`.
+ * Lo comparten el cobro manual y la aceptación de un comprobante de transferencia.
+ */
+export async function cobrarPedidoBloqueado(pedido, { cents, notaTexto = null, metodo, usuario_id }, t) {
+  if (pedido.estado === "cancelada") throw cartError("Reabrí el pedido antes de registrar un nuevo cobro.", 409);
+  const saldo = Math.round(Number(pedido.total) * 100) - Math.round(Number(pedido.monto_pagado) * 100);
+  if (cents > saldo) throw cartError("El importe supera el saldo pendiente. Actualizá el pedido.", 409);
+  const pago = await NotaPedidoPago.create({ nota_pedido_id: pedido.id, monto: cents / 100, nota: notaTexto, metodo, registrado_por: usuario_id, registrado_en: new Date() }, { transaction: t });
+  return { pago, nota: await recomputarEstadoPago(pedido.id, t) };
+}
+
+export async function registrarPago(nota_pedido_id, { monto, nota: notaTexto = null, usuario_id, metodo, key }) {
+  const cents = centavosDeImporte(monto);
   if (!orderConfig.paymentMethods.some((m) => m.value === metodo)) throw cartError("Elegí cómo se recibió el cobro.");
   if (notaTexto != null && (typeof notaTexto !== "string" || notaTexto.length > 255)) throw cartError("La referencia puede tener hasta 255 caracteres.");
   return sequelize.transaction(async (t) => {
     const pedido = await NotaPedido.findByPk(nota_pedido_id, { transaction: t, lock: t.LOCK.UPDATE });
     if (!pedido) return null;
-    return idempotent(usuario_id, "payment:" + key, { nota_pedido_id: String(nota_pedido_id), cents, notaTexto, metodo }, t, async () => {
-      if (pedido.estado === "cancelada") throw cartError("Reabrí el pedido antes de registrar un nuevo cobro.", 409);
-      const saldo = Math.round(Number(pedido.total) * 100) - Math.round(Number(pedido.monto_pagado) * 100);
-      if (cents > saldo) throw cartError("El importe supera el saldo pendiente. Actualizá el pedido.", 409);
-      await NotaPedidoPago.create({ nota_pedido_id, monto: cents / 100, nota: notaTexto, metodo, registrado_por: usuario_id, registrado_en: new Date() }, { transaction: t });
-      return recomputarEstadoPago(nota_pedido_id, t);
-    });
+    return idempotent(usuario_id, "payment:" + key, { nota_pedido_id: String(nota_pedido_id), cents, notaTexto, metodo }, t,
+      async () => (await cobrarPedidoBloqueado(pedido, { cents, notaTexto, metodo, usuario_id }, t)).nota);
   });
 }
 
@@ -265,6 +291,8 @@ export async function anularPago(pago_id, usuario_id, { pedidoId, motivo } = {})
     const restante = Math.round(Number(pedido.monto_pagado) * 100) - Math.round(Number(pago.monto) * 100);
     if (restante <= 0 && ESTADOS_QUE_REQUIEREN_PAGO.includes(pedido.estado)) throw cartError("Revertí primero el estado del pedido.", 409);
     await pago.update({ anulado_por: usuario_id, anulado_en: new Date(), anulacion_motivo: motivo.trim() }, { transaction: t });
+    // Si el cobro salió de un comprobante, el comprobante vuelve a revisión.
+    await NotaPedidoComprobante.update({ estado: "pendiente", pago_id: null, revisado_por: null, revisado_en: null }, { where: { pago_id: pago.id }, transaction: t });
     await recomputarEstadoPago(pedidoId, t);
     return pago;
   });

@@ -1,4 +1,4 @@
-import { orderConfig, transitionProblem } from "../../../order_config.js";
+import { orderConfig, receiptProblem, transitionProblem } from "../../../order_config.js";
 const tones = {
   warning: "bg-amber-50 text-amber-800 border-amber-200",
   accent: "bg-violet-50 text-violet-800 border-violet-200",
@@ -6,10 +6,17 @@ const tones = {
   success: "bg-emerald-50 text-emerald-800 border-emerald-200",
   danger: "bg-rose-50 text-rose-800 border-rose-200",
 };
-export { orderConfig, transitionProblem };
+export { orderConfig, receiptProblem, transitionProblem };
 export const ESTADOS = Object.fromEntries(Object.entries(orderConfig.states).map(([key, state]) => [key, { ...state, className: tones[state.tone] }]));
 export const ESTADOS_PAGO = {
   pendiente: { label: "Sin cobros", className: tones.danger },
   parcial: { label: "Cobro parcial", className: tones.warning },
   pagado: { label: "Cobrado", className: tones.success },
 };
+export const ESTADOS_COMPROBANTE = {
+  pendiente: { label: "En revisión", className: tones.info },
+  aceptado: { label: "Aceptado", className: tones.success },
+  rechazado: { label: "Rechazado", className: tones.danger },
+};
+// Lo que acepta el selector de archivos; el servidor igual revisa el contenido real.
+export const TIPOS_COMPROBANTE = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" };

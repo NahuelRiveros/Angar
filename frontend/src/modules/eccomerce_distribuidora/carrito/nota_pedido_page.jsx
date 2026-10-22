@@ -14,6 +14,7 @@ import { getMiPerfil } from "../api/perfil_cliente_api.js";
 import { enviarNotaPedido } from "../api/nota_pedido_api.js";
 import { formatearPrecio as fmt } from "../utils/precio_iva.js";
 import PerfilFormModal from "./perfil_form_modal.jsx";
+import PagoTransferencia from "../pedidos/pago_transferencia.jsx";
 function readAttempt(key) { try { return JSON.parse(sessionStorage.getItem(key)); } catch { return null; } }
 const ETIQUETAS_DESCUENTO = { zona: "Precio especial en tu zona", oferta: "Oferta" };
 export default function NotaPedidoPage() {
@@ -32,6 +33,7 @@ export default function NotaPedidoPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(null);
+  const [comprobantesEnviados, setComprobantesEnviados] = useState([]);
   const profile = useQuery({ queryKey: ["delivery-profile", usuario?.usuario_id], queryFn: getMiPerfil, enabled: isAuth });
   // El servidor decide si alcanza para pedir (misma regla que al enviar la nota).
   const complete = profile.data?.completo === true;
@@ -70,6 +72,7 @@ export default function NotaPedidoPage() {
   }
   if (sent) return <div className="mx-auto max-w-lg space-y-4 px-4 py-16 text-center"><h1 className="text-3xl font-bold">¡Pedido #{sent.id} enviado!</h1>
     <p>Total: {fmt(sent.total)}</p><p className="text-sm text-slate-600">{config.labels.orderNotice}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white p-4"><PagoTransferencia datosAbiertos nota={{ estado: "pendiente", estado_pago: "pendiente", monto_pagado: 0, ...sent }} comprobantes={comprobantesEnviados} onSubido={(c) => setComprobantesEnviados((previos) => [...previos, c])} /></div>
     <Link to={config.ordersPath} className="block rounded-xl bg-(--kt-teal-700) p-3 font-bold text-white">Ver mis pedidos</Link><Link to={config.catalogPath} className="block py-3 underline">Seguir comprando</Link></div>;
   // Ahorro visible: precio de zona más barato que la General, y ofertas.
   const ahorro = (motivo) => cart.items.filter((i) => i.descuento === motivo && Number(i.precio_referencia) > Number(i.precio))

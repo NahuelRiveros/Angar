@@ -2,10 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createResetToken, verifyResetToken, passwordVersion } from "../src/services/common/auth_tokens.js";
 import { validQuantity, validateSnapshot } from "../src/services/common/cart_rules.js";
-import { orderConfig, transitionProblem } from "../../order_config.js";
+import { orderConfig, receiptProblem, transitionProblem } from "../../order_config.js";
 import { env } from "../src/configuracion_servidor/env.js";
 import { enviarEmail, mailConfigured } from "../src/services/common/mail_service.js";
-import { escapar, mailCambioEstadoCliente, mailCancelacionClienteEquipo, mailPedidoNuevoEquipo, mailPedidoRecibidoCliente } from "../src/services/distribuidora/avisos_pedido_plantillas.js";
+import {
+  escapar, mailCambioEstadoCliente, mailCancelacionClienteEquipo, mailComprobanteNuevoEquipo, mailComprobanteRechazadoCliente,
+  mailPedidoNuevoEquipo, mailPedidoRecibidoCliente,
+} from "../src/services/distribuidora/avisos_pedido_plantillas.js";
+import { detectarFormatoComprobante } from "../src/services/common/comprobante_rules.js";
 import { safeReturnTo } from "../../frontend/src/controls/acceso/return_to.js";
 import { readGuestCart, mergeGuestItems } from "../../frontend/src/controls/carrito/guest_storage.js";
 import { filtrarNavbarPorRol } from "../../frontend/src/controls/layout/navbar/navbar_permissions.js";
@@ -93,6 +97,27 @@ test("mails de pedidos: detalle, enlaces y texto del cliente escapado", () => {
   assert.match(mailCambioEstadoCliente(nota, cliente, { nuevo: "confirmado" }).text, /está confirmado/);
   assert.match(mailCancelacionClienteEquipo(nota, cliente, "Me equivoqué").text, /canceló el pedido #42.*Motivo: Me equivoqué/);
   assert.equal(escapar(`"'&`), "&quot;&#39;&amp;");
+});
+test("comprobantes: se reconocen por contenido y no se adjuntan a pedidos cancelados, cobrados o llenos", () => {
+  const relleno = Buffer.alloc(16);
+  assert.equal(detectarFormatoComprobante(Buffer.concat([Buffer.from("%PDF-1.4"), relleno])), "pdf");
+  assert.equal(detectarFormatoComprobante(Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), relleno])), "jpg");
+  assert.equal(detectarFormatoComprobante(Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), relleno])), "png");
+  assert.equal(detectarFormatoComprobante(Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WEBP"), relleno])), "webp");
+  for (const malo of [Buffer.from("MZ ejecutable con nombre .pdf"), Buffer.from("GIF89a" + "x".repeat(10)), Buffer.from("%PDF"), null, "texto"])
+    assert.equal(detectarFormatoComprobante(malo), null, String(malo).slice(0, 10));
+  const nota = { estado: "pendiente", estado_pago: "pendiente" };
+  assert.equal(receiptProblem(nota, 0), null);
+  assert.match(receiptProblem({ ...nota, estado: "cancelada" }, 0), /cancelado/);
+  assert.match(receiptProblem({ ...nota, estado_pago: "pagado" }, 0), /cobrado/);
+  assert.equal(receiptProblem({ ...nota, estado_pago: "parcial" }, 4), null, "con saldo pendiente se puede pagar en partes");
+  assert.match(receiptProblem(nota, orderConfig.receipts.maxPerOrder), /máximo de 5/);
+  assert.deepEqual(orderConfig.paymentRoles, ["admin", "staff"], "el vendedor no registra cobros");
+  const cliente = { nombre: "Ana", apellido: "<Prueba>" };
+  const rechazo = mailComprobanteRechazadoCliente({ id: 7, total: 100 }, cliente, "Importe <distinto>");
+  assert.match(rechazo.html, /Motivo: Importe &lt;distinto&gt;/);
+  assert.match(rechazo.text, /mis-pedidos/);
+  assert.equal(mailComprobanteNuevoEquipo({ id: 7, total: 100 }, cliente).subject, "Comprobante para revisar: pedido #7");
 });
 test("correo: con clave de Brevo envía por su API HTTPS y explica sus errores", async () => {
   const previo = { ...env };

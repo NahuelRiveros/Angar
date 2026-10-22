@@ -16,6 +16,29 @@ export async function cancelarMiNotaPedido(id, { motivo, volverAlCarrito = false
   return data;
 }
 
+// Comprobantes de transferencia: el comprador los sube; dueño y equipo piden un enlace temporal.
+export async function subirComprobante(id, archivo) {
+  const datos = new FormData();
+  datos.append("archivo", archivo);
+  const { data } = await http.post(`/distribuidora/notas-pedido/${id}/comprobantes`, datos);
+  return data;
+}
+
+export async function getEnlaceComprobante(id, comprobanteId) {
+  const { data } = await http.get(`/distribuidora/notas-pedido/${id}/comprobantes/${comprobanteId}/enlace`);
+  return data.data.url;
+}
+
+export async function aceptarComprobante(id, comprobanteId, monto) {
+  const { data } = await http.post(`/distribuidora/notas-pedido/${id}/comprobantes/${comprobanteId}/aceptar`, { monto });
+  return data;
+}
+
+export async function rechazarComprobante(id, comprobanteId, motivo) {
+  const { data } = await http.post(`/distribuidora/notas-pedido/${id}/comprobantes/${comprobanteId}/rechazar`, { motivo });
+  return data;
+}
+
 // Gestión: permisos definidos en order_config.js
 export async function getTodasLasNotasPedido(params) {
   const { data } = await http.get("/distribuidora/notas-pedido/todas", { params });

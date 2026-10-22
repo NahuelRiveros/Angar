@@ -1,6 +1,10 @@
 // Flujo comercial compartido entre la API y la interfaz. No procesa pagos.
 export const orderConfig = {
   managementRoles: ["admin", "staff", "vendedor"],
+  // Registrar, anular o aceptar cobros mueve dinero: el vendedor solo gestiona pedidos.
+  paymentRoles: ["admin", "staff"],
+  // Comprobantes de transferencia que adjunta el comprador.
+  receipts: { maxBytes: 5 * 1024 * 1024, maxPerOrder: 5, formats: ["jpg", "png", "webp", "pdf"] },
   states: {
     pendiente: { label: "Recibido", tone: "warning" },
     confirmado: { label: "Confirmado", tone: "accent" },
@@ -37,5 +41,12 @@ export function transitionProblem(from, to, reason, paymentState) {
   if (!orderConfig.transitions[from]?.includes(to)) return "Ese cambio de estado no está permitido.";
   if (orderConfig.paymentRequiredStates.includes(to) && paymentState === "pendiente") return "Registrá un cobro antes de avanzar a este estado.";
   if (orderConfig.reasonRequired.includes(from + ":" + to) && String(reason ?? "").trim().length < 3) return "Indicá el motivo del cambio.";
+  return null;
+}
+/** Por qué no se puede adjuntar otro comprobante a este pedido, o null si se puede. */
+export function receiptProblem(order, previousCount) {
+  if (order.estado === "cancelada") return "El pedido está cancelado: no hace falta pagarlo.";
+  if (order.estado_pago === "pagado") return "Este pedido ya figura como cobrado.";
+  if (previousCount >= orderConfig.receipts.maxPerOrder) return `Llegaste al máximo de ${orderConfig.receipts.maxPerOrder} comprobantes para este pedido. Comunicate con nosotros.`;
   return null;
 }

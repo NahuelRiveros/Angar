@@ -82,3 +82,15 @@ export function mailCancelacionClienteEquipo(nota, cliente, motivo) {
   return { subject: `${nombreCliente(cliente)} canceló el pedido #${nota.id}`, ...plantilla(`Pedido #${nota.id} cancelado por el cliente`,
     `<p>${escapar(texto)}</p>`, { texto, url: enlace(rutaGestion(nota.id)), boton: "Ver el pedido" }) };
 }
+
+export function mailComprobanteNuevoEquipo(nota, cliente) {
+  const texto = `${nombreCliente(cliente)} adjuntó un comprobante de transferencia al pedido #${nota.id} (total ${dinero(nota.total)}). Revisalo y, si el dinero está acreditado, registrá el cobro.`;
+  return { subject: `Comprobante para revisar: pedido #${nota.id}`, ...plantilla(`Comprobante del pedido #${nota.id}`,
+    `<p>${escapar(texto)}</p>`, { texto, url: enlace(rutaGestion(nota.id)), boton: "Revisar el comprobante" }) };
+}
+
+export function mailComprobanteRechazadoCliente(nota, cliente, motivo) {
+  const texto = `Hola ${nombreCliente(cliente)}. Revisamos el comprobante que adjuntaste al pedido #${nota.id} y no pudimos validarlo. Motivo: ${motivo}. Podés adjuntar otro desde "Mis pedidos".`;
+  return { subject: `Revisá el comprobante de tu pedido #${nota.id}`, ...plantilla(`Comprobante del pedido #${nota.id}`,
+    `<p>${escapar(texto)}</p>`, { texto, url: enlace(RUTA_MIS_PEDIDOS), boton: "Adjuntar otro comprobante" }) };
+}
