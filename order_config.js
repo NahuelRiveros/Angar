@@ -1,8 +1,6 @@
 // Flujo comercial compartido entre la API y la interfaz. No procesa pagos.
 export const orderConfig = {
-  managementRoles: ["admin", "staff", "vendedor"],
-  // Registrar, anular o aceptar cobros mueve dinero: el vendedor solo gestiona pedidos.
-  paymentRoles: ["admin", "staff"],
+  // Quién ve, gestiona o cobra pedidos lo deciden los permisos (permisos_config.js).
   // Comprobantes de transferencia que adjunta el comprador.
   receipts: { maxBytes: 5 * 1024 * 1024, maxPerOrder: 5, formats: ["jpg", "png", "webp", "pdf"] },
   states: {

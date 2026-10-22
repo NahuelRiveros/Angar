@@ -1,5 +1,11 @@
 import { http } from "./http";
 
+// ROLES que se pueden asignar (incluye los creados en el panel de permisos)
+export async function obtenerRolesStaff() {
+  const r = await http.get("/staff/roles");
+  return r.data.data;
+}
+
 // LISTAR
 export async function obtenerStaff() {
   const r = await http.get("/staff");

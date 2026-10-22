@@ -3,7 +3,7 @@ import {
   listarBannerPublicoController, listarBannerAdminController, crearBannerAnuncioController,
   actualizarBannerAnuncioController, cambiarEstadoBannerAnuncioController, eliminarBannerAnuncioController,
 } from "../../controllers/sistema/banner_anuncio_controller.js";
-import { requireAuth, requireRole } from "../../middleware/auth_middleware.js";
+import { requireAuth, requirePermiso } from "../../middleware/auth_middleware.js";
 
 export const bannerAnuncioRouter = Router();
 
@@ -11,7 +11,7 @@ export const bannerAnuncioRouter = Router();
 bannerAnuncioRouter.get("/", listarBannerPublicoController);
 
 // Gestión — admin (mismo nivel que "Contenido del home", no hace falta ser super_admin).
-bannerAnuncioRouter.use(requireAuth, requireRole("admin"));
+bannerAnuncioRouter.use(requireAuth, requirePermiso("contenido.editar"));
 bannerAnuncioRouter.get("/admin", listarBannerAdminController);
 bannerAnuncioRouter.post("/", crearBannerAnuncioController);
 bannerAnuncioRouter.put("/:id", actualizarBannerAnuncioController);

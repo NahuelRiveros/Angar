@@ -1,7 +1,8 @@
-import { Op } from "sequelize";
-import { orderConfig } from "../../../../order_config.js";
+import { QueryTypes } from "sequelize";
+import { sequelize } from "../../database/sequelize.js";
+import { permisosConfig } from "../../../../permisos_config.js";
 import { enviarEmail, mailConfigured } from "../common/mail_service.js";
-import { NotaPedido, NotaPedidoItem, Persona, Rol, Usuario } from "../../models/index.js";
+import { NotaPedido, NotaPedidoItem, Persona, Usuario } from "../../models/index.js";
 import {
   mailCambioEstadoCliente, mailCancelacionClienteEquipo, mailComprobanteNuevoEquipo, mailComprobanteRechazadoCliente,
   mailPedidoNuevoEquipo, mailPedidoRecibidoCliente,
@@ -13,16 +14,23 @@ import {
  * que falla queda en el log y el pedido sigue su curso.
  */
 
-/** Emails únicos de los usuarios activos con algún rol de gestión, en una sola consulta. */
+/**
+ * Emails únicos de los usuarios activos que pueden ver pedidos: con el permiso
+ * "pedidos.ver" en alguno de sus roles, o con un rol que tiene todos (admin).
+ */
 export async function correosEquipo() {
-  const usuarios = await Usuario.findAll({
-    where: { activo: true, eliminado_en: null }, attributes: ["id"],
-    include: [
-      { model: Rol, as: "roles", attributes: [], through: { attributes: [] }, where: { codigo: { [Op.in]: orderConfig.managementRoles } } },
-      { model: Persona, as: "persona", attributes: ["email"], where: { email: { [Op.ne]: null } } },
-    ],
-  });
-  return [...new Set(usuarios.map((u) => u.persona.email.trim().toLowerCase()).filter(Boolean))];
+  const filas = await sequelize.query(`
+    SELECT DISTINCT lower(trim(pe.email)) AS email
+    FROM usuario u
+    JOIN persona pe ON pe.id = u.persona_id
+    JOIN usuario_rol ur ON ur.usuario_id = u.id
+    JOIN rol r ON r.id = ur.rol_id
+    WHERE u.activo AND u.eliminado_en IS NULL AND trim(coalesce(pe.email, '')) <> ''
+      AND (r.codigo IN (:totales) OR EXISTS (
+        SELECT 1 FROM rol_permiso rp JOIN permiso p ON p.id = rp.permiso_id
+        WHERE rp.rol_id = r.id AND p.codigo = 'pedidos.ver'))
+    ORDER BY email`, { replacements: { totales: permisosConfig.rolesTotales }, type: QueryTypes.SELECT });
+  return filas.map((f) => f.email);
 }
 
 async function cargarPedido(id) {

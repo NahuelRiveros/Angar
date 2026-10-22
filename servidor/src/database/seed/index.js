@@ -1,5 +1,6 @@
 import { seed_catalogos } from "./seed_catalogos.js";
 import { seed_rbac } from "./seed_rbac.js";
+import { sincronizarPermisos } from "../../services/usuarios/permisos_service.js";
 import { seed_super_admin } from "./seed_super_admin.js";
 import { seed_suscripcion } from "./seed_suscripcion.js";
 import { seed_familias_distribuidora } from "./seed_familias_distribuidora.js";
@@ -29,6 +30,7 @@ export async function seed_database() {
   console.log("🌱 Sembrando datos base...");
   await seed_catalogos();
   await seed_rbac();
+  await sincronizarPermisos(); // después de seed_rbac: asigna los permisos nuevos a supervisor y vendedor
   await seed_super_admin();
   await seed_suscripcion();
   await seed_familias_distribuidora(); // solo con el catálogo vacío

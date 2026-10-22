@@ -40,7 +40,8 @@ Cada etapa se prueba y se revisa antes de pasar a la siguiente.
 5. **Permisos por rol**: panel de permisos, staff → Supervisor.
 6. **Datos fiscales** y documento de ARCA.
 
-Avance: etapas 1 y 3 terminadas; etapa 2 terminada en código, falta cargar las variables de Brevo en Render.
+Avance: etapas 1, 3 y 5 terminadas; etapa 2 terminada en código, falta cargar las variables de Brevo en Render.
+En la etapa 5 se sumó el permiso `ventas.ver` para que los montos del panel sigan siendo solo del admin, salvo que se le tilde a otro rol.
 
 ## Pendientes con el cliente
 

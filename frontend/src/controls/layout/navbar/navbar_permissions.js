@@ -1,4 +1,5 @@
 import { moduloHabilitado } from "../../config/modulos_config.js";
+import { cumpleAcceso } from "../../acceso/acceso.js";
 function rolesOf(user) {
   const roles = user?.roles?.length ? user.roles : [user?.rol_nombre || user?.rol || user?.role || user?.tipoDesc || user?.tipo];
   return roles.filter(Boolean).map((r) => String(r).trim().toLowerCase());
@@ -6,7 +7,7 @@ function rolesOf(user) {
 function visible(item, user, modules) {
   if (item.ocultarSiAuth && user || item.requiereAuth && !user) return false;
   if (!moduloHabilitado(item.modulo, modules)) return false;
-  return !item.roles?.length || item.roles.some((r) => rolesOf(user).includes(String(r).toLowerCase()));
+  return cumpleAcceso({ ...user, roles: rolesOf(user) }, { roles: (item.roles ?? []).map((r) => String(r).toLowerCase()), permisos: item.permisos, todos: item.todosLosPermisos });
 }
 function filterItems(items, user, modules) {
   return (items ?? []).filter((item) => visible(item, user, modules)).map((item) => item.children

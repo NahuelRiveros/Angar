@@ -1,14 +1,15 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/auth_context.jsx";
 import { authLink } from "./return_to.js";
+import { cumpleAcceso } from "./acceso.js";
 
 /**
- * Protege rutas según autenticación y roles.
+ * Protege rutas según autenticación, roles y permisos (ver acceso.js).
  *
  * Uso:
- *   <ProtectedRoute>                        → solo requiere estar logueado
- *   <ProtectedRoute roles={["admin"]}>      → solo admins
- *   <ProtectedRoute roles={["admin","staff"]}> → admin o staff
+ *   <ProtectedRoute>                                   → solo requiere estar logueado
+ *   <ProtectedRoute roles={["super_admin"]}>           → solo ese rol
+ *   <ProtectedRoute permisos={["pedidos.ver"]}>        → quien tenga el permiso
  *
  * Comportamiento:
  *   - Cargando auth  → muestra spinner
@@ -16,7 +17,7 @@ import { authLink } from "./return_to.js";
  *   - Sin rol        → redirige a / (home)
  *   - OK             → renderiza children
  */
-export default function ProtectedRoute({ children, roles = [] }) {
+export default function ProtectedRoute({ children, roles = [], permisos = [], todos = false }) {
   const { usuario, cargando, isAuth } = useAuth();
   const location = useLocation();
 
@@ -37,16 +38,8 @@ export default function ProtectedRoute({ children, roles = [] }) {
     return <Navigate to={authLink("/login", location.pathname + location.search + location.hash)} replace />;
   }
 
-  // Hay roles requeridos → verificar que el usuario tenga al menos uno
-  if (roles.length > 0) {
-    const rolesUsuario = usuario?.roles ?? [];
-    const tieneAcceso = roles.some((r) => rolesUsuario.includes(r));
-
-    if (!tieneAcceso) {
-      // Autenticado pero sin permiso → ir al inicio
-      return <Navigate to="/" replace />;
-    }
-  }
+  // Autenticado pero sin el rol o permiso pedido → ir al inicio
+  if (!cumpleAcceso(usuario, { roles, permisos, todos })) return <Navigate to="/" replace />;
 
   return children;
 }

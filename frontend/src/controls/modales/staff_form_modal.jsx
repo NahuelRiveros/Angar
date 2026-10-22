@@ -1,18 +1,13 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import InputField from "../ui/input_field.jsx";
 import SelectField from "../ui/select_field.jsx";
 import { useAuth } from "../../auth/auth_context.jsx";
-import { projectModules } from "../../config/gate_config.js";
+import { obtenerRolesStaff } from "../../api/staff_api.js";
 
-const ROLES_PERSONAL = [
-  { value: "staff", label: "Staff" },
-  // "vendedor": ve/procesa notas de pedido pero no toca catálogo. Solo lo
-  // consume eccomerce_distribuidora hoy (ver nota_pedido_router.js).
-  ...(projectModules.eccomerce_distribuidora ? [{ value: "vendedor", label: "Vendedor" }] : []),
-];
-
-const ROL_ADMIN = { value: "admin", label: "Admin" };
+// Los roles salen del servidor: incluyen los creados en "Roles y permisos".
+const ROL_POR_DEFECTO = "supervisor";
 
 const valoresIniciales = {
   nombre: "",
@@ -20,7 +15,7 @@ const valoresIniciales = {
   email: "",
   documento: "",
   password: "",
-  rol_codigo: "staff",
+  rol_codigo: ROL_POR_DEFECTO,
 };
 
 export default function StaffFormModal({
@@ -34,13 +29,18 @@ export default function StaffFormModal({
 
   const { usuario } = useAuth();
   const esSuperAdmin = Boolean(usuario?.roles?.includes("super_admin"));
-  const opcionesRol = esSuperAdmin ? [...ROLES_PERSONAL, ROL_ADMIN] : ROLES_PERSONAL;
+  const roles = useQuery({ queryKey: ["staff-roles"], queryFn: obtenerRolesStaff, enabled: abierto, staleTime: 60_000 });
+  // "admin" solo lo asigna un super admin (el servidor lo vuelve a verificar).
+  const opcionesRol = (roles.data ?? []).filter((r) => esSuperAdmin || r.codigo !== "admin").map((r) => ({ value: r.codigo, label: r.nombre }));
+  const puedeCambiarRol = !esEdicion || esSuperAdmin || staffEditar?.rol_codigo !== "admin";
+  const ayudaRoles = roles.isPending ? "Cargando roles…" : roles.isError ? "No se pudieron cargar los roles. Cerrá y volvé a abrir." : undefined;
 
   const {
     register,
     handleSubmit,
     reset,
     watch,
+    setValue,
     setError,
     formState: { errors },
   } = useForm({
@@ -48,6 +48,11 @@ export default function StaffFormModal({
   });
 
   const rolSeleccionado = watch("rol_codigo");
+
+  // Las opciones llegan después de abrir: sin esto el selector quedaría en la primera.
+  useEffect(() => {
+    if (abierto && roles.isSuccess) setValue("rol_codigo", staffEditar?.rol_codigo || ROL_POR_DEFECTO);
+  }, [abierto, roles.isSuccess, staffEditar, setValue]);
 
   useEffect(() => {
     if (!abierto) return;
@@ -59,7 +64,7 @@ export default function StaffFormModal({
         email: staffEditar.gym_persona_email || "",
         documento: staffEditar.gym_persona_documento || "",
         password: "",
-        rol_codigo: staffEditar.rol_codigo || "staff",
+        rol_codigo: staffEditar.rol_codigo || ROL_POR_DEFECTO,
       });
     } else {
       reset(valoresIniciales);
@@ -126,9 +131,9 @@ export default function StaffFormModal({
 
     if (!esEdicion) {
       payload.password = String(data.password).trim();
-      payload.rol_codigo = data.rol_codigo || "staff";
-    } else if (esSuperAdmin) {
-      payload.rol_codigo = data.rol_codigo || "staff";
+      payload.rol_codigo = data.rol_codigo || ROL_POR_DEFECTO;
+    } else if (puedeCambiarRol) {
+      payload.rol_codigo = data.rol_codigo || staffEditar?.rol_codigo;
     }
 
     await onGuardar(payload);
@@ -207,21 +212,24 @@ export default function StaffFormModal({
                 name="rol_codigo"
                 register={register}
                 options={opcionesRol}
-                fijoValue="staff"
+                fijoValue={ROL_POR_DEFECTO}
                 showPlaceholderOption={false}
+                disabled={!roles.isSuccess}
+                helperText={ayudaRoles}
               />
             </div>
           )}
 
-          {esEdicion && esSuperAdmin && (
+          {esEdicion && puedeCambiarRol && (
             <SelectField
               label="Rol"
               name="rol_codigo"
               register={register}
               options={opcionesRol}
-              fijoValue={staffEditar?.rol_codigo || "staff"}
+              fijoValue={staffEditar?.rol_codigo || ROL_POR_DEFECTO}
               showPlaceholderOption={false}
-              helperText="Como super administrador podés reasignar el rol de este usuario."
+              disabled={!roles.isSuccess}
+              helperText={ayudaRoles ?? "Lo que puede hacer cada rol se define en Roles y permisos."}
             />
           )}
 

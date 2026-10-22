@@ -5,6 +5,7 @@ import {
   Settings,
   LayoutTemplate,
   Receipt,
+  ShieldCheck,
 } from "lucide-react";
 
 // Dropdown de primer nivel con 2 ítems que además tienen `children` (un
@@ -20,14 +21,21 @@ export const adminDropdown = {
       label: "Gestión",
       icon: Users,
       requiereAuth: true,
-      roles: ["admin"],
+      permisos: ["usuarios.gestionar", "permisos.gestionar"],
       children: [
         {
           label: "Personal",
           to: "/admin/staffManager",
           requiereAuth: true,
-          roles: ["admin"],
+          permisos: ["usuarios.gestionar"],
           icon: Users,
+        },
+        {
+          label: "Roles y permisos",
+          to: "/admin/permisos",
+          requiereAuth: true,
+          permisos: ["permisos.gestionar"],
+          icon: ShieldCheck,
         },
       ],
     },
@@ -35,20 +43,20 @@ export const adminDropdown = {
       label: "Configuración",
       icon: Settings,
       requiereAuth: true,
-      roles: ["admin"],
+      permisos: ["contenido.editar"],
       children: [
         {
           label: "Contenido del home",
           to: "/admin/home-config",
           requiereAuth: true,
-          roles: ["admin"],
+          permisos: ["contenido.editar"],
           icon: LayoutTemplate,
         },
         {
           label: "Cinta de anuncios",
           to: "/admin/anuncios",
           requiereAuth: true,
-          roles: ["admin"],
+          permisos: ["contenido.editar"],
           icon: Megaphone,
         },
         // {

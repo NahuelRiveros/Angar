@@ -1,5 +1,6 @@
 import {
   listarStaff,
+  listarRolesAsignables,
   crearStaff,
   actualizarStaff,
   cambiarPasswordStaff,
@@ -9,6 +10,15 @@ import {
 } from "../../services/usuarios/admin_staff_service.js";
 
 // 📋 listar
+export async function listarRolesStaffController(_req, res) {
+  try {
+    return res.json({ ok: true, data: await listarRolesAsignables() });
+  } catch (e) {
+    console.error("listarRolesStaffController:", e);
+    return res.status(500).json({ ok: false, mensaje: "No se pudieron listar los roles" });
+  }
+}
+
 export async function listarStaffController(_req, res) {
   try {
     const data = await listarStaff();

@@ -15,12 +15,14 @@ const gruposDeSecciones = [
   { id: "sistema", titulo: "Sistema", items: superAdminDropdown.items },
 ];
 
-// Quien puede ver al menos una pantalla del panel puede entrar al panel.
-export const rolesPanel = [...new Set(gruposDeSecciones.flatMap((g) => g.items.flatMap((item) => item.roles ?? [])))];
+// Quien puede ver al menos una pantalla del panel puede entrar al panel: alcanza con
+// uno de los roles (super admin) o de los permisos que piden sus ítems.
+const unir = (campo) => [...new Set(gruposDeSecciones.flatMap((g) => g.items.flatMap((item) => item[campo] ?? [])))];
+export const accesoPanel = { roles: unir("roles"), permisos: unir("permisos") };
 
-export const panelInicio = { label: "Inicio", to: "/panel", exact: true, requiereAuth: true, roles: rolesPanel, icon: LayoutDashboard };
+export const panelInicio = { label: "Inicio", to: "/panel", exact: true, requiereAuth: true, ...accesoPanel, icon: LayoutDashboard };
 
 export const panelGrupos = [{ id: "inicio", items: [panelInicio] }, ...gruposDeSecciones];
 
 // Botón del navbar de la tienda que reemplaza a los menús "Distribuidora · Gestión", "Admin" y "Sistema".
-export const panelGestionLink = { label: "Panel de gestión", to: "/panel", requiereAuth: true, roles: rolesPanel, icon: LayoutDashboard };
+export const panelGestionLink = { label: "Panel de gestión", to: "/panel", requiereAuth: true, ...accesoPanel, icon: LayoutDashboard };

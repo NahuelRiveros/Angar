@@ -6,18 +6,21 @@ import {
   cambiarPasswordStaffController,
   cambiarEstadoStaffController,
   cambiarRolStaffController,
+  listarRolesStaffController,
   eliminarStaffController,
 } from "../../controllers/usuarios/admin_staff_controller.js";
 
-import { requireAuth, requireRole } from "../../middleware/auth_middleware.js";
+import { requireAuth, requirePermiso } from "../../middleware/auth_middleware.js";
 
 export const staffRouter = Router();
 
-// protección global → solo admin
-staffRouter.use(requireAuth, requireRole("admin"));
+staffRouter.use(requireAuth, requirePermiso("usuarios.gestionar"));
 
 // 📋 listar usuarios (staff/admin)
 staffRouter.get("/", listarStaffController);
+
+// roles que se pueden asignar (incluye los creados en el panel de permisos)
+staffRouter.get("/roles", listarRolesStaffController);
 
 // ➕ crear staff
 staffRouter.post("/", crearStaffController);

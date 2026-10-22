@@ -1,4 +1,3 @@
-import { orderConfig } from "../order_config.js";
 import { storefrontConfig } from "../storefront_config.js";
 import {
   ShoppingBag,
@@ -35,7 +34,7 @@ export const eccomerceDistribuidoraCatalogoLink = {
   to: "/distribuidora/catalogo",
   requiereAuth: !storefrontConfig.publicCatalog,
   modulo: "eccomerce_distribuidora",
-  roles: storefrontConfig.publicCatalog ? [] : ["cliente", "admin", "staff"],
+  // Cualquier usuario con sesión compra; sin catálogo público, alcanza con requiereAuth.
   icon: LayoutGrid,
 };
 
@@ -51,7 +50,6 @@ export const eccomerceDistribuidoraDropdown = {
       to: "/distribuidora/carrito",
       requiereAuth: true,
       modulo: "eccomerce_distribuidora",
-      roles: ["cliente", "admin", "staff"],
       icon: ShoppingBag,
     },
     {
@@ -59,17 +57,13 @@ export const eccomerceDistribuidoraDropdown = {
       to: "/distribuidora/mis-pedidos",
       requiereAuth: true,
       modulo: "eccomerce_distribuidora",
-      roles: ["cliente", "admin", "staff"],
       icon: ClipboardList,
     },
   ],
 };
 
-// "Distribuidora · Gestión" — administración de categorías/productos
-// (admin/staff) y de los pedidos recibidos (admin/vendedor, rol acotado
-// aparte). El roles de acá arriba es la UNIÓN de ambos, para que el
-// dropdown se muestre si el usuario puede ver AL MENOS un ítem — cada ítem
-// filtra el suyo.
+// "Distribuidora · Gestión" — catálogo, precios y pedidos recibidos. Cada ítem
+// pide su permiso (permisos_config.js); el grupo se muestra si queda alguno.
 export const eccomerceDistribuidoraAdminDropdown = {
   id: "eccomerce_distribuidora_admin",
   labelNoAuth: "Distribuidora · Gestión",
@@ -81,7 +75,7 @@ export const eccomerceDistribuidoraAdminDropdown = {
       to: "/distribuidora/admin/productos",
       requiereAuth: true,
       modulo: "eccomerce_distribuidora",
-      roles: ["admin", "staff"],
+      permisos: ["productos.editar"],
       icon: Package,
     },
     {
@@ -89,7 +83,7 @@ export const eccomerceDistribuidoraAdminDropdown = {
       to: "/distribuidora/admin/categorias",
       requiereAuth: true,
       modulo: "eccomerce_distribuidora",
-      roles: ["admin", "staff"],
+      permisos: ["productos.editar"],
       icon: FolderTree,
     },
     {
@@ -97,7 +91,7 @@ export const eccomerceDistribuidoraAdminDropdown = {
       to: "/distribuidora/admin/marcas",
       requiereAuth: true,
       modulo: "eccomerce_distribuidora",
-      roles: ["admin", "staff"],
+      permisos: ["productos.editar"],
       icon: Tag,
     },
     {
@@ -105,7 +99,7 @@ export const eccomerceDistribuidoraAdminDropdown = {
       to: "/distribuidora/admin/listas-precio",
       requiereAuth: true,
       modulo: "eccomerce_distribuidora",
-      roles: ["admin"],
+      permisos: ["precios.editar"],
       icon: Tags,
     },
     {
@@ -113,7 +107,8 @@ export const eccomerceDistribuidoraAdminDropdown = {
       to: "/distribuidora/admin/importar",
       requiereAuth: true,
       modulo: "eccomerce_distribuidora",
-      roles: ["admin", "staff"],
+      permisos: ["productos.editar", "precios.editar"],
+      todosLosPermisos: true,
       icon: Upload,
     },
     {
@@ -121,7 +116,7 @@ export const eccomerceDistribuidoraAdminDropdown = {
       to: "/distribuidora/admin/notas-pedido",
       requiereAuth: true,
       modulo: "eccomerce_distribuidora",
-      roles: orderConfig.managementRoles,
+      permisos: ["pedidos.ver"],
       icon: ClipboardList,
     },
     {
@@ -130,7 +125,7 @@ export const eccomerceDistribuidoraAdminDropdown = {
       to: "/distribuidora/admin/lista-carga",
       requiereAuth: true,
       modulo: "eccomerce_distribuidora",
-      roles: orderConfig.managementRoles,
+      permisos: ["pedidos.ver"],
       icon: Truck,
     },
   ],

@@ -8,6 +8,8 @@ import ImageUploadField from "../../../controls/ui/image_upload_field.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import { UNIDADES, cantidadConUnidad, describirBulto, textoBultos } from "../../../../../unidades_config.js";
 import { formatearPrecio, precioSinIva } from "../utils/precio_iva.js";
+import { useAuth } from "../../../auth/auth_context.jsx";
+import { tienePermiso } from "../../../../../permisos_config.js";
 
 const PESTANAS = [
   { id: "general", label: "Datos generales" },
@@ -27,13 +29,16 @@ const fecha = (valor) => (valor ? new Date(valor).toLocaleDateString("es-AR") : 
  */
 export default function ProductoForm({ onCancelar, onGuardar, onCambio, productoEditar, guardando, opcionesCategoria, categoriaInicial, error = "" }) {
   const v = productoEditar?.variedades?.[0];
+  const { usuario } = useAuth();
+  // Sin "precios.editar" se ve el precio pero no se cambia; un artículo nuevo arranca en $0.
+  const puedeCambiarPrecios = tienePermiso(usuario, "precios.editar");
   const [pestana, setPestana] = useState("general");
   const [inicial] = useState(() => ({
     categoria_id: productoEditar?.categoria_id ?? categoriaInicial ?? "",
     nombre: productoEditar?.nombre ?? "", marca_id: productoEditar?.marca_id ?? null, marca: productoEditar?.marca ?? "", descripcion: productoEditar?.descripcion ?? "",
     imagen_url: productoEditar?.imagen_url ?? "", activo: productoEditar?.activo ?? true,
     cod_ref: v?.cod_ref ?? "", codigo_barras: v?.codigo_barras ?? "",
-    precio: v?.precio ?? "", precio_anterior: v?.precio_anterior ?? "", iva_porcentaje: String(Number(v?.iva_porcentaje ?? 21)),
+    precio: v?.precio ?? (puedeCambiarPrecios ? "" : "0"), precio_anterior: v?.precio_anterior ?? "", iva_porcentaje: String(Number(v?.iva_porcentaje ?? 21)),
     controla_stock: v?.controla_stock ?? false, cantidad: v?.cantidad ?? 0, stock_minimo: v?.stock_minimo ?? 0,
     unidad_medida: v?.unidad_medida ?? "UNIDAD", unidad_bulto: v?.unidad_bulto ?? "CAJA", unidades_por_bulto: v?.unidades_por_bulto ?? 1,
   }));
@@ -100,8 +105,9 @@ export default function ProductoForm({ onCancelar, onGuardar, onCambio, producto
         </div>
 
         <div role="tabpanel" hidden={pestana !== "precios"} className="space-y-4">
+          {!puedeCambiarPrecios && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">Tu rol no puede cambiar precios: los ves pero no se modifican al guardar. {productoEditar ? "" : "El artículo se crea en $0 y lo completa quien tenga permiso."}</p>}
           <div className="grid gap-3 sm:grid-cols-2">
-            <InputField label="Precio de venta" required type="number" step="0.01" min="0" hideMessage value={d.precio} onChange={set("precio")} placeholder="Ej: 1500" tooltip="Es el precio que paga el cliente y se muestra en el catálogo." />
+            <InputField label="Precio de venta" required type="number" step="0.01" min="0" hideMessage value={d.precio} onChange={set("precio")} disabled={!puedeCambiarPrecios} placeholder="Ej: 1500" tooltip="Es el precio que paga el cliente y se muestra en el catálogo." />
             <SelectField label="IVA" options={OPCIONES_IVA} value={d.iva_porcentaje} onChange={set("iva_porcentaje")} />
           </div>
           {d.precio !== "" && Number(d.precio) > 0 && (
@@ -110,7 +116,7 @@ export default function ProductoForm({ onCancelar, onGuardar, onCambio, producto
               {bulto && <> · Precio por bulto ({bulto.toLowerCase()}): <b>{formatearPrecio(Number(d.precio) * Number(d.unidades_por_bulto))}</b></>}
             </p>
           )}
-          <InputField label="Precio anterior — oferta (opcional)" type="number" step="0.01" min="0" value={d.precio_anterior} onChange={set("precio_anterior")}
+          <InputField label="Precio anterior — oferta (opcional)" type="number" step="0.01" min="0" value={d.precio_anterior} onChange={set("precio_anterior")} disabled={!puedeCambiarPrecios}
             placeholder="Ej: 2000" helperText="Se muestra tachado como oferta solo si es mayor al precio de venta." />
           {v?.fecha_cambio_precio && <p className="text-xs text-slate-500">Último cambio de precio: {fecha(v.fecha_cambio_precio)}</p>}
           {productoEditar && <PreciosEnListas productoId={productoEditar.id} activa={pestana === "precios"} />}

@@ -1,7 +1,8 @@
 import {
   listarProductos, obtenerProductoPorId, crearProductoConVariedad, actualizarProductoConVariedad, cambiarEstadoProducto, eliminarProducto,
-  ajustarPreciosMasivo,
+  ajustarPreciosMasivo, cambiaPrecios, errorSinPermisoPrecios,
 } from "../../services/distribuidora/producto_distribuidora_service.js";
+import { tienePermiso } from "../../../../permisos_config.js";
 import { validarVariedad, FILTROS_STOCK } from "../../services/common/articulo_rules.js";
 import { listaDeUsuario, aplicarListaAProductos, idsProductosEnOferta, preciosEnListas } from "../../services/distribuidora/listas_precio_service.js";
 
@@ -9,12 +10,11 @@ const MAX_OFERTAS = 24;
 // Precios para quien mira: la gestión ve la General; un cliente, la de su localidad.
 const listaPara = (req, gestion) => (gestion ? null : listaDeUsuario(req.user?.usuario_id));
 
-// admin/staff gestionan el catálogo y necesitan seguir viendo los productos
-// desactivados (para poder reactivarlos); cualquier otro rol ve solo lo activo.
-function puedeVerInactivos(req) {
-  const roles = req.user?.roles ?? [];
-  return roles.includes("admin") || roles.includes("staff");
-}
+// Quien gestiona el catálogo necesita seguir viendo los productos desactivados
+// (para poder reactivarlos); cualquier otro usuario ve solo lo activo.
+const puedeVerInactivos = (req) => tienePermiso(req.user, "productos.editar", "precios.editar");
+const sinPermisoPrecios = (req) => !tienePermiso(req.user, "precios.editar");
+const respuestaSinPermiso = (res, error) => res.status(403).json({ ok: false, codigo: error.codigo, mensaje: error.message });
 
 export async function listarProductosController(req, res) {
   try {
@@ -62,6 +62,8 @@ export async function crearProductoController(req, res) {
     }
     const { datos, error } = validarVariedad(req.body);
     if (error) return res.status(400).json({ ok: false, mensaje: error });
+    // Un artículo nuevo sin permiso de precios se carga en $0 y lo completa quien sí lo tiene.
+    if (sinPermisoPrecios(req) && cambiaPrecios(null, datos)) return respuestaSinPermiso(res, errorSinPermisoPrecios());
     const producto = await crearProductoConVariedad(req.body, datos);
     return res.status(201).json({ ok: true, mensaje: "Producto creado correctamente", data: producto });
   } catch (error) {
@@ -81,10 +83,11 @@ export async function actualizarProductoController(req, res) {
     }
     const { datos, error } = validarVariedad(req.body);
     if (error) return res.status(400).json({ ok: false, mensaje: error });
-    const producto = await actualizarProductoConVariedad(req.params.id, req.body, datos);
+    const producto = await actualizarProductoConVariedad(req.params.id, req.body, datos, { sinPermisoPrecios: sinPermisoPrecios(req) });
     if (!producto) return res.status(404).json({ ok: false, mensaje: "Producto no encontrado" });
     return res.json({ ok: true, mensaje: "Producto actualizado correctamente", data: producto });
   } catch (error) {
+    if (error.codigo === "SIN_PERMISO_PRECIOS") return respuestaSinPermiso(res, error);
     if (error.codigo === "MARCA_INVALIDA") return res.status(400).json({ ok: false, codigo: error.codigo, mensaje: error.message });
     if (error.name === "SequelizeUniqueConstraintError") {
       return res.status(409).json({ ok: false, mensaje: "Ya existe un producto con ese nombre en esta categoría" });

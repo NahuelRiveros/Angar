@@ -2,13 +2,23 @@
 import { Op } from "sequelize";
 import { sequelize } from "../../database/sequelize.js";
 import { Persona, Usuario, UsuarioRol, Rol, TipoDocumento } from "../../models/index.js";
+import { permisosConfig } from "../../../../permisos_config.js";
 
 const normalizarEmail = (v) => String(v ?? "").trim().toLowerCase();
 const normalizarDocumento = (v) => String(v ?? "").replace(/[.\s]/g, "").trim();
 
-// Roles que se pueden asignar desde "Personal". "admin" solo lo puede asignar
-// un super_admin (se valida en crearStaff) — super_admin nunca se asigna acá.
-const ROLES_PERSONAL = ["staff", "profesional", "vendedor", "admin"];
+// Roles que se pueden asignar desde "Personal": todos los del personal, incluidos los
+// creados en el panel de permisos. "admin" solo lo asigna un super_admin (se valida
+// en crearStaff y cambiarRolStaff); super_admin y los roles de cliente, nunca.
+const ROLES_NO_ASIGNABLES = ["super_admin", ...permisosConfig.rolesFuera];
+const ROL_POR_DEFECTO = "supervisor";
+
+/** Roles para el selector de "Personal": código y nombre visible. */
+export async function listarRolesAsignables() {
+  const roles = await Rol.findAll({ where: { codigo: { [Op.notIn]: ROLES_NO_ASIGNABLES } }, attributes: ["codigo", "descripcion"], order: [["id", "ASC"]] });
+  return roles.map((r) => ({ codigo: r.codigo, nombre: r.descripcion }));
+}
+const codigosAsignables = async () => (await listarRolesAsignables()).map((r) => r.codigo);
 
 const ahoraArgentina = () =>
   sequelize.literal(`TIMEZONE('America/Argentina/Cordoba', CURRENT_TIMESTAMP)`);
@@ -21,7 +31,7 @@ async function usuarioEsAdmin(usuarioId) {
 }
 
 export async function listarStaff() {
-  const rolesPersonal = await Rol.findAll({ where: { codigo: { [Op.in]: ROLES_PERSONAL } } });
+  const rolesPersonal = await Rol.findAll({ where: { codigo: { [Op.notIn]: ROLES_NO_ASIGNABLES } } });
   if (!rolesPersonal.length) return [];
 
   // Ocultar de "Personal" a cualquier usuario que además tenga super_admin
@@ -87,7 +97,7 @@ export async function crearStaff({ email, password, nombre, apellido, documento,
   const doc       = normalizarDocumento(documento);
   const nombreN   = String(nombre ?? "").trim();
   const apellidoN = String(apellido ?? "").trim();
-  const rolCodigo = ROLES_PERSONAL.includes(rol_codigo) ? rol_codigo : "staff";
+  const rolCodigo = (await codigosAsignables()).includes(rol_codigo) ? rol_codigo : ROL_POR_DEFECTO;
 
   if (rolCodigo === "admin" && !solicitanteEsSuperAdmin)
     return { ok: false, codigo: "SIN_PERMISO", mensaje: "Solo un super administrador puede crear otro admin" };
@@ -265,7 +275,8 @@ export async function cambiarEstadoStaff(usuarioId, activo, solicitanteEsSuperAd
 }
 
 export async function cambiarRolStaff(usuarioRolId, nuevoRolCodigo, solicitanteEsSuperAdmin) {
-  if (!ROLES_PERSONAL.includes(nuevoRolCodigo))
+  const asignables = await codigosAsignables();
+  if (!asignables.includes(nuevoRolCodigo))
     return { ok: false, codigo: "ROL_INVALIDO", mensaje: "Rol inválido" };
 
   const relacion = await UsuarioRol.findByPk(usuarioRolId, { include: [{ model: Rol, as: "rol" }] });
@@ -273,7 +284,7 @@ export async function cambiarRolStaff(usuarioRolId, nuevoRolCodigo, solicitanteE
     return { ok: false, codigo: "NO_ENCONTRADO", mensaje: "Relación de rol no encontrada" };
 
   const rolActual = relacion.rol?.codigo;
-  if (!ROLES_PERSONAL.includes(rolActual))
+  if (!asignables.includes(rolActual))
     return { ok: false, codigo: "NO_PERMITIDO", mensaje: "No se puede modificar este rol desde acá" };
 
   if ((rolActual === "admin" || nuevoRolCodigo === "admin") && !solicitanteEsSuperAdmin)

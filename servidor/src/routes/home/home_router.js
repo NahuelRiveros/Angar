@@ -23,7 +23,7 @@ import {
   eliminarContactoController,
   actualizarLayoutAreaController,
 } from "../../controllers/home/home_controller.js";
-import { requireAuth, requireRole } from "../../middleware/auth_middleware.js";
+import { requireAuth, requirePermiso } from "../../middleware/auth_middleware.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -41,7 +41,7 @@ homeRouter.get("/contenido", obtenerContenidoPublicoController);
 homeRouter.get("/config", obtenerConfigPublicaController);
 
 // Gestión — solo admin
-homeRouter.use(requireAuth, requireRole("admin"));
+homeRouter.use(requireAuth, requirePermiso("contenido.editar"));
 homeRouter.get("/areas", listarAreasController);
 homeRouter.get("/contenido/admin", listarContenidoAdminController);
 homeRouter.post("/contenido", upload.single("archivo"), crearContenidoController);

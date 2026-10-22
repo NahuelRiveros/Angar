@@ -1,4 +1,9 @@
+import { Buffer } from "node:buffer";
 import { test, expect } from "@playwright/test";
+import { permisosConfig, permisosEfectivos } from "../../../permisos_config.js";
+// Como /auth/me: los roles con los permisos que reciben por defecto (lo tildado al instalar).
+const porDefecto = (rol) => permisosConfig.permisos.filter((p) => p.porDefecto.includes(rol)).map((p) => p.codigo);
+const conPermisos = (usuario) => ({ ...usuario, permisos: permisosEfectivos(usuario.roles, usuario.roles.flatMap(porDefecto)) });
 const product = { id: 1, nombre: "Arroz largo fino", marca: "Marca de prueba", categoria: { id: 1, nombre: "Almacén" }, variedades: [{ id: 11, nombre: "Paquete 1 kg", precio: 1200, controla_stock: true, cantidad: 200, iva_porcentaje: 21 }] };
 // Reemplaza el script de Google: el botón falso entrega una credencial de prueba, sin internet.
 const GOOGLE_FALSO = `window.google = { accounts: { id: {
@@ -22,7 +27,7 @@ async function mockApi(page, initialCart = []) {
     else if (path.startsWith("/distribuidora/productos/")) data = { ok: true, data: product };
     else if (path === "/distribuidora/catalogos/categorias") data = { ok: true, data: [{ id: 1, nombre: "Almacén", padre_id: null }] };
     else if (path === "/auth/login") data = { ok: true, token: "mock-session" };
-    else if (path === "/auth/me") data = { ok: true, usuario: { usuario_id: 7, nombre: "Ana", apellido: "Cliente", roles: ["cliente"] } };
+    else if (path === "/auth/me") data = { ok: true, usuario: conPermisos({ usuario_id: 7, nombre: "Ana", apellido: "Cliente", roles: ["cliente"] }) };
     else if (path === "/auth/register") data = { ok: true };
     else if (path === "/modulos/estado") data = { ok: true, modulos: { eccomerce_distribuidora: true } };
     else if (path === "/distribuidora/carrito/merge") {
@@ -231,7 +236,7 @@ const PEDIDOS_SIN_MONTOS = { ...RESUMEN_PANEL.pedidos, por_cobrar: null, ventas:
 async function entrarComo(page, roles, resumen = RESUMEN_PANEL) {
   await mockApi(page);
   await page.addInitScript(() => localStorage.setItem("token", "mock-session"));
-  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { ok: true, usuario: { usuario_id: 8, nombre: "Eva", roles } } }));
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { ok: true, usuario: conPermisos({ usuario_id: 8, nombre: "Eva", roles }) } }));
   const pedidosResumen = [];
   await page.route("**/api/distribuidora/panel/resumen", (route) => { pedidosResumen.push(1); return route.fulfill({ json: { ok: true, data: resumen } }); });
   return pedidosResumen;
@@ -241,8 +246,8 @@ async function menuPanel(page) {
   if ((page.viewportSize()?.width ?? 0) < 1024) await page.getByRole("button", { name: "Abrir menú del panel" }).click();
   return page.getByRole("navigation", { name: "Menú del panel" });
 }
-test("staff entra al panel desde el navbar y ve dashboard y menú de su rol", async ({ page }, info) => {
-  await entrarComo(page, ["staff"], { ...RESUMEN_PANEL, pedidos: PEDIDOS_SIN_MONTOS });
+test("supervisor entra al panel desde el navbar y ve dashboard y menú de su rol", async ({ page }, info) => {
+  await entrarComo(page, ["supervisor"], { ...RESUMEN_PANEL, pedidos: PEDIDOS_SIN_MONTOS });
   await page.goto("/");
   if (info.project.name === "desktop") {
     await expect(page.getByRole("button", { name: /Distribuidora · Gestión/ })).toHaveCount(0);
@@ -301,7 +306,7 @@ test("vendedor ve solo pedidos; cliente no tiene panel; error del resumen ofrece
 const ARTICULO = { id: 519, nombre: "9 de Oro Agridulce 20x200g", marca: "Cañuela", activo: true, categoria_id: 3, categoria: { id: 3, nombre: "Galletitas en gral" },
   variedades: [{ id: 51, precio: 1200, iva_porcentaje: 21, controla_stock: true, cantidad: 30, stock_minimo: 50, cod_ref: "000519", codigo_barras: "7790040001230", unidad_medida: "PAQUETE", unidad_bulto: "CAJA", unidades_por_bulto: 20, fecha_cambio_precio: "2026-05-26T12:00:00Z" }] };
 async function gestionArticulos(page) {
-  await entrarComo(page, ["staff"]);
+  await entrarComo(page, ["supervisor"]);
   const pedidos = [];
   const guardados = [];
   await page.route("**/api/distribuidora/productos**", async (route) => {
@@ -314,6 +319,102 @@ async function gestionArticulos(page) {
   await page.route("**/api/distribuidora/catalogos/categorias", (route) => route.fulfill({ json: { ok: true, data: [{ id: 3, nombre: "Galletitas en gral", padre_id: null }] } }));
   return { pedidos, guardados };
 }
+test("rol sin permiso de precios: carga artículos en $0 y no ve ajustes, listas ni importación", async ({ page }) => {
+  const { guardados } = await gestionArticulos(page);
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { ok: true, usuario: { usuario_id: 9, nombre: "Rafa", roles: ["repositor"], permisos: ["productos.editar"] } } }));
+  await page.goto("/distribuidora/admin/productos");
+  await expect(page.getByRole("heading", { name: "Artículos", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Ajuste masivo" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Ajustar precio de/ })).toHaveCount(0);
+  await menuPanel(page);
+  await expect(page.getByRole("link", { name: "Listas de precios" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Importar productos" })).toHaveCount(0);
+  await page.goto("/distribuidora/admin/productos/nuevo");
+  await page.getByRole("combobox", { name: /^Familia/ }).fill("galle");
+  await page.getByRole("option", { name: /Galletitas en gral/ }).click();
+  await page.getByRole("tab", { name: /Precios/ }).click();
+  await expect(page.getByLabel(/^Precio de venta/)).toBeDisabled();
+  await expect(page.getByLabel(/^Precio de venta/)).toHaveValue("0");
+  await expect(page.getByText("Tu rol no puede cambiar precios")).toBeVisible();
+  await page.getByRole("tab", { name: /Datos generales/ }).click();
+  await page.getByLabel(/^Descripción del artículo/).fill("Lavandina X5 1 lt");
+  await page.getByRole("button", { name: "Guardar artículo" }).click();
+  await expect.poll(() => guardados.length).toBe(1);
+  expect([guardados[0].precio, guardados[0].precio_anterior]).toEqual([0, null]);
+  await noOverflow(page);
+});
+
+test("roles y permisos: dependencias al tildar, guardar juntos, crear y borrar roles", async ({ page }, info) => {
+  await entrarComo(page, ["admin"]);
+  const porDefectoDe = (rol) => permisosConfig.permisos.filter((p) => p.porDefecto.includes(rol)).map((p) => p.codigo);
+  const roles = [
+    { id: 1, codigo: "admin", nombre: "Administrador", permisos: permisosConfig.permisos.map((p) => p.codigo), editable: false, borrable: false, usuarios: 1 },
+    { id: 2, codigo: "supervisor", nombre: "Supervisor", permisos: porDefectoDe("supervisor"), editable: true, borrable: false, usuarios: 2 },
+    { id: 3, codigo: "vendedor", nombre: "Vendedor", permisos: porDefectoDe("vendedor"), editable: true, borrable: false, usuarios: 1 },
+    { id: 4, codigo: "repositor", nombre: "Repositor", permisos: [], editable: true, borrable: true, usuarios: 0 },
+    { id: 5, codigo: "cajero", nombre: "Cajero", permisos: [], editable: true, borrable: true, usuarios: 3 },
+  ];
+  const cambios = [];
+  // Solo la API: un patrón con comodines también atraparía el módulo src/api/permisos_api.js.
+  await page.route((url) => url.pathname.startsWith("/api/permisos"), (route) => {
+    const request = route.request();
+    const ruta = new URL(request.url()).pathname.replace("/api/permisos", "");
+    if (request.method() === "GET") {
+      // Como la API: sin los roles por defecto, que son internos.
+      const permisos = permisosConfig.permisos.map((p) => Object.fromEntries(Object.entries(p).filter(([clave]) => clave !== "porDefecto")));
+      return route.fulfill({ json: { ok: true, data: { grupos: permisosConfig.grupos, permisos, roles } } });
+    }
+    cambios.push({ metodo: request.method(), ruta, body: request.postDataJSON() });
+    if (request.method() === "PUT") roles.find((r) => `/roles/${r.id}` === ruta).permisos = request.postDataJSON().permisos;
+    if (request.method() === "DELETE") roles.splice(roles.findIndex((r) => `/roles/${r.id}` === ruta), 1);
+    if (request.method() === "POST") roles.push({ id: 6, codigo: "deposito", nombre: "Depósito", permisos: [], editable: true, borrable: true, usuarios: 0 });
+    return route.fulfill({ json: { ok: true, mensaje: "Listo", data: { id: 6, codigo: "deposito", nombre: "Depósito" } } });
+  });
+  await page.goto("/admin/permisos");
+  await expect(page.getByRole("heading", { name: "Roles y permisos" })).toBeVisible();
+  // En el celular se edita un rol a la vez con un selector; desde tablets, la grilla completa.
+  const movil = await page.getByLabel("Rol a editar").isVisible();
+  const elegir = async (rol) => { if (movil) await page.getByLabel("Rol a editar").selectOption({ label: rol }); };
+  const casilla = (permiso, rol) => page.getByLabel(`${permiso} para ${rol}`).locator("visible=true");
+  // El administrador tiene todo y no se edita.
+  await elegir("Administrador");
+  await expect(casilla("Ver pedidos", "Administrador")).toBeChecked();
+  await expect(casilla("Ver pedidos", "Administrador")).toBeDisabled();
+  // Tildar "Registrar cobros" suma "Ver pedidos": sin él no hay pantalla donde cobrar.
+  await elegir("Repositor");
+  await casilla("Registrar cobros", "Repositor").check();
+  await expect(casilla("Ver pedidos", "Repositor")).toBeChecked();
+  // Destildar "Ver pedidos" saca lo que depende de él.
+  await elegir("Vendedor");
+  await casilla("Ver pedidos", "Vendedor").uncheck();
+  await expect(casilla("Cambiar estados", "Vendedor")).not.toBeChecked();
+  await expect(page.getByRole("status")).toContainText("Cambios sin guardar en Vendedor, Repositor");
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("permisos.png"), fullPage: true });
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.getByRole("button", { name: "Guardar cambios" })).toHaveCount(0);
+  expect(cambios.filter((c) => c.metodo === "PUT")).toEqual([
+    { metodo: "PUT", ruta: "/roles/3", body: { permisos: [] } },
+    { metodo: "PUT", ruta: "/roles/4", body: { permisos: ["pedidos.ver", "cobros.gestionar"] } },
+  ]);
+  // Solo se borra un rol creado en el panel y sin personas.
+  await expect(page.getByRole("button", { name: /Eliminar el rol Vendedor/ }).locator("visible=true")).toHaveCount(0);
+  await elegir("Cajero");
+  await expect(page.getByRole("button", { name: /No se puede eliminar Cajero/ }).locator("visible=true")).toBeDisabled();
+  await elegir("Repositor");
+  await page.getByRole("button", { name: "Eliminar el rol Repositor" }).locator("visible=true").click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+  const opcionesORoles = () => movil ? page.getByLabel("Rol a editar").locator("option") : page.getByRole("columnheader");
+  await expect(opcionesORoles().filter({ hasText: "Repositor" })).toHaveCount(0);
+  await page.getByLabel("Nuevo rol").fill("Depósito");
+  await page.getByRole("button", { name: "Crear rol" }).click();
+  await expect(opcionesORoles().filter({ hasText: "Depósito" })).toHaveCount(1);
+  expect(cambios.filter((c) => c.metodo !== "PUT")).toEqual([
+    { metodo: "DELETE", ruta: "/roles/4", body: null },
+    { metodo: "POST", ruta: "/roles", body: { nombre: "Depósito" } },
+  ]);
+});
+
 test("artículos: tabla con código, bultos y stock bajo; filtros en la dirección; ficha con pestañas", async ({ page }) => {
   const { pedidos, guardados } = await gestionArticulos(page);
   await page.goto("/distribuidora/admin/productos");
@@ -452,7 +553,7 @@ test("una falla de red muestra reintento y nunca catálogo vacío", async ({ pag
 test("staff gestiona notas y registra cobros con historial en cualquier pantalla", async ({ page }, info) => {
   await mockApi(page);
   await page.addInitScript(() => localStorage.setItem("token", "mock-session"));
-  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { ok: true, usuario: { usuario_id: 8, nombre: "Eva", roles: ["staff"] } } }));
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { ok: true, usuario: conPermisos({ usuario_id: 8, nombre: "Eva", roles: ["supervisor"] }) } }));
   const order = { id: 123, estado: "pendiente", estado_pago: "pendiente", total: 2400, monto_pagado: 0, fecha_alta: "2026-09-10T12:00:00Z", cuit: "20-12345678-9", direccion: "Av. Prueba 123", localidad: "La Plata", provincia: "Buenos Aires", usuario: { persona: { nombre: "Ana", apellido: "Cliente", email: "cliente.con.email.largo@example.test" } }, items: [{ id: 1, cantidad: 2, nombre_producto: product.nombre, subtotal: 2400 }], pagos: [], historial_estados: [] };
   const payments = [];
   await page.route("**/api/distribuidora/notas-pedido/**", async (route) => {
@@ -581,8 +682,8 @@ test("comprador adjunta el comprobante de transferencia, ve el rechazo y lo abre
 test("gestión revisa comprobantes: staff acepta con el importe o rechaza con motivo; el vendedor no cobra", async ({ page }, info) => {
   await mockApi(page);
   await page.addInitScript(() => localStorage.setItem("token", "mock-session"));
-  let roles = ["staff"];
-  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { ok: true, usuario: { usuario_id: 8, nombre: "Eva", roles } } }));
+  let roles = ["supervisor"];
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { ok: true, usuario: conPermisos({ usuario_id: 8, nombre: "Eva", roles }) } }));
   const comprobante = (id, nombre) => ({ id, nombre_archivo: nombre, estado: "pendiente", subido_en: "2026-10-21T10:00:00Z" });
   const pedido = { id: 400, estado: "confirmado", estado_pago: "pendiente", total: 6000, monto_pagado: 0, fecha_alta: "2026-10-20T12:00:00Z", usuario: { persona: { nombre: "Ana", apellido: "Cliente" } },
     items: [], pagos: [], historial_estados: [], comprobantes: [comprobante(1, "pago-parcial.pdf"), comprobante(2, "otro-pago.png")] };
@@ -640,7 +741,7 @@ const CATEGORIAS = [
   { id: 5, nombre: "Lavandinas", slug: "limpieza-lavandinas", padre_id: 4, cantidad_productos: 0 },
 ];
 test("familias y categorías: dos columnas, búsqueda global, alta y fusión", async ({ page }) => {
-  await entrarComo(page, ["staff"]);
+  await entrarComo(page, ["supervisor"]);
   const envios = [];
   await page.route("**/api/distribuidora/catalogos/categorias**", async (route) => {
     const req = route.request();

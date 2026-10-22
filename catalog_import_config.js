@@ -1,5 +1,5 @@
 export const catalogImportConfig = {
-  version: 2, roles: ["admin", "staff"], maxBytes: 20 * 1024 * 1024, maxRows: 50000, maxColumns: 80, maxCells: 1500000, maxSheets: 30, maxCellLength: 5000, batchSize: 250, previewRows: 12, parseTimeoutMs: 60000,
+  version: 2, maxBytes: 20 * 1024 * 1024, maxRows: 50000, maxColumns: 80, maxCells: 1500000, maxSheets: 30, maxCellLength: 5000, batchSize: 250, previewRows: 12, parseTimeoutMs: 60000,
   defaults: { headerRow: 1, sheet: 1, delimiter: "auto", encoding: "utf-8", decimal: "comma", priceType: "net", defaultVat: 21, category: "", identity: "sku", mode: "upsert", updateFields: ["precio"] },
   fields: [
     { key: "cod_ref", label: "Código / SKU", aliases: ["codigo", "código", "sku", "cod_ref", "codigo articulo", "cod articulo", "articulo codigo"], help: "Identificador estable de cada presentación. Conservar ceros iniciales." },

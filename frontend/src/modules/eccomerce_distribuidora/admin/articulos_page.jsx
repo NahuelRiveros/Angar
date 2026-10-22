@@ -19,6 +19,8 @@ import { construirOpcionesCategoria } from "../utils/categoria_jerarquia.js";
 import { formatearPrecio } from "../utils/precio_iva.js";
 import { rutaFichaArticulo } from "../utils/rutas_articulo.js";
 import AjustePreciosModal from "./ajuste_precios_modal.jsx";
+import { useAuth } from "../../../auth/auth_context.jsx";
+import { tienePermiso } from "../../../../../permisos_config.js";
 
 const POR_PAGINA = 50;
 const OPCIONES_ESTADO = [{ value: "activos", label: "Disponibles" }, { value: "inactivos", label: "No disponibles" }];
@@ -51,7 +53,7 @@ function Acciones({ articulo, onEditar, onPrecio, onEstado, onEliminar }) {
   return (
     <div className="flex items-center gap-0.5">
       <button type="button" className={icono} onClick={() => onEditar(articulo)} aria-label={`Editar ${articulo.nombre}`} title="Editar ficha"><Edit2 size={17} /></button>
-      <button type="button" className={icono} onClick={() => onPrecio(articulo)} aria-label={`Ajustar precio de ${articulo.nombre}`} title="Ajustar precio"><DollarSign size={17} /></button>
+      {onPrecio && <button type="button" className={icono} onClick={() => onPrecio(articulo)} aria-label={`Ajustar precio de ${articulo.nombre}`} title="Ajustar precio"><DollarSign size={17} /></button>}
       <button type="button" className={icono} onClick={() => onEstado(articulo)} aria-label={`${articulo.activo ? "Desactivar" : "Activar"} ${articulo.nombre}`} title={articulo.activo ? "Desactivar" : "Activar"}>
         {articulo.activo ? <ShieldOff size={17} /> : <ShieldCheck size={17} />}
       </button>
@@ -66,6 +68,8 @@ function Acciones({ articulo, onEditar, onPrecio, onEstado, onEliminar }) {
  * Los filtros viven en la dirección: se pueden compartir y sobreviven al recargar.
  */
 export default function ArticulosPage() {
+  const { usuario } = useAuth();
+  const puedeCambiarPrecios = tienePermiso(usuario, "precios.editar");
   const toast = useToast();
   const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
@@ -123,7 +127,7 @@ export default function ArticulosPage() {
     id: articulo?.id, volver: location.pathname + location.search, familia: articulo ? null : filtros.categoria,
   }));
   const filas = articulos.data?.data ?? [];
-  const acciones = { onEditar: abrirFicha, onPrecio: (producto) => setAjuste({ producto }), onEstado: (articulo) => setConfirmar({ tipo: "estado", articulo }), onEliminar: (articulo) => setConfirmar({ tipo: "eliminar", articulo }) };
+  const acciones = { onEditar: abrirFicha, onPrecio: puedeCambiarPrecios ? (producto) => setAjuste({ producto }) : undefined, onEstado: (articulo) => setConfirmar({ tipo: "estado", articulo }), onEliminar: (articulo) => setConfirmar({ tipo: "eliminar", articulo }) };
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 p-3 sm:p-6">
@@ -134,7 +138,7 @@ export default function ArticulosPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link to="/distribuidora/admin/categorias" className={`${BOTON} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50`}><FolderTree size={16} /> Familias</Link>
-          <button type="button" onClick={() => setAjuste({ masivo: true })} className={`${BOTON} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50`}><DollarSign size={16} /> Ajuste masivo</button>
+          {puedeCambiarPrecios && <button type="button" onClick={() => setAjuste({ masivo: true })} className={`${BOTON} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50`}><DollarSign size={16} /> Ajuste masivo</button>}
           <button type="button" onClick={() => abrirFicha()} className={`${BOTON} bg-(--kt-petrol) text-white hover:bg-(--kt-night)`}><Plus size={16} /> Nuevo artículo</button>
         </div>
       </div>

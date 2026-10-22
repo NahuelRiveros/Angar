@@ -31,6 +31,10 @@ const { validarVariedad } = await import("../src/services/common/articulo_rules.
 const categoriasSrv = await import("../src/services/distribuidora/catalogos_distribuidora_service.js");
 const marcasSrv = await import("../src/services/distribuidora/marcas_distribuidora_service.js");
 const listasSrv = await import("../src/services/distribuidora/listas_precio_service.js");
+const { sincronizarPermisos } = await import("../src/services/usuarios/permisos_service.js");
+const { permisosEfectivos } = await import("../../permisos_config.js");
+// Usuario con los permisos que le darían esos roles (asignados = lo tildado en el panel).
+const comoUsuario = (roles, asignados = []) => ({ roles, permisos: permisosEfectivos(roles, asignados) });
 test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia y recuperación", async (t) => {
   let created = false;
   try {
@@ -39,10 +43,13 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
     assert.match(DB_SCHEMA, /^codex_ux_test_[a-f0-9]{32}$/);
     await sequelize.query('CREATE SCHEMA "' + DB_SCHEMA + '"');
     created = true;
-    for (const name of ["ModuloNegocio", "Sexo", "TipoDocumento", "TipoPersona", "Persona", "Usuario", "Rol", "UsuarioRol", "CategoriaDistribuidora", "MarcaDistribuidora", "MarcaCategoriaDistribuidora", "ProductoDistribuidora", "VariedadDistribuidora", "ListaPrecio", "ListaPrecioLocalidad", "ListaPrecioItem", "CarritoDistribuidora", "CarritoDistribuidoraItem", "NotaPedido", "NotaPedidoEstadoLog", "NotaPedidoPago", "NotaPedidoComprobante", "NotaPedidoItem", "PerfilClienteDistribuidora", "OperacionCarrito"]) await models[name].sync();
+    for (const name of ["ModuloNegocio", "Sexo", "TipoDocumento", "TipoPersona", "Persona", "Usuario", "Rol", "UsuarioRol", "Modulo", "Permiso", "RolPermiso", "CategoriaDistribuidora", "MarcaDistribuidora", "MarcaCategoriaDistribuidora", "ProductoDistribuidora", "VariedadDistribuidora", "ListaPrecio", "ListaPrecioLocalidad", "ListaPrecioItem", "CarritoDistribuidora", "CarritoDistribuidoraItem", "NotaPedido", "NotaPedidoEstadoLog", "NotaPedidoPago", "NotaPedidoComprobante", "NotaPedidoItem", "PerfilClienteDistribuidora", "OperacionCarrito"]) await models[name].sync();
     await models.ModuloNegocio.create({ codigo: "eccomerce_distribuidora", descripcion: "Distribuidora", habilitado: true });
     await models.TipoDocumento.create({ descripcion: "DNI" });
     await models.Rol.create({ codigo: "cliente", descripcion: "Cliente" });
+    // Igual que el arranque: roles del personal y sus permisos por defecto.
+    await models.Rol.bulkCreate([{ codigo: "supervisor", descripcion: "Supervisor" }, { codigo: "vendedor", descripcion: "Vendedor" }]);
+    await sincronizarPermisos();
     const registration = await registrarCliente({ nombre: "Ana", apellido: "Prueba", email: "ana@example.test", password: "Clave1234" });
     assert.equal(registration.ok, true);
     const id = registration.usuario_id;
@@ -210,7 +217,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       await assert.rejects(cancelarPropia(id, confirmada.id, { motivo: "Tarde" }), /en proceso/);
       assert.equal((await confirmada.reload()).estado, "confirmado");
     });
-    await t.test("HTTP: cliente no gestiona notas y staff sí, con permisos actuales", async () => {
+    await t.test("HTTP: cliente no gestiona notas y el supervisor sí, con sus permisos", async () => {
       const express = (await import("express")).default;
       const { notaPedidoRouter } = await import("../src/routes/distribuidora/nota_pedido_router.js");
       const app = express();
@@ -230,7 +237,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
         const cancelar = (ruta) => fetch(url + ruta, { headers, method: "POST", body: JSON.stringify({ motivo: "Prueba" }) });
         assert.equal((await cancelar("/999999/cancelar")).status, 404);
         assert.equal((await cancelar("/abc/cancelar")).status, 404);
-        const staff =await models.Rol.create({ codigo: "staff", descripcion: "Staff" });
+        const staff = await models.Rol.findOne({ where: { codigo: "supervisor" } });
         await models.UsuarioRol.create({ usuario_id: id, rol_id: staff.id });
         const response = await fetch(url + "/todas", { headers });
         assert.equal(response.status, 200);
@@ -260,7 +267,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       };
       Object.assign(env, { CLAVE_API_BREVO: "clave-de-prueba", CORREO_REMITENTE: "pedidos@example.test" });
       try {
-        const [rolStaff] = await models.Rol.findOrCreate({ where: { codigo: "staff" }, defaults: { descripcion: "Staff" } });
+        const rolStaff = await models.Rol.findOne({ where: { codigo: "supervisor" } });
         const [rolVendedor] = await models.Rol.findOrCreate({ where: { codigo: "vendedor" }, defaults: { descripcion: "Vendedor" } });
         const eva = await registrarCliente({ nombre: "Eva", apellido: "Equipo", email: "eva@example.test", password: "Clave1234" });
         const suspendido = await registrarCliente({ nombre: "Sol", apellido: "Suspendida", email: "sol@example.test", password: "Clave1234" });
@@ -350,10 +357,10 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
         assert.equal(propio.comprobantes.length, 1);
         assert.equal("public_id" in propio.comprobantes[0], false, "el id de Cloudinary no sale en la API");
 
-        const enlace = await comprobantes.enlaceComprobante({ usuario_id: id, roles: ["cliente"] }, nota.id, primero.id);
+        const enlace = await comprobantes.enlaceComprobante({ usuario_id: id, ...comoUsuario(["cliente"]) }, nota.id, primero.id);
         assert.match(enlace.url, /^https:\/\/cloudinary\.test\/distribucg\/comprobantes\/pedido-\d+-.+\.pdf\?expira=\d+&tipo=private$/);
-        assert.equal(await comprobantes.enlaceComprobante({ usuario_id: beto.id, roles: ["cliente"] }, nota.id, primero.id), null);
-        assert.ok(await comprobantes.enlaceComprobante({ usuario_id: beto.id, roles: ["vendedor"] }, nota.id, primero.id), "el equipo ve cualquier comprobante");
+        assert.equal(await comprobantes.enlaceComprobante({ usuario_id: beto.id, ...comoUsuario(["cliente"]) }, nota.id, primero.id), null);
+        assert.ok(await comprobantes.enlaceComprobante({ usuario_id: beto.id, ...comoUsuario(["vendedor"], ["pedidos.ver"]) }, nota.id, primero.id), "el equipo ve cualquier comprobante");
 
         await assert.rejects(comprobantes.rechazarComprobante(nota.id, primero.id, { usuario_id: id, motivo: " " }), /motivo/);
         await comprobantes.rechazarComprobante(nota.id, primero.id, { usuario_id: id, motivo: "No se lee el importe" });
@@ -423,6 +430,88 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
         Object.assign(cloudinary.uploader, { upload_stream: originales.subir, destroy: originales.borrar });
         cloudinary.utils.private_download_url = originales.enlace;
       }
+    });
+    await t.test("permisos: sincronización sin pisar el panel, staff → supervisor, roles nuevos y precios protegidos", async () => {
+      const permisosSrv = await import("../src/services/usuarios/permisos_service.js");
+      const { renombrarStaffASupervisor } = await import("../src/database/seed/seed_rbac.js");
+      const { listarRolesAsignables } = await import("../src/services/usuarios/admin_staff_service.js");
+      const codigosDe = async (codigo) => (await permisosSrv.listarRolesConPermisos()).find((r) => r.codigo === codigo)?.permisos;
+      const vendedor = await models.Rol.findOne({ where: { codigo: "vendedor" } });
+
+      // Lo destildado en el panel no vuelve al reiniciar; un permiso que salió de la lista se borra.
+      await permisosSrv.guardarPermisosDeRol(vendedor.id, []);
+      await models.Permiso.create({ codigo: "viejo.permiso", accion: "permiso", descripcion: "Ya no existe", modulo_id: (await models.Modulo.findOne()).id });
+      assert.deepEqual(await permisosSrv.sincronizarPermisos(), { nuevos: 0, borrados: 1 });
+      assert.deepEqual(await codigosDe("vendedor"), []);
+      await permisosSrv.guardarPermisosDeRol(vendedor.id, ["pedidos.ver", "pedidos.gestionar"]);
+
+      // Una base vieja con "staff": sus usuarios pasan a supervisor y el rol viejo desaparece.
+      const staff = await models.Rol.create({ codigo: "staff", descripcion: "Staff" });
+      const viejo = await registrarCliente({ nombre: "Sergio", apellido: "Staff", email: "sergio@example.test", password: "Clave1234" });
+      await models.UsuarioRol.create({ usuario_id: viejo.usuario_id, rol_id: staff.id });
+      await renombrarStaffASupervisor();
+      await renombrarStaffASupervisor(); // sin "staff", no hace nada
+      assert.equal(await models.Rol.count({ where: { codigo: "staff" } }), 0);
+      const supervisor = await models.Rol.findOne({ where: { codigo: "supervisor" } });
+      assert.equal(await models.UsuarioRol.count({ where: { usuario_id: viejo.usuario_id, rol_id: supervisor.id } }), 1);
+
+      // Roles nuevos: código desde el nombre, sin duplicados ni nombres del sistema.
+      const repositor = await permisosSrv.crearRol({ nombre: "  Repositor  de Góndola " });
+      assert.deepEqual([repositor.codigo, repositor.descripcion], ["repositor_de_gondola", "Repositor de Góndola"]);
+      await assert.rejects(permisosSrv.crearRol({ nombre: "repositor de gondola" }), /Ya existe/);
+      await assert.rejects(permisosSrv.crearRol({ nombre: "Staff" }), /reservado/);
+      await assert.rejects(permisosSrv.crearRol({ nombre: "ab" }), /entre 3 y 40/);
+      await assert.rejects(permisosSrv.guardarPermisosDeRol(repositor.id, ["inventado.ver"]), /desconocidos/);
+      const admin = await models.Rol.findOrCreate({ where: { codigo: "admin" }, defaults: { descripcion: "Administrador" } }).then(([r]) => r);
+      await assert.rejects(permisosSrv.guardarPermisosDeRol(admin.id, []), /todos los permisos/);
+      // Cobrar trae "ver pedidos": sin él no hay pantalla donde hacerlo.
+      assert.deepEqual((await permisosSrv.guardarPermisosDeRol(repositor.id, ["cobros.gestionar"])).permisos.sort(), ["cobros.gestionar", "pedidos.ver"]);
+      await permisosSrv.guardarPermisosDeRol(repositor.id, ["productos.editar"]);
+      const grilla = await permisosSrv.listarRolesConPermisos();
+      assert.equal(grilla.some((r) => r.codigo === "cliente"), false);
+      assert.deepEqual(grilla.find((r) => r.codigo === "admin").editable, false);
+      assert.ok((await listarRolesAsignables()).some((r) => r.codigo === "repositor_de_gondola"), "Personal ofrece los roles nuevos");
+      assert.equal((await listarRolesAsignables()).some((r) => ["cliente", "super_admin"].includes(r.codigo)), false);
+      await assert.rejects(permisosSrv.eliminarRol(vendedor.id), /del sistema/);
+
+      // HTTP con los permisos leídos de la base: el repositor edita artículos pero no precios ni permisos.
+      const express = (await import("express")).default;
+      const { productoDistribuidoraRouter } = await import("../src/routes/distribuidora/producto_distribuidora_router.js");
+      const { permisosRouter } = await import("../src/routes/usuarios/permisos_router.js");
+      const app = express();
+      app.use(express.json());
+      app.use("/productos", productoDistribuidoraRouter);
+      app.use("/permisos", permisosRouter);
+      const server = await new Promise((resolve) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
+      try {
+        const url = `http://127.0.0.1:${server.address().port}`;
+        const rafa = await registrarCliente({ nombre: "Rafa", apellido: "Repone", email: "rafa@example.test", password: "Clave1234" });
+        await models.UsuarioRol.create({ usuario_id: rafa.usuario_id, rol_id: repositor.id });
+        const headers = { Authorization: "Bearer " + (await login({ identificador: "rafa@example.test", password: "Clave1234" })).token, "Content-Type": "application/json" };
+        const fideos = await models.ProductoDistribuidora.create({ categoria_id: category.id, nombre: "Fideos Permisos" });
+        await models.VariedadDistribuidora.create({ producto_id: fideos.id, nombre: null, precio: 300 });
+        const ficha = (cambios) => JSON.stringify({ categoria_id: category.id, nombre: "Fideos Permisos", precio: 300, precio_anterior: null, ...cambios });
+        const conPrecioNuevo = await fetch(`${url}/productos/${fideos.id}`, { method: "PUT", headers, body: ficha({ precio: 350 }) });
+        assert.equal(conPrecioNuevo.status, 403);
+        assert.match((await conPrecioNuevo.json()).mensaje, /permiso para cambiar precios/);
+        assert.equal(Number((await models.VariedadDistribuidora.findOne({ where: { producto_id: fideos.id } })).precio), 300, "nada se guardó");
+        assert.equal((await fetch(`${url}/productos/${fideos.id}`, { method: "PUT", headers, body: ficha({ descripcion: "Moño 500 g" }) })).status, 200);
+        assert.equal((await fetch(`${url}/productos`, { method: "POST", headers, body: JSON.stringify({ categoria_id: category.id, nombre: "Nuevo Sin Precio", precio: 0 }) })).status, 201);
+        assert.equal((await fetch(`${url}/productos`, { method: "POST", headers, body: JSON.stringify({ categoria_id: category.id, nombre: "Nuevo Con Precio", precio: 10 }) })).status, 403);
+        assert.equal((await fetch(`${url}/productos/ajustar-precios`, { method: "POST", headers, body: JSON.stringify({ porcentaje: 10, producto_id: fideos.id }) })).status, 403);
+        assert.equal((await fetch(`${url}/permisos`, { headers })).status, 403);
+        // Al darle el permiso desde el panel, rige en el pedido siguiente, sin volver a iniciar sesión.
+        await permisosSrv.guardarPermisosDeRol(repositor.id, ["productos.editar", "precios.editar", "permisos.gestionar"]);
+        assert.equal((await fetch(`${url}/productos/${fideos.id}`, { method: "PUT", headers, body: ficha({ precio: 350 }) })).status, 200);
+        const panel = await fetch(`${url}/permisos`, { headers });
+        assert.equal(panel.status, 200);
+        assert.equal((await panel.json()).data.permisos.some((p) => "porDefecto" in p), false, "los roles por defecto son internos");
+        await assert.rejects(permisosSrv.eliminarRol(repositor.id), /persona\(s\) con este rol/);
+        await models.UsuarioRol.destroy({ where: { rol_id: repositor.id } });
+        assert.equal((await fetch(`${url}/permisos/roles/${repositor.id}`, { method: "DELETE", headers })).status, 403, "sin rol, la sesión sigue pero sin permisos");
+      } finally { await new Promise((resolve) => server.close(resolve)); }
+      assert.ok(await permisosSrv.eliminarRol(repositor.id));
+      assert.equal(await models.RolPermiso.count({ where: { rol_id: repositor.id } }), 0);
     });
     await t.test("enlace de recuperación se utiliza una vez y el login acepta la nueva clave", async () => {
       const user = await models.Usuario.findByPk(id);
@@ -537,7 +626,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
     await t.test("panel: resumen por rol, ventas en hora de Argentina y presentaciones sin stock", async () => {
       // 14/03/2030 23:30 en Argentina = 15/03 02:30 UTC: "hoy" sigue siendo el 14.
       const ahora = new Date("2030-03-15T02:30:00Z");
-      const antes = await obtenerResumenPanel(["admin"], { ahora });
+      const antes = await obtenerResumenPanel(comoUsuario(["admin"]), { ahora });
       const base = { usuario_id: id, estado_pago: "pendiente", monto_pagado: 0, cuit: "20-12345678-9", direccion: "Prueba 123", provincia: "Buenos Aires", localidad: "La Plata", fecha_mod: ahora };
       await models.NotaPedido.bulkCreate([
         { ...base, estado: "pendiente", total: 100, fecha_alta: new Date("2030-03-14T12:00:00Z") },  // hoy
@@ -553,7 +642,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
         { producto_id: producto.id, nombre: "Vieja", precio: 5, controla_stock: true, cantidad: 0, fecha_baja: "2030-01-01" },
       ]);
 
-      const { pedidos, stock } = await obtenerResumenPanel(["admin"], { ahora });
+      const { pedidos, stock } = await obtenerResumenPanel(comoUsuario(["admin"]), { ahora });
       assert.deepEqual(pedidos.ventas, { hoy: { pedidos: 2, monto: 150 }, mes: { pedidos: 3, monto: 180 } });
       assert.equal(pedidos.por_estado.pendiente - antes.pedidos.por_estado.pendiente, 2);
       assert.equal(pedidos.por_estado.en_curso - antes.pedidos.por_estado.en_curso, 1);
@@ -565,20 +654,24 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       assert.equal(stock.sin_stock - antes.stock.sin_stock, 1);
       assert.ok(stock.ejemplos_sin_stock.some((v) => v.producto === "Yerba" && v.presentacion === "500 g"));
 
-      const vendedor = await obtenerResumenPanel(["vendedor"], { ahora });
+      const vendedor = await obtenerResumenPanel(comoUsuario(["vendedor"], ["pedidos.ver", "pedidos.gestionar"]), { ahora });
       assert.ok(vendedor.pedidos);
       assert.equal(vendedor.stock, null);
-      // Montos solo para admin/super_admin: staff y vendedor ven cantidades, no dinero.
-      for (const roles of [["vendedor"], ["staff"]]) {
-        const { pedidos: sinMontos } = await obtenerResumenPanel(roles, { ahora });
+      // Montos solo con "ventas.ver" (de entrada, solo admin): supervisor y vendedor ven cantidades, no dinero.
+      const supervisor = comoUsuario(["supervisor"], ["pedidos.ver", "pedidos.gestionar", "cobros.gestionar", "productos.editar", "precios.editar"]);
+      for (const usuario of [comoUsuario(["vendedor"], ["pedidos.ver"]), supervisor]) {
+        const { pedidos: sinMontos } = await obtenerResumenPanel(usuario, { ahora });
         assert.equal(sinMontos.por_cobrar, null);
         assert.equal(sinMontos.ventas, null);
         assert.equal(sinMontos.por_estado.pendiente, pedidos.por_estado.pendiente);
       }
-      const superAdmin = await obtenerResumenPanel(["super_admin"], { ahora });
+      assert.ok((await obtenerResumenPanel(supervisor, { ahora })).stock, "quien edita artículos ve el stock");
+      const conVentas = await obtenerResumenPanel(comoUsuario(["cajero"], ["ventas.ver"]), { ahora });
+      assert.deepEqual(conVentas.pedidos.ventas, pedidos.ventas, "ventas.ver se puede dar a otro rol");
+      const superAdmin = await obtenerResumenPanel(comoUsuario(["super_admin"]), { ahora });
       assert.deepEqual(superAdmin.pedidos.ventas, pedidos.ventas);
-      assert.equal(superAdmin.stock, null);
-      assert.deepEqual(await obtenerResumenPanel(["cliente"], { ahora }), { pedidos: null, stock: null });
+      assert.ok(superAdmin.stock);
+      assert.deepEqual(await obtenerResumenPanel(comoUsuario(["cliente"]), { ahora }), { pedidos: null, stock: null });
     });
     await t.test("artículos: ficha con bultos, filtros de gestión y fecha de cambio de precio", async () => {
       const familia = await models.CategoriaDistribuidora.create({ nombre: "Galletitas en gral", slug: "galletitas-en-gral" });
@@ -618,7 +711,7 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       assert.equal(Number(despues.precio), 1210);
       assert.ok(despues.fecha_cambio_precio > antes.fecha_cambio_precio);
 
-      const { stock } = await obtenerResumenPanel(["admin"]);
+      const { stock } = await obtenerResumenPanel(comoUsuario(["admin"]));
       assert.equal(stock.bajo_minimo, 1); // la lavandina está inactiva: el dashboard solo cuenta artículos activos
     });
     await t.test("lista de carga: suma varios pedidos por artículo, agrupa por familia y separa bultos", async () => {

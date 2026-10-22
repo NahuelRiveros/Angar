@@ -5,6 +5,7 @@ import { authRouter } from "./usuarios/auth_router.js";
 import { adminUsuariosRouter } from "./usuarios/admin_usuarios_router.js";
 import { catalogosRouter } from "./sistema/catalogos_router.js";
 import { staffRouter } from "./usuarios/staff_router.js";
+import { permisosRouter } from "./usuarios/permisos_router.js";
 import { suscripcionRouter } from "./sistema/suscripcion_router.js";
 import { stockRouter } from "./stock/stock_router.js";
 import { homeRouter } from "./home/home_router.js";
@@ -76,6 +77,7 @@ router.use("/catalogos", catalogosRouter);
 router.use("/admin/usuarios", adminUsuariosRouter);
 router.use("/auth", authRouter);
 router.use("/staff", staffRouter);
+router.use("/permisos", permisosRouter);                // ← roles y permisos del personal
 router.use("/suscripcion", suscripcionRouter);       // ← plan del software
 router.use("/stock", stockRouter);                   // ← productos y movimientos de stock
 router.use("/home",  homeRouter);                     // ← contenido configurable del home (GET público)

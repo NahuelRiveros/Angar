@@ -2,15 +2,14 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ClipboardCheck, ClipboardList, PackageX, Timer, TrendingUp, Wallet } from "lucide-react";
 import { useAuth } from "../../../auth/auth_context.jsx";
-import { ESTADOS, orderConfig } from "../../../config/order_config.js";
+import { ESTADOS } from "../../../config/order_config.js";
+import { CODIGOS_PERMISO, tienePermiso } from "../../../../../permisos_config.js";
 import { money } from "../../../controls/pedidos/order_format.js";
 import AdminStatCard from "../../../controls/ui/admin_stat_card.jsx";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import AdminEmptyState from "../../../controls/ui/admin_empty_state.jsx";
 import { getResumenPanel } from "../api/panel_api.js";
 
-// Mismos roles que el servidor (panel_distribuidora_service.js): el resto no pide el resumen.
-const ROLES_RESUMEN = [...new Set([...orderConfig.managementRoles, "admin", "staff", "super_admin"])];
 const fecha = (valor) => new Date(valor).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
 const RUTA_NOTAS = "/distribuidora/admin/notas-pedido";
 
@@ -34,7 +33,7 @@ function Pedidos({ pedidos }) {
         <TarjetaEnlace to={`${RUTA_NOTAS}?estado=en_curso`}>
           <AdminStatCard icon={Timer} iconBg="bg-blue-50" iconColor="text-blue-700" label={ESTADOS.en_curso?.label ?? "En preparación"} value={por_estado.en_curso ?? 0} sub="Ver pedidos en preparación" />
         </TarjetaEnlace>
-        {/* Los montos solo llegan para admin y super_admin; el resto ve únicamente cantidades. */}
+        {/* Los montos solo llegan con el permiso "ventas.ver"; el resto ve únicamente cantidades. */}
         {por_cobrar && (
           <TarjetaEnlace to={RUTA_NOTAS}>
             <AdminStatCard icon={Wallet} iconBg="bg-rose-50" iconColor="text-rose-700" label="Saldo por cobrar" value={money(por_cobrar.saldo)} sub={`${por_cobrar.pedidos} pedido(s) con cobro pendiente o parcial`} />
@@ -106,10 +105,11 @@ function Stock({ stock }) {
   );
 }
 
-/** Resumen de la distribuidora en el inicio del panel. Cada sección llega solo si el rol la puede ver. */
+/** Resumen de la distribuidora en el inicio del panel. Cada sección llega solo si hay permiso para verla. */
 export default function ResumenDistribuidora() {
   const { usuario } = useAuth();
-  const puedeVer = (usuario?.roles ?? []).some((rol) => ROLES_RESUMEN.includes(rol));
+  // Igual que el servidor (panel_distribuidora_router.js): cualquier permiso del personal.
+  const puedeVer = tienePermiso(usuario, ...CODIGOS_PERMISO);
   // Sin refresco automático: se actualiza al volver al inicio (cada consulta despierta la base).
   const resumen = useQuery({ queryKey: ["panel-resumen", usuario?.usuario_id], queryFn: getResumenPanel, enabled: puedeVer, staleTime: 60_000 });
 

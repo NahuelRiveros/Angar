@@ -5,7 +5,7 @@ import {
   actualizarProductoController, cambiarEstadoProductoController, eliminarProductoController,
   ajustarPreciosMasivoController, listarOfertasController, preciosEnListasController,
 } from "../../controllers/distribuidora/producto_distribuidora_controller.js";
-import { requireAuth, requireRole, optionalAuth } from "../../middleware/auth_middleware.js";
+import { requireAuth, requirePermiso, optionalAuth } from "../../middleware/auth_middleware.js";
 import { requireModuloHabilitado } from "../../middleware/modulo_middleware.js";
 
 export const productoDistribuidoraRouter = Router();
@@ -15,13 +15,13 @@ productoDistribuidoraRouter.use(requireModuloHabilitado("eccomerce_distribuidora
 productoDistribuidoraRouter.use((req, res, next) => req.method === "GET" && clientConfig.distribuidora.publicCatalog ? optionalAuth(req, res, next) : requireAuth(req, res, next));
 
 // Rutas específicas ANTES de "/:id" — si no, Express las matchea como id.
-productoDistribuidoraRouter.post("/ajustar-precios", requireRole("admin", "staff"), ajustarPreciosMasivoController);
+productoDistribuidoraRouter.post("/ajustar-precios", requirePermiso("precios.editar"), ajustarPreciosMasivoController);
 
 productoDistribuidoraRouter.get("/ofertas", listarOfertasController); // antes de "/:id"
-productoDistribuidoraRouter.get("/:id/precios-listas", requireRole("admin", "staff"), preciosEnListasController);
+productoDistribuidoraRouter.get("/:id/precios-listas", requirePermiso("productos.editar", "precios.editar"), preciosEnListasController);
 productoDistribuidoraRouter.get("/", listarProductosController);
 productoDistribuidoraRouter.get("/:id", obtenerProductoController);
-productoDistribuidoraRouter.post("/", requireRole("admin", "staff"), crearProductoController);
-productoDistribuidoraRouter.put("/:id", requireRole("admin", "staff"), actualizarProductoController);
-productoDistribuidoraRouter.put("/:id/estado", requireRole("admin", "staff"), cambiarEstadoProductoController);
-productoDistribuidoraRouter.delete("/:id", requireRole("admin", "staff"), eliminarProductoController);
+productoDistribuidoraRouter.post("/", requirePermiso("productos.editar"), crearProductoController);
+productoDistribuidoraRouter.put("/:id", requirePermiso("productos.editar"), actualizarProductoController);
+productoDistribuidoraRouter.put("/:id/estado", requirePermiso("productos.editar"), cambiarEstadoProductoController);
+productoDistribuidoraRouter.delete("/:id", requirePermiso("productos.editar"), eliminarProductoController);

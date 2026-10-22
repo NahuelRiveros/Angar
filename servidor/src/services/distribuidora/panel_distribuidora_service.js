@@ -1,15 +1,9 @@
 import { QueryTypes } from "sequelize";
 import { sequelize } from "../../database/sequelize.js";
 import { orderConfig } from "../../../../order_config.js";
+import { tienePermiso } from "../../../../permisos_config.js";
 
 const ZONA_HORARIA = "America/Argentina/Buenos_Aires";
-export const ROLES_PANEL_PEDIDOS = orderConfig.managementRoles;
-export const ROLES_PANEL_STOCK = ["admin", "staff"];
-// Montos (ventas y saldo por cobrar): solo los dueños del negocio, nunca staff ni vendedor.
-export const ROLES_PANEL_FINANZAS = ["admin", "super_admin"];
-export const ROLES_PANEL = [...new Set([...ROLES_PANEL_PEDIDOS, ...ROLES_PANEL_STOCK, ...ROLES_PANEL_FINANZAS])];
-
-const tieneRol = (roles, permitidos) => roles.some((rol) => permitidos.includes(rol));
 const consulta = (sql, replacements) => sequelize.query(sql, { replacements, type: QueryTypes.SELECT });
 
 async function resumenPedidos(ahora, { finanzas }) {
@@ -68,15 +62,15 @@ async function resumenStock() {
 }
 
 /**
- * Dashboard del panel en un solo pedido. Cada sección se calcula solo si el rol
- * la puede ver: un vendedor no recibe el stock, un staff de catálogo sí, y
- * por_cobrar/ventas llegan en null salvo para ROLES_PANEL_FINANZAS.
+ * Dashboard del panel en un solo pedido. Cada sección se calcula solo si el usuario
+ * tiene el permiso: un vendedor no recibe el stock, quien edita artículos sí, y
+ * por_cobrar/ventas llegan en null salvo con "ventas.ver".
  */
-export async function obtenerResumenPanel(roles = [], { ahora = new Date() } = {}) {
-  const finanzas = tieneRol(roles, ROLES_PANEL_FINANZAS);
+export async function obtenerResumenPanel(usuario, { ahora = new Date() } = {}) {
+  const finanzas = tienePermiso(usuario, "ventas.ver");
   const [pedidos, stock] = await Promise.all([
-    finanzas || tieneRol(roles, ROLES_PANEL_PEDIDOS) ? resumenPedidos(ahora.toISOString(), { finanzas }) : null,
-    tieneRol(roles, ROLES_PANEL_STOCK) ? resumenStock() : null,
+    finanzas || tienePermiso(usuario, "pedidos.ver") ? resumenPedidos(ahora.toISOString(), { finanzas }) : null,
+    tienePermiso(usuario, "productos.editar") ? resumenStock() : null,
   ]);
   return { pedidos, stock };
 }

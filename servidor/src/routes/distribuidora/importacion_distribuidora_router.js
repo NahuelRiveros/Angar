@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { catalogImportConfig as config } from "../../../../catalog_import_config.js";
 import { previsualizarImportacionController, validarImportacionController, detalleImportacionController, historialImportacionController, ejecutarImportacionController, cancelarImportacionController, informeImportacionController, plantillaImportacionController } from "../../controllers/distribuidora/importacion_distribuidora_controller.js";
-import { requireAuth, requireRole } from "../../middleware/auth_middleware.js";
+import { requireAuth, requirePermiso } from "../../middleware/auth_middleware.js";
 import { requireModuloHabilitado } from "../../middleware/modulo_middleware.js";
 const upload = multer({
   storage: multer.memoryStorage(), limits: { fileSize: config.maxBytes, files: 1, fields: 4, fieldSize: 65536 },
@@ -18,7 +18,9 @@ function capacity(_req, res, next) {
 }
 export const importacionDistribuidoraRouter = Router();
 const router = importacionDistribuidoraRouter;
-router.use(requireAuth, requireModuloHabilitado("eccomerce_distribuidora"), requireRole(...config.roles));
+router.use(requireAuth, requireModuloHabilitado("eccomerce_distribuidora"), requirePermiso("productos.editar"));
+// La importación también escribe precios: hacen falta los dos permisos.
+router.use(requirePermiso("precios.editar"));
 router.get("/plantilla", plantillaImportacionController);
 router.get("/historial", historialImportacionController);
 router.post("/previsualizar", capacity, upload.single("archivo"), previsualizarImportacionController);

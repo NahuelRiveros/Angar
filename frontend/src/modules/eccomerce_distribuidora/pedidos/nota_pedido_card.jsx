@@ -13,7 +13,7 @@ import { ListaComprobantes } from "./pago_transferencia.jsx";
 const person = (u) => u?.persona ? [u.persona.nombre, u.persona.apellido].filter(Boolean).join(" ") : "Equipo";
 const date = (value) => new Date(value).toLocaleString("es-AR");
 
-export default function NotaPedidoCard({ nota, operatorId, puedeCobrar = false, onCambiarEstado, onRegistrarPago, onAnularPago, onAceptarComprobante, onRechazarComprobante, onExportar }) {
+export default function NotaPedidoCard({ nota, operatorId, puedeCobrar = false, puedeCambiarEstado = false, onCambiarEstado, onRegistrarPago, onAnularPago, onAceptarComprobante, onRechazarComprobante, onExportar }) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState(null);
@@ -75,7 +75,7 @@ export default function NotaPedidoCard({ nota, operatorId, puedeCobrar = false, 
         <span>{money(item.subtotal)}</span>
       </li>)}</ul>
       <div className="flex flex-wrap gap-2">
-        {(orderConfig.transitions[nota.estado] || []).map((state) => <ActionButton key={state} disabled={busy} onClick={() => prepare({ state, previous: nota.estado })}>Pasar a {ESTADOS[state].label.toLowerCase()}</ActionButton>)}
+        {puedeCambiarEstado && (orderConfig.transitions[nota.estado] || []).map((state) => <ActionButton key={state} disabled={busy} onClick={() => prepare({ state, previous: nota.estado })}>Pasar a {ESTADOS[state].label.toLowerCase()}</ActionButton>)}
         <ActionButton disabled={busy} onClick={exportFile}>Exportar Excel</ActionButton>
       </div>
       {nota.comprobantes?.length > 0 && <section className="space-y-3" aria-label="Comprobantes de transferencia">

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { orderConfig, receiptProblem } from "../../../../order_config.js";
+import { tienePermiso } from "../../../../permisos_config.js";
 import { sequelize } from "../../database/sequelize.js";
 import { NotaPedido, NotaPedidoComprobante } from "../../models/index.js";
 import { cartError } from "../common/cart_rules.js";
@@ -52,8 +53,9 @@ export async function subirComprobante(usuario_id, nota_pedido_id, archivo) {
 }
 
 /** Enlace temporal al archivo: solo para el dueño del pedido o el equipo de gestión. */
-export async function enlaceComprobante({ usuario_id, roles = [] }, nota_pedido_id, comprobante_id) {
-  const esEquipo = roles.some((r) => orderConfig.managementRoles.includes(r));
+export async function enlaceComprobante(usuario, nota_pedido_id, comprobante_id) {
+  const esEquipo = tienePermiso(usuario, "pedidos.ver");
+  const { usuario_id } = usuario;
   const comprobante = await NotaPedidoComprobante.findOne({
     where: { id: comprobante_id, nota_pedido_id },
     include: [{ model: NotaPedido, as: "nota_pedido", attributes: ["id"], ...(esEquipo ? {} : { where: { usuario_id } }) }],

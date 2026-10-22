@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { subirImagenController, eliminarImagenController } from "../controllers/common/upload_controller.js";
-import { requireAuth, requireRole } from "../middleware/auth_middleware.js";
+import { requireAuth, requirePermiso } from "../middleware/auth_middleware.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -14,5 +14,5 @@ const upload = multer({
 
 export const uploadRouter = Router();
 
-uploadRouter.post("/imagen", requireAuth, requireRole("admin"), upload.single("imagen"), subirImagenController);
-uploadRouter.delete("/imagen", requireAuth, requireRole("admin"), eliminarImagenController);
+uploadRouter.post("/imagen", requireAuth, requirePermiso("contenido.editar", "productos.editar"), upload.single("imagen"), subirImagenController);
+uploadRouter.delete("/imagen", requireAuth, requirePermiso("contenido.editar", "productos.editar"), eliminarImagenController);

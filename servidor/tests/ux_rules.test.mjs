@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { createResetToken, verifyResetToken, passwordVersion } from "../src/services/common/auth_tokens.js";
 import { validQuantity, validateSnapshot } from "../src/services/common/cart_rules.js";
 import { orderConfig, receiptProblem, transitionProblem } from "../../order_config.js";
+import { CODIGOS_PERMISO, dependientesDe, permisosConfig, permisosEfectivos, tienePermiso } from "../../permisos_config.js";
+import { cumpleAcceso } from "../../frontend/src/controls/acceso/acceso.js";
 import { env } from "../src/configuracion_servidor/env.js";
 import { enviarEmail, mailConfigured } from "../src/services/common/mail_service.js";
 import {
@@ -112,7 +114,6 @@ test("comprobantes: se reconocen por contenido y no se adjuntan a pedidos cancel
   assert.match(receiptProblem({ ...nota, estado_pago: "pagado" }, 0), /cobrado/);
   assert.equal(receiptProblem({ ...nota, estado_pago: "parcial" }, 4), null, "con saldo pendiente se puede pagar en partes");
   assert.match(receiptProblem(nota, orderConfig.receipts.maxPerOrder), /máximo de 5/);
-  assert.deepEqual(orderConfig.paymentRoles, ["admin", "staff"], "el vendedor no registra cobros");
   const cliente = { nombre: "Ana", apellido: "<Prueba>" };
   const rechazo = mailComprobanteRechazadoCliente({ id: 7, total: 100 }, cliente, "Importe <distinto>");
   assert.match(rechazo.html, /Motivo: Importe &lt;distinto&gt;/);
@@ -165,22 +166,51 @@ test("navbar filtra árboles por rol y módulo, sin acoplarse a un rubro", () =>
   }
 });
 
-test("panel de gestión: cada rol ve solo sus secciones y el cliente no entra", async () => {
-  const { panelGrupos, rolesPanel } = await import("../../frontend/src/config/navbar_config/panel_gestion.js");
+test("panel de gestión: cada uno ve las secciones de sus permisos y el cliente no entra", async () => {
+  const { panelGrupos, accesoPanel } = await import("../../frontend/src/config/navbar_config/panel_gestion.js");
   const modulos = { eccomerce_distribuidora: true };
-  const menu = (roles) => Object.fromEntries(filtrarNavbarPorRol({ dropdowns: panelGrupos }, { roles }, modulos).dropdowns
-    .map((g) => [g.id, g.items.map((i) => i.to)]));
+  const porDefecto = (rol) => permisosConfig.permisos.filter((p) => p.porDefecto.includes(rol)).map((p) => p.codigo);
+  const usuario = (roles, asignados = []) => ({ roles, permisos: permisosEfectivos(roles, asignados) });
+  const menu = (u) => Object.fromEntries(filtrarNavbarPorRol({ dropdowns: panelGrupos }, u, modulos).dropdowns.map((g) => [g.id, g.items.map((i) => i.to)]));
 
-  assert.deepEqual(Object.keys(menu(["staff"])), ["inicio", "distribuidora"]);
-  assert.deepEqual(menu(["vendedor"]).distribuidora, ["/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
-  assert.deepEqual(menu(["staff"]).distribuidora, ["/distribuidora/admin/productos", "/distribuidora/admin/categorias", "/distribuidora/admin/marcas", "/distribuidora/admin/importar", "/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
-  assert.ok(menu(["admin"]).admin.includes("/admin/staffManager"));
-  assert.ok(menu(["admin"]).distribuidora.includes("/distribuidora/admin/listas-precio")); // solo admin: define lo que se cobra
-  assert.deepEqual(Object.keys(menu(["super_admin"])), ["inicio", "sistema"]);
-  assert.deepEqual(menu(["cliente"]), {});
-  assert.equal(rolesPanel.includes("cliente"), false);
+  // Lo decidido con el cliente: el vendedor solo pedidos; el supervisor catálogo, precios, pedidos y cobros.
+  assert.deepEqual(porDefecto("vendedor"), ["pedidos.ver", "pedidos.gestionar"]);
+  assert.deepEqual(porDefecto("supervisor"), ["pedidos.ver", "pedidos.gestionar", "cobros.gestionar", "productos.editar", "precios.editar"]);
+  const supervisor = usuario(["supervisor"], porDefecto("supervisor"));
+  assert.deepEqual(Object.keys(menu(supervisor)), ["inicio", "distribuidora"]);
+  assert.deepEqual(menu(usuario(["vendedor"], porDefecto("vendedor"))).distribuidora, ["/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
+  assert.deepEqual(menu(supervisor).distribuidora, ["/distribuidora/admin/productos", "/distribuidora/admin/categorias", "/distribuidora/admin/marcas", "/distribuidora/admin/listas-precio", "/distribuidora/admin/importar", "/distribuidora/admin/notas-pedido", "/distribuidora/admin/lista-carga"]);
+  // Un rol creado en el panel con solo artículos: sin listas de precios ni importación (que escribe precios).
+  assert.deepEqual(menu(usuario(["repositor"], ["productos.editar"])).distribuidora, ["/distribuidora/admin/productos", "/distribuidora/admin/categorias", "/distribuidora/admin/marcas"]);
+  const admin = menu(usuario(["admin"]));
+  assert.deepEqual(admin.admin, ["/admin/staffManager", "/admin/permisos", "/admin/home-config", "/admin/anuncios"]);
+  assert.ok(admin.distribuidora.includes("/distribuidora/admin/listas-precio"));
+  assert.ok(Object.keys(menu(usuario(["super_admin"]))).includes("sistema"));
+  assert.deepEqual(menu(usuario(["cliente"])), {});
+  assert.equal(accesoPanel.roles.includes("cliente"), false);
+  // Todo permiso tiene una pantalla del panel, propia o la del permiso que requiere; "ventas.ver" se ve en el inicio.
+  for (const p of permisosConfig.permisos.filter((p) => p.codigo !== "ventas.ver")) {
+    assert.ok([p.codigo, ...(p.requiere ?? [])].some((c) => accesoPanel.permisos.includes(c)), p.codigo);
+  }
   // Con el módulo apagado desde /super-admin/modulos, desaparece su sección.
-  assert.equal(filtrarNavbarPorRol({ dropdowns: panelGrupos }, { roles: ["staff"] }, { eccomerce_distribuidora: false }).dropdowns.some((g) => g.id === "distribuidora"), false);
+  assert.equal(filtrarNavbarPorRol({ dropdowns: panelGrupos }, supervisor, { eccomerce_distribuidora: false }).dropdowns.some((g) => g.id === "distribuidora"), false);
+});
+
+test("permisos: admin y super admin tienen todo; el resto, solo lo asignado y conocido", () => {
+  assert.deepEqual(permisosEfectivos(["admin"], []), CODIGOS_PERMISO);
+  assert.deepEqual(permisosEfectivos(["vendedor"], ["pedidos.ver", "inventado.ver", null]), ["pedidos.ver"]);
+  assert.deepEqual(permisosEfectivos(["cajero"], ["cobros.gestionar"]), ["pedidos.ver", "cobros.gestionar"], "cobrar trae ver pedidos");
+  assert.deepEqual(dependientesDe("pedidos.ver"), ["pedidos.gestionar", "cobros.gestionar"]);
+  assert.deepEqual(permisosEfectivos(["cliente"], []), []);
+  const vendedor = { roles: ["vendedor"], permisos: ["pedidos.ver"] };
+  assert.equal(tienePermiso(vendedor, "cobros.gestionar", "pedidos.ver"), true, "alcanza con uno");
+  assert.equal(tienePermiso(vendedor, "cobros.gestionar"), false);
+  assert.equal(tienePermiso(null, "pedidos.ver"), false);
+  assert.equal(cumpleAcceso(vendedor, {}), true);
+  assert.equal(cumpleAcceso(vendedor, { permisos: ["productos.editar", "precios.editar"], todos: true }), false);
+  assert.equal(cumpleAcceso({ roles: ["x"], permisos: ["productos.editar", "precios.editar"] }, { permisos: ["productos.editar", "precios.editar"], todos: true }), true);
+  assert.equal(cumpleAcceso({ roles: ["super_admin"], permisos: [] }, { roles: ["super_admin"] }), true);
+  for (const p of permisosConfig.permisos) assert.ok(permisosConfig.grupos.some((g) => g.codigo === p.grupo), p.codigo);
 });
 
 test("bultos y sueltos: 23 paquetes en cajas de 20 son 1 caja + 3 paquetes", async () => {

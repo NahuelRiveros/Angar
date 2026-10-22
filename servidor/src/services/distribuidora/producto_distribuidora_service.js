@@ -196,13 +196,25 @@ export async function actualizarProducto(id, payload, { transaction } = {}) {
  * tiene ninguna (dato viejo, o se la borró desde la base a mano), la crea
  * en vez de fallar.
  */
-export async function actualizarProductoConVariedad(id, payload, datosVariedad) {
+const anteriorONulo = (valor) => (valor === null || valor === undefined ? null : Number(valor));
+/** true si los datos cambian el precio vigente o el anterior de la presentación (o de una nueva, si no es 0). */
+export function cambiaPrecios(variedad, datos) {
+  if (!variedad) return Number(datos.precio) !== 0 || datos.precio_anterior !== null;
+  return Number(variedad.precio) !== Number(datos.precio) || anteriorONulo(variedad.precio_anterior) !== anteriorONulo(datos.precio_anterior);
+}
+export const errorSinPermisoPrecios = () => Object.assign(
+  new Error("No tenés permiso para cambiar precios. Guardá el artículo con el precio como estaba y pedile el cambio a un supervisor."),
+  { status: 403, codigo: "SIN_PERMISO_PRECIOS" });
+
+// sinPermisoPrecios: quien edita artículos pero no precios puede guardar todo lo demás.
+export async function actualizarProductoConVariedad(id, payload, datosVariedad, { sinPermisoPrecios = false } = {}) {
   const producto = await sequelize.transaction(async (transaction) => {
     const actualizado = await actualizarProducto(id, payload, { transaction });
     if (!actualizado) return null;
     const variedad = await VariedadDistribuidora.findOne({
       where: { producto_id: id, fecha_baja: null }, order: [["id", "ASC"]], transaction,
     });
+    if (sinPermisoPrecios && cambiaPrecios(variedad, datosVariedad)) throw errorSinPermisoPrecios();
     if (variedad) {
       const cambioPrecio = Number(variedad.precio) !== Number(datosVariedad.precio);
       await variedad.update({ ...datosVariedad, ...(cambioPrecio ? { fecha_cambio_precio: new Date() } : {}) }, { transaction });

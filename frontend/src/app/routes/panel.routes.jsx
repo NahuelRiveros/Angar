@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { rolesPanel } from "../../config/navbar_config/panel_gestion.js";
+import { accesoPanel } from "../../config/navbar_config/panel_gestion.js";
 import { adminRoutes } from "./admin.routes.jsx";
 import { superAdminRoutes } from "./super_admin.routes.jsx";
 import { eccomerceDistribuidoraAdminRoutes } from "./eccomerce_distribuidora.routes.jsx";
@@ -9,7 +9,7 @@ const PanelInicioPage = lazy(() => import("../../modules/panel/panel_inicio_page
 // Todo lo que va dentro del panel de gestión (PanelLayout, ver router.jsx).
 // Cada pantalla conserva su propia protección por rol.
 export const panelRoutes = [
-  { path: "/panel", element: protegida(<PanelInicioPage />, rolesPanel) },
+  { path: "/panel", element: protegida(<PanelInicioPage />, accesoPanel) },
   ...eccomerceDistribuidoraAdminRoutes,
   ...adminRoutes,
   ...superAdminRoutes,

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../../auth/auth_context.jsx";
+import { tienePermiso } from "../../../../../permisos_config.js";
 import { getPreciosEnListas } from "../api/producto_distribuidora_api.js";
 import { formatearPrecio } from "../utils/precio_iva.js";
 import { RUTA_LISTAS } from "../utils/rutas_articulo.js";
@@ -11,7 +12,7 @@ import { RUTA_LISTAS } from "../utils/rutas_articulo.js";
  */
 export default function PreciosEnListas({ productoId, activa }) {
   const { usuario } = useAuth();
-  const esAdmin = (usuario?.roles ?? []).includes("admin");
+  const puedeEditarPrecios = tienePermiso(usuario, "precios.editar");
   // Se pide recién al abrir la pestaña: la mayoría de las veces se edita otra cosa.
   const precios = useQuery({ queryKey: ["precios-en-listas", productoId], queryFn: () => getPreciosEnListas(productoId), enabled: activa, staleTime: 30_000 });
   if (!activa) return null;
@@ -31,7 +32,7 @@ export default function PreciosEnListas({ productoId, activa }) {
                 ))}
               </ul>
             )}
-      {esAdmin && <Link to={RUTA_LISTAS} className="inline-block min-h-11 content-center text-sm font-semibold text-(--kt-teal-700) underline">Editar en Listas de precios</Link>}
+      {puedeEditarPrecios && <Link to={RUTA_LISTAS} className="inline-block min-h-11 content-center text-sm font-semibold text-(--kt-teal-700) underline">Editar en Listas de precios</Link>}
     </div>
   );
 }

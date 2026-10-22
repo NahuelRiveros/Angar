@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/auth_context.jsx";
 import { cn } from "../../../utils/cn.js";
 
-const NOMBRES_ROL = { super_admin: "Super admin", admin: "Administrador", staff: "Staff", vendedor: "Vendedor" };
+const NOMBRES_ROL = { super_admin: "Super admin", admin: "Administrador", supervisor: "Supervisor", vendedor: "Vendedor" };
+// Roles creados en el panel de permisos: "repositor_de_gondola" → "Repositor de gondola".
+const nombreRol = (codigo) => NOMBRES_ROL[codigo] ?? String(codigo).replace(/_/g, " ").replace(/^./, (l) => l.toUpperCase());
 
 function iniciales(nombre) {
   return nombre.split(" ").slice(0, 2).map((palabra) => palabra[0]?.toUpperCase() ?? "").join("");
@@ -16,7 +18,8 @@ export default function PanelUsuario({ compacta = false }) {
   if (!usuario) return null;
 
   const nombre = [usuario.nombre, usuario.apellido].filter(Boolean).join(" ") || usuario.email || "Usuario";
-  const rol = (usuario.roles ?? []).map((r) => NOMBRES_ROL[r]).find(Boolean) ?? "";
+  const delEquipo = (usuario.roles ?? []).filter((r) => r !== "cliente");
+  const rol = delEquipo.map((r) => NOMBRES_ROL[r]).find(Boolean) ?? (delEquipo[0] ? nombreRol(delEquipo[0]) : "");
 
   async function salir() {
     await logout();

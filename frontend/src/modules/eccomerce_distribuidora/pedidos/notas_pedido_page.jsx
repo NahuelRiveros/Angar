@@ -6,7 +6,8 @@ import SearchField from "../../../controls/ui/search_field.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import Pagination from "../../../controls/ui/pagination.jsx";
 import ActionButton from "../../../controls/ui/action_button.jsx";
-import { ESTADOS, ESTADOS_PAGO, orderConfig } from "../../../config/order_config.js";
+import { ESTADOS, ESTADOS_PAGO } from "../../../config/order_config.js";
+import { tienePermiso } from "../../../../../permisos_config.js";
 import {
   getTodasLasNotasPedido, cambiarEstadoNotaPedido, registrarPagoNotaPedido, anularPagoNotaPedido, exportarNotaPedido,
   aceptarComprobante, rechazarComprobante,
@@ -20,7 +21,8 @@ export default function NotasPedidoDistribuidoraPage() {
   const [params, setParams] = useSearchParams();
   const filters = { q: params.get("q") || "", estado: params.get("estado") || "", estado_pago: params.get("estado_pago") || "", comprobante: params.get("comprobante") || "", pagina: Math.max(1, parseInt(params.get("pagina"), 10) || 1) };
   // El servidor es quien autoriza; esto solo evita mostrar acciones que van a fallar.
-  const puedeCobrar = usuario?.roles?.some((r) => orderConfig.paymentRoles.includes(r)) ?? false;
+  const puedeCobrar = tienePermiso(usuario, "cobros.gestionar");
+  const puedeCambiarEstado = tienePermiso(usuario, "pedidos.gestionar");
   const query = useQuery({ queryKey: ["gestion-pedidos", usuario?.usuario_id, filters], queryFn: () => getTodasLasNotasPedido(filters), refetchInterval: 30000 });
   function filter(key, value) {
     setParams((current) => { const next = new URLSearchParams(current); if (value) next.set(key, value); else next.delete(key); if (key !== "pagina") next.delete("pagina"); return next; }, { replace: true });
@@ -45,7 +47,7 @@ export default function NotasPedidoDistribuidoraPage() {
       {query.isPending && <p role="status">Cargando pedidos…</p>}
       {data && <p className="text-sm text-slate-500" role="status">{data.total} pedidos · Actualización automática cada 30 segundos</p>}
       {data?.data.length === 0 && <p className="rounded-xl border border-dashed p-8 text-center">{filters.q || filters.estado || filters.estado_pago || filters.comprobante ? "No hay pedidos con estos filtros." : "Todavía no llegaron pedidos."}</p>}
-      {data?.data.map((nota) => <NotaPedidoCard key={nota.id} nota={nota} operatorId={usuario?.usuario_id} puedeCobrar={puedeCobrar} onAceptarComprobante={(...args) => mutate(aceptarComprobante, ...args)} onRechazarComprobante={(...args) => mutate(rechazarComprobante, ...args)} onCambiarEstado={(...args) => mutate(cambiarEstadoNotaPedido, ...args)} onRegistrarPago={(...args) => mutate(registrarPagoNotaPedido, ...args)} onAnularPago={(...args) => mutate(anularPagoNotaPedido, ...args)} onExportar={exportarNotaPedido} />)}
+      {data?.data.map((nota) => <NotaPedidoCard key={nota.id} nota={nota} operatorId={usuario?.usuario_id} puedeCobrar={puedeCobrar} puedeCambiarEstado={puedeCambiarEstado} onAceptarComprobante={(...args) => mutate(aceptarComprobante, ...args)} onRechazarComprobante={(...args) => mutate(rechazarComprobante, ...args)} onCambiarEstado={(...args) => mutate(cambiarEstadoNotaPedido, ...args)} onRegistrarPago={(...args) => mutate(registrarPagoNotaPedido, ...args)} onAnularPago={(...args) => mutate(anularPagoNotaPedido, ...args)} onExportar={exportarNotaPedido} />)}
       <Pagination page={data?.page || filters.pagina} pages={data?.totalPages || 0} total={data?.total || 0} disabled={query.isFetching} onChange={(p) => filter("pagina", String(p))} />
     </div>
   </main>;

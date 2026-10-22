@@ -21,7 +21,11 @@ tablas). El bootstrap borra sus tablas viejas en cada arranque (`TABLAS_RETIRADA
   Frontend y servidor (`configuracion_servidor/gate_config.js`) re-exportan este mismo
   archivo. Decide qué tablas crea el bootstrap; no cambiarlo como un simple ajuste visual.
 - `client_config.js`: cliente activo, acceso público y políticas del carrito.
-- `order_config.js`: roles de gestión, estados, transiciones y cobros.
+- `order_config.js`: estados, transiciones, stock por estado y comprobantes de cobro.
+- `permisos_config.js`: lista de permisos del personal (`pedidos.ver`, `cobros.gestionar`, `precios.editar`…),
+  sus grupos, dependencias (`requiere`) y los roles que los reciben al aparecer (`porDefecto`). Qué rol tiene
+  cada permiso vive en la base (`rol_permiso`) y se edita en `/admin/permisos`. `admin` y `super_admin` tienen
+  todos siempre. El rol `staff` se renombró a `supervisor` (`renombrarStaffASupervisor` en `seed_rbac.js`).
 - `catalog_import_config.js`: configuración compartida de importación.
 - `unidades_config.js`: unidades de venta, bultos (equivalencia) y el cálculo de bultos/sueltos
   que usan la ficha del artículo, el catálogo y la lista de carga.
@@ -154,7 +158,9 @@ actualizar el script correspondiente o ejecutarlo explícitamente con `node --te
 - Dinero, envío, fusión del carrito y operaciones concurrentes: conservar transacciones,
   locks y claves de idempotencia. Revisar `services/common/` y tests existentes.
 - Autorización efectiva en servidor, incluyendo propietario del recurso y módulo habilitado.
-  Los roles de gestión vienen de `orderConfig.managementRoles`; no asumir privilegios por nombre.
+  Las rutas del personal usan `requirePermiso(...)` (alcanza con uno) y la interfaz `permisos`/`cumpleAcceso`;
+  no asumir privilegios por nombre de rol. `requireRole` queda para `super_admin` y módulos apagados.
+  Un permiso nuevo se agrega en `permisos_config.js` y lo sincroniza el arranque (`sincronizarPermisos`).
 - Para fechas de negocio usar explícitamente `America/Argentina/Buenos_Aires`.
 - Neon: evitar N+1, listas ilimitadas y polling nuevo sin necesidad. El polling existente de
   pedidos es parte del comportamiento actual: evaluar su necesidad antes de cambiarlo.

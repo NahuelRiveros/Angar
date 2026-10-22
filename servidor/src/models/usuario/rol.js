@@ -3,7 +3,7 @@ import { defineModel } from "../common/define_model.js";
 
 /**
  * Roles del sistema.
- * codigo es el identificador de negocio que se embebe en el JWT: 'admin' | 'staff'.
+ * codigo es el identificador de negocio que se usa en roles y permisos: 'admin', 'supervisor', 'vendedor' o uno creado en el panel.
  */
 export const Rol = defineModel("Rol", {
   codigo:      { type: DataTypes.STRING(50), allowNull: false, unique: true },
