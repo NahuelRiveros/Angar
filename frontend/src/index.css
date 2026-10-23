@@ -63,6 +63,8 @@
      solo para el punto exacto donde se convierte una venta. */
   --kt-accent-comercial:       #B45309;
   --kt-accent-comercial-hover: #92400E;
+  --kt-accent-comercial-soft:  #FFFBEB;
+  --kt-accent-on-dark:         #4FB6C9;
 
   /* ── Radio de bordes — vocabulario semántico sobre la escala de Tailwind ── */
   --radius-chip: 999px;   /* rounded-full ya cubre esto, alias solo para claridad de intención */

@@ -129,7 +129,7 @@ export default function Footer() {
                   const Icon = iconoHome(icono);
                   const contenido = (
                     <>
-                      <Icon size={14} className="shrink-0 text-(--kt-turquoise)" />
+                      <Icon size={14} className="shrink-0 text-(--kt-accent-on-dark)" />
                       <span className="text-xs leading-5 text-slate-300">{valor}</span>
                     </>
                   );
@@ -151,7 +151,7 @@ export default function Footer() {
               <FooterColumn label="¿Por qué elegirnos?">
                 {diferencialesActivos.map((item) => (
                   <li key={item.titulo} className="flex items-start gap-2.5">
-                    <item.icon size={15} className="mt-0.5 shrink-0 text-(--kt-turquoise)" />
+                    <item.icon size={15} className="mt-0.5 shrink-0 text-(--kt-accent-on-dark)" />
                     <div>
                       <div className="text-sm font-semibold text-white">{item.titulo}</div>
                       <div className="text-xs leading-5 text-slate-400">{item.texto}</div>
@@ -162,7 +162,7 @@ export default function Footer() {
 
               {callout && (
                 <div className="mt-5 rounded-2xl border border-(--kt-turquoise)/20 bg-(--kt-turquoise)/10 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-(--kt-turquoise)">{callout.titulo}</p>
+                  <p className="text-xs font-bold uppercase tracking-wide text-(--kt-accent-on-dark)">{callout.titulo}</p>
                   <p className="mt-1 text-sm leading-6 text-slate-200">{callout.texto}</p>
                 </div>
               )}
@@ -205,7 +205,7 @@ function FooterLink({ to, icon, children }) {
   return (
     <li>
       <Link to={to} className={FOOTER_LINK_CLASS}>
-        <Icon size={15} className="shrink-0 text-(--kt-turquoise)" />
+        <Icon size={15} className="shrink-0 text-(--kt-accent-on-dark)" />
         {children}
       </Link>
     </li>
@@ -219,7 +219,7 @@ function ExternalFooterLink({ href, icon, children }) {
   return (
     <li>
       <a href={href} target="_blank" rel="noopener noreferrer" className={FOOTER_LINK_CLASS}>
-        <Icon size={15} className="shrink-0 text-(--kt-turquoise)" />
+        <Icon size={15} className="shrink-0 text-(--kt-accent-on-dark)" />
         {children}
       </a>
     </li>

@@ -11,7 +11,7 @@ export default function OfertasDestacadas({ ofertas }) {
   if (ofertas.isError || (ofertas.isSuccess && productos.length === 0)) return null;
 
   return (
-    <section aria-labelledby="home-ofertas" id="ofertas" className="border-y border-(--kt-accent-comercial)/15 bg-(--kt-warning-bg) px-4 py-10 sm:px-6">
+    <section aria-labelledby="home-ofertas" id="ofertas" className="border-y border-(--kt-accent-comercial)/15 bg-(--kt-accent-comercial-soft) px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-6xl space-y-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1">

@@ -1,6 +1,48 @@
 import { clienteActivo } from "./brand_config.js";
-// Overrides por cliente. Los tokens no listados conservan los defaults de index.css.
+
+// Colores dominantes del logo completo: azul #0E2B4D y rojo #F0101E.
+// Los nombres históricos de los tokens se conservan para todos sus consumidores.
 const themes = {
-  gc: { "--kt-teal-700": "#2F4C6B", "--kt-petrol": "#2F4C6B", "--kt-turquoise": "#4FB6C9", "--kt-accent-comercial": "#B45309" },
+  gc: {
+    "--kt-petrol": "#0E2B4D",
+    "--kt-night": "#081C33",
+    "--kt-teal-900": "#081C33",
+    "--kt-teal-700": "#0E2B4D",
+    "--kt-teal-500": "#315F8F",
+    "--kt-turquoise": "#F0101E",
+    "--kt-turquoise-soft": "#FFF1F2",
+    "--kt-turquoise-border": "#F8CDD1",
+    "--kt-accent-on-dark": "#FF8A93",
+    // Rojo oscurecido para texto blanco pequeño (contraste superior a 4.5:1).
+    "--kt-accent-comercial": "#D90E1B",
+    "--kt-accent-comercial-hover": "#B80C17",
+    "--kt-accent-comercial-soft": "#FFF1F2",
+    "--kt-bg": "#FFFFFF",
+    "--kt-bg-soft": "#F3F6FA",
+    "--kt-ink": "#0E2B4D",
+    "--kt-ink-soft": "#53657A",
+    "--kt-ink-mute": "#8796A8",
+    "--kt-border": "#DDE5EE",
+    "--shadow-glow-accent": "0 0 22px rgb(240 16 30 / 0.18)",
+    // La escala de acciones sigue siendo azul; el rojo queda como acento.
+    "--color-blue-50": "#F0F5FA",
+    "--color-blue-100": "#E1EBF5",
+    "--color-blue-200": "#C3D6EA",
+    "--color-blue-300": "#96B7D7",
+    "--color-blue-400": "#668FB8",
+    "--color-blue-700": "#0C2542",
+    "--color-blue-800": "#0A2039",
+    "--color-neutral-50": "#F8FAFC",
+    "--color-neutral-100": "#F3F6FA",
+    "--color-neutral-200": "#DDE5EE",
+    "--color-neutral-300": "#C5D0DD",
+    "--color-neutral-400": "#8796A8",
+    "--color-neutral-500": "#64758A",
+    "--color-neutral-600": "#53657A",
+    "--color-neutral-700": "#354B65",
+    "--color-neutral-800": "#203B58",
+    "--color-neutral-900": "#0E2B4D",
+    "--color-neutral-950": "#081C33",
+  },
 };
 export const themeConfig = themes[clienteActivo] ?? {};

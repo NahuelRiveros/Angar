@@ -63,7 +63,7 @@ export default function HomePage() {
 
         <div className="relative mx-auto grid max-w-6xl items-center gap-8 px-6 py-12 lg:grid-cols-[0.65fr_1.35fr] lg:gap-12">
 
-          <div className="mx-auto w-full max-w-48 lg:mx-0">
+          <div className="mx-auto w-full max-w-sm lg:mx-0">
             <img src={logoConfig.home} alt={brandConfig.nombre} className="w-full" />
           </div>
 

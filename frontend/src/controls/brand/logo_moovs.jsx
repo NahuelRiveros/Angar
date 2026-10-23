@@ -11,19 +11,19 @@ const SIZE = {
     text: "text-xl",
     spine: "h-[1.46em]",
     spineBox: "w-[0.72em] -ml-[0.21em] translate-y-[0.19em]",
-    markBox: "h-8 w-8",
+    markBox: "h-8 w-14",
   },
   md: {
     text: "text-3xl sm:text-4xl",
     spine: "h-[1.52em]",
     spineBox: "w-[0.76em] -ml-[0.22em] translate-y-[0.2em]",
-    markBox: "h-10 w-10",
+    markBox: "h-12 w-20",
   },
   hero: {
     text: "text-6xl sm:text-7xl md:text-[8.15rem]",
     spine: "h-[1.72em]",
     spineBox: "w-[0.95em] -ml-[0.25em] translate-y-[0.25em]",
-    markBox: "h-16 w-16",
+    markBox: "h-16 w-28",
   },
 };
 

@@ -67,7 +67,7 @@ export default function HomeTienda({ texto, textos }) {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">{brandConfig.nombre} · {texto("hero_kicker", brandConfig.rubro)}</p>
             <h1 id="home-titulo" className="kt-display mt-5 max-w-xl text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl">
               {texto("hero_titulo", textos.hero_titulo)}
-              <span className="block text-(--kt-turquoise)">{texto("hero_titulo_resaltado", textos.hero_titulo_resaltado)}</span>
+              <span className="block text-(--kt-accent-on-dark)">{texto("hero_titulo_resaltado", textos.hero_titulo_resaltado)}</span>
             </h1>
             <p className="mt-5 max-w-lg text-sm leading-relaxed text-white/85 sm:text-base">{texto("hero_subtitulo", textos.hero_subtitulo)}</p>
             {config.enabled && <form role="search" aria-label="Buscar en el catálogo" onSubmit={buscar} className="mt-7 flex min-w-0 items-center gap-2 rounded-xl bg-white p-1.5 text-(--kt-ink) focus-within:ring-2 focus-within:ring-(--kt-turquoise)">
@@ -83,7 +83,7 @@ export default function HomeTienda({ texto, textos }) {
           </div>
         </div>
 
-        {config.enabled && <aside aria-label={hayOfertas ? "Promociones destacadas" : "Explorá el catálogo"} className="relative flex min-w-0 flex-col overflow-hidden rounded-3xl border border-(--kt-accent-comercial)/15 bg-(--kt-warning-bg) p-6 sm:p-8">
+        {config.enabled && <aside aria-label={hayOfertas ? "Promociones destacadas" : "Explorá el catálogo"} className="relative flex min-w-0 flex-col overflow-hidden rounded-3xl border border-(--kt-accent-comercial)/15 bg-(--kt-accent-comercial-soft) p-6 sm:p-8">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-(--kt-accent-comercial)">
             {hayOfertas ? <BadgePercent size={19} aria-hidden="true" /> : <ShoppingBasket size={19} aria-hidden="true" />}
             {hayOfertas ? HOME_TIENDA.promoEtiqueta : HOME_TIENDA.catalogoEtiqueta}
