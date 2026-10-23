@@ -65,7 +65,7 @@ La gestión consulta páginas de hasta 50 notas, permite buscar por número, nom
 
 El backend incorpora `nota_pedido_estado_log`, `operacion_carrito` y las columnas `metodo` y `anulacion_motivo` de `nota_pedido_pago`, además de la presentación y los datos de entrega usados por el snapshot. El bootstrap existente sincroniza los modelos al detectar cambios. Reiniciar el backend y publicar frontend/backend de la misma versión después de verificar la actualización contra una copia de la base. No se ejecutó bootstrap sobre la base de negocio durante estas pruebas.
 
-El backend también incorpora la tabla `nota_pedido_comprobante` y `nota_pedido.stock_descontado` (booleano, `false` por defecto), que el bootstrap agrega al detectar el cambio del modelo.
+El backend también incorpora la tabla `nota_pedido_comprobante`, `nota_pedido.stock_descontado` y `nota_pedido_item.iva_porcentaje` (alícuota de cada línea, para facturar; ver `docs/facturacion-arca.md`) (booleano, `false` por defecto), que el bootstrap agrega al detectar el cambio del modelo.
 
 Quién gestiona lo deciden los permisos de `permisos_config.js` (ver "Roles y permisos"), aplicados tanto en rutas como en API. `POST /distribuidora/notas-pedido/:id/cancelar` no exige rol: solo encuentra notas del usuario de la sesión. El catálogo público puede deshabilitarse en config; agregar, enviar y gestionar requieren las autorizaciones correspondientes.
 

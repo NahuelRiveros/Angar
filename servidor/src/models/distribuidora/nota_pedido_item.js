@@ -31,6 +31,9 @@ export const NotaPedidoItem = defineModel("NotaPedidoItem", {
   precio_unitario: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   cantidad:        { type: DataTypes.INTEGER, allowNull: false },
   subtotal:        { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+  // Alícuota de IVA al enviar el pedido: precio_unitario es FINAL (con IVA) y una
+  // factura electrónica tiene que discriminarlo por alícuota. null en pedidos viejos.
+  iva_porcentaje:  { type: DataTypes.DECIMAL(5, 2), allowNull: true },
 }, {
   tableName: "nota_pedido_item",
   indexes: [

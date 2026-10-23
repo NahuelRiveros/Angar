@@ -43,6 +43,7 @@ export async function listarItemsCarrito(carrito_id, transaction) {
     variante_disponible: !!item.variedad && !item.variedad.fecha_baja,
     precio: Number(precios.get(item.variedad_id)?.precio ?? item.variedad?.precio ?? item.precio_unidad), precio_al_agregar: Number(item.precio_unidad),
     stock_disponible: item.variedad?.controla_stock ? item.variedad.cantidad : null,
+    iva_porcentaje: item.variedad ? Number(item.variedad.iva_porcentaje) : null,
     cantidad: item.cantidad, activo: !!item.producto?.activo && !item.producto.fecha_baja,
   }));
 }

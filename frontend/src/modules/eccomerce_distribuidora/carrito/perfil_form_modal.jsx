@@ -4,6 +4,7 @@ import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import ActionButton from "../../../controls/ui/action_button.jsx";
 import { guardarMiPerfil } from "../api/perfil_cliente_api.js";
 import PerfilCampos from "../perfil/perfil_campos.jsx";
+import { problemaFiscal } from "../../../../../fiscal_config.js";
 export default function PerfilFormModal({ onClose, onGuardado, perfil = {} }) {
   const [data, setData] = useState({
     nombre: perfil?.nombre ?? "", apellido: perfil?.apellido ?? "", celular: perfil?.celular ?? "",
@@ -17,7 +18,9 @@ export default function PerfilFormModal({ onClose, onGuardado, perfil = {} }) {
   return <Modal title="Tus datos para el pedido" onClose={onClose} busy={busy}>
     <form className="space-y-4" onSubmit={async (e) => {
       e.preventDefault(); setError("");
-      if (!data.nombre.trim() || !data.apellido.trim() || !data.celular.trim() || !data.cuit.trim() || !data.direccion.trim() || !data.provincia || !data.localidad.trim()) { setError("Completá los campos obligatorios."); return; }
+      if (!data.nombre.trim() || !data.apellido.trim() || !data.celular.trim() || !data.direccion.trim() || !data.provincia || !data.localidad.trim()) { setError("Completá los campos obligatorios."); return; }
+      const fiscal = problemaFiscal(data);
+      if (fiscal) { setError(fiscal); return; }
       setBusy(true);
       try { await guardarMiPerfil(data); await onGuardado(); }
       catch (e) { setError(e.response?.data?.mensaje || "No pudimos guardar tus datos."); }

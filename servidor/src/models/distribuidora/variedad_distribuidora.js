@@ -20,7 +20,7 @@ export const VariedadDistribuidora = defineModel("VariedadDistribuidora", {
 
   nombre: { type: DataTypes.STRING(100), allowNull: true },
 
-  // Neto, sin IVA — el precio final para mostrar se calcula sumando `iva_porcentaje`.
+  // FINAL, con IVA incluido (lo que paga el cliente); `iva_porcentaje` lo desglosa.
   precio:          { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   // null = sin precio anterior / sin oferta
   precio_anterior: { type: DataTypes.DECIMAL(10, 2), allowNull: true },

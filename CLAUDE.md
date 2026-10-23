@@ -27,6 +27,9 @@ tablas). El bootstrap borra sus tablas viejas en cada arranque (`TABLAS_RETIRADA
   cada permiso vive en la base (`rol_permiso`) y se edita en `/admin/permisos`. `admin` y `super_admin` tienen
   todos siempre. El rol `staff` se renombró a `supervisor` (`renombrarStaffASupervisor` en `seed_rbac.js`).
 - `catalog_import_config.js`: configuración compartida de importación.
+- `fiscal_config.js`: condiciones frente al IVA, validación de CUIT/DNI, tipo de factura sugerida y la
+  condición de la distribuidora (`emisor`, a completar). La facturación con ARCA está documentada, no programada:
+  `docs/facturacion-arca.md`. Los precios guardados son FINALES (con IVA); `nota_pedido_item.iva_porcentaje` los desglosa.
 - `unidades_config.js`: unidades de venta, bultos (equivalencia) y el cálculo de bultos/sueltos
   que usan la ficha del artículo, el catálogo y la lista de carga.
 - `docs/distribuidora-pedidos.md`: contrato y reglas del pedido; leer para cambios de negocio.

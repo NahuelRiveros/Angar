@@ -23,6 +23,9 @@ const { createResetToken } = await import("../src/services/common/auth_tokens.js
 const { resetPassword } = await import("../src/services/usuarios/password_recovery_service.js");
 const { env } = await import("../src/configuracion_servidor/env.js");
 const { guardarPerfil, obtenerPerfil } = await import("../src/services/distribuidora/perfil_cliente_service.js");
+const { validarDatosCliente } = await import("../src/services/common/datos_cliente.js");
+// Como el controlador: guardarPerfil recibe datos ya validados y normalizados.
+const guardarValidado = (usuario_id, body) => { const { datos, error } = validarDatosCliente(body); if (error) throw new Error(error); return guardarPerfil(usuario_id, datos); };
 const { crear_indice_busqueda_productos, aplicar_ajustes_puntuales, TABLAS_RETIRADAS } = await import("../src/database/bootstrap.js");
 const { obtenerResumenPanel } = await import("../src/services/distribuidora/panel_distribuidora_service.js");
 const productos = await import("../src/services/distribuidora/producto_distribuidora_service.js");
@@ -55,8 +58,8 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
     const id = registration.usuario_id;
     // Recién registrada no puede pedir: le faltan celular y datos de entrega.
     assert.equal((await obtenerPerfil(id)).completo, false);
-    const datosAna = { nombre: "Ana", apellido: "Prueba", celular: "11 2345-6789", cuit: "20-12345678-9", razon_social: null, condicion_iva: null, direccion: "Prueba 123", provincia: "Buenos Aires", departamento: null, localidad: "La Plata", codigo_postal: null };
-    const guardado = await guardarPerfil(id, datosAna);
+    const datosAna = { nombre: "Ana", apellido: "Prueba", celular: "11 2345-6789", cuit: "20 12345678 6", razon_social: null, condicion_iva: "responsable_inscripto", direccion: "Prueba 123", provincia: "Buenos Aires", departamento: null, localidad: "La Plata", codigo_postal: null };
+    const guardado = await guardarValidado(id, datosAna);
     assert.equal(guardado.completo, true);
     assert.equal((await models.Persona.findOne({ where: { email: "ana@example.test" } })).celular, "11 2345-6789");
     const category = await models.CategoriaDistribuidora.create({ nombre: "Almacén", slug: "almacen" });
@@ -88,6 +91,9 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       assert.equal((await obtenerCarrito(id)).length, 0);
       assert.equal(Number(a.total), 220);
       assert.equal((await models.NotaPedidoItem.findOne()).variedad_id, variant.id);
+      // La alícuota queda en la línea: el precio es final y una factura tiene que discriminar el IVA.
+      assert.equal(Number((await models.NotaPedidoItem.findOne()).iva_porcentaje), 21);
+      assert.equal(a.condicion_iva, "responsable_inscripto");
       assert.equal((await crearNotaPedido(id, { key, expectedItems })).id, a.id);
     });
     await t.test("gestión: transiciones, auditoría y cobro independiente", async () => {
@@ -597,12 +603,24 @@ test("PostgreSQL: registro, fusión idempotente, cambios de precio, concurrencia
       assert.equal((await obtenerPerfil(id)).completo, false);
       await agregarItem(id, payload);
       await assert.rejects(crearNotaPedido(id, { key: randomUUID(), expectedItems: await obtenerCarrito(id) }), /Completá tus datos/);
-      const completo = await guardarPerfil(id, { ...datosAna, apellido: "Google", celular: "+54 9 221 456-7890" });
+      const completo = await guardarValidado(id, { ...datosAna, apellido: "Google", celular: "+54 9 221 456-7890" });
       assert.equal(completo.completo, true);
       assert.equal(completo.apellido, "Google");
-      assert.equal(completo.cuit, "20-12345678-9");
+      assert.equal(completo.cuit, "20-12345678-6", "se guarda normalizado");
       const nota = await crearNotaPedido(id, { key: randomUUID(), expectedItems: await obtenerCarrito(id) });
       assert.ok(nota.id);
+    });
+    await t.test("cliente de antes sin condición de IVA: completa sus datos fiscales al pedir y no pierde el carrito", async () => {
+      // Perfil guardado antes de esta validación: CUIT mal cargado y sin condición.
+      await models.PerfilClienteDistribuidora.update({ condicion_iva: null, cuit: "20-12345678-9" }, { where: { usuario_id: id } });
+      assert.equal((await obtenerPerfil(id)).completo, false);
+      await vaciarCarrito(id);
+      await agregarItem(id, payload);
+      await assert.rejects(crearNotaPedido(id, { key: randomUUID(), expectedItems: await obtenerCarrito(id) }), (e) => e.codigo === "PERFIL_INCOMPLETO" && /datos fiscales/.test(e.message));
+      assert.equal((await obtenerCarrito(id)).length, 1, "el carrito queda como estaba");
+      await guardarValidado(id, { ...datosAna, apellido: "Google", condicion_iva: "consumidor_final", cuit: "30.123.456" });
+      const nota = await crearNotaPedido(id, { key: randomUUID(), expectedItems: await obtenerCarrito(id) });
+      assert.deepEqual([nota.condicion_iva, nota.cuit], ["consumidor_final", "30123456"], "el pedido copia los datos fiscales del momento");
     });
     await t.test("índice de búsqueda se crea aunque pg_trgm esté instalada en otro schema", async () => {
       const { QueryTypes } = await import("sequelize");

@@ -5,6 +5,7 @@ import { validQuantity, validateSnapshot } from "../src/services/common/cart_rul
 import { orderConfig, receiptProblem, transitionProblem } from "../../order_config.js";
 import { CODIGOS_PERMISO, dependientesDe, permisosConfig, permisosEfectivos, tienePermiso } from "../../permisos_config.js";
 import { cumpleAcceso } from "../../frontend/src/controls/acceso/acceso.js";
+import { cuitValido, dniValido, fiscalConfig, normalizarDocumento, problemaFiscal, tipoFacturaSugerida } from "../../fiscal_config.js";
 import { env } from "../src/configuracion_servidor/env.js";
 import { enviarEmail, mailConfigured } from "../src/services/common/mail_service.js";
 import {
@@ -21,8 +22,8 @@ import { normalizeRows } from "../src/services/distribuidora/importacion/normali
 import { formatearNombre } from "../src/services/common/formato_nombre.js";
 import { indexarCategorias, construirOpcionesCategoria } from "../../frontend/src/modules/eccomerce_distribuidora/utils/categoria_jerarquia.js";
 
-test("primer pedido exige nombre, apellido, celular y datos de entrega", () => {
-  const completos = { nombre: "Gise", apellido: "Google", celular: "11 2345-6789", cuit: "20-12345678-9", direccion: "Calle 1", provincia: "Buenos Aires", localidad: "La Plata" };
+test("primer pedido exige nombre, apellido, celular, datos fiscales y de entrega", () => {
+  const completos = { nombre: "Gise", apellido: "Google", celular: "11 2345-6789", condicion_iva: "responsable_inscripto", cuit: "20-12345678-6", direccion: "Calle 1", provincia: "Buenos Aires", localidad: "La Plata" };
   assert.equal(datosClienteCompletos(completos), true);
   assert.equal(datosClienteCompletos({ ...completos, apellido: "" }), false, "cuenta de Google sin apellido");
   assert.equal(datosClienteCompletos({ ...completos, celular: null }), false);
@@ -36,6 +37,30 @@ test("primer pedido exige nombre, apellido, celular y datos de entrega", () => {
   assert.match(validarDatosCliente({ ...completos, apellido: " " }).error, /nombre y apellido/);
   assert.match(validarDatosCliente({ ...completos, celular: "123" }).error, /celular/);
   assert.match(validarDatosCliente({ ...completos, cuit: "" }).error, /CUIT/);
+  // Un cliente de antes, sin condición de IVA o con un CUIT mal cargado, tiene que completarlo al pedir.
+  assert.equal(datosClienteCompletos({ ...completos, condicion_iva: null }), false);
+  assert.equal(datosClienteCompletos({ ...completos, cuit: "20-12345678-9" }), false, "dígito verificador incorrecto");
+  assert.match(validarDatosCliente({ ...completos, condicion_iva: "inventada" }).error, /condición frente al IVA/);
+  assert.equal(validarDatosCliente({ ...completos, cuit: "20 12345678 6" }).datos.cuit, "20-12345678-6", "se guarda con guiones");
+  assert.equal(validarDatosCliente({ ...completos, condicion_iva: "consumidor_final", cuit: "30.123.456" }).datos.cuit, "30123456", "consumidor final con DNI");
+  assert.match(validarDatosCliente({ ...completos, condicion_iva: "monotributista", cuit: "30123456" }).error, /CUIT válido/);
+});
+
+test("fiscal: CUIT con dígito verificador, DNI y factura que corresponde según emisor y cliente", () => {
+  for (const bueno of ["20-12345678-6", "20123456786", "30-71234567-1"]) assert.equal(cuitValido(bueno), true, bueno);
+  for (const malo of ["20-12345678-9", "99-12345678-6", "2012345678", "", null, "20-1234567a-6"]) assert.equal(cuitValido(malo), false, String(malo));
+  assert.equal(dniValido("12.345.678"), true);
+  for (const malo of ["123456", "123456789", "0000000"]) assert.equal(dniValido(malo), false, malo);
+  assert.equal(normalizarDocumento(" 20 12345678 6 "), "20-12345678-6");
+  assert.equal(normalizarDocumento("12.345.678"), "12345678");
+  assert.equal(problemaFiscal({ condicion_iva: "exento", cuit: "30-71234567-1" }), null);
+  assert.match(problemaFiscal({ cuit: "30-71234567-1" }), /condición/);
+  // Responsable inscripto: A a inscriptos y monotributistas, B al resto. Monotributo o exento: siempre C.
+  assert.deepEqual(["responsable_inscripto", "monotributista", "exento", "consumidor_final"].map((c) => tipoFacturaSugerida(c, "responsable_inscripto")), ["A", "A", "B", "B"]);
+  assert.deepEqual(["responsable_inscripto", "consumidor_final"].map((c) => tipoFacturaSugerida(c, "monotributista")), ["C", "C"]);
+  assert.equal(tipoFacturaSugerida("consumidor_final", null), null, "sin la condición de la distribuidora no se sugiere");
+  assert.equal(tipoFacturaSugerida(null, "responsable_inscripto"), null);
+  assert.equal(fiscalConfig.emisor.condicion_iva, null, "se completa con el dato real del cliente, no se inventa");
 });
 
 test("login distingue email de nombre de usuario y valida el usuario sin consultar la base", () => {

@@ -3,6 +3,7 @@ import InputField from "../../../controls/ui/input_field.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import { getProvincias, getDepartamentos, getLocalidades } from "../../../api/ubicacion_api.js";
 import { OPCIONES_CONDICION_IVA } from "./perfil_constantes.js";
+import { condicionIva as datosCondicion } from "../../../../../fiscal_config.js";
 
 // Si el valor guardado no aparece en la lista vigente (perfil viejo con un
 // nombre que ya no coincide, ej. "CABA" antes de pasar a los datos oficiales
@@ -48,6 +49,7 @@ export default function PerfilCampos({
   localidad, setLocalidad,
   codigoPostal, setCodigoPostal,
 }) {
+  const aceptaDni = datosCondicion(condicionIva)?.documento === "cuit_o_dni";
   const [provincias, setProvincias] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
   const [localidades, setLocalidades] = useState([]);
@@ -108,25 +110,26 @@ export default function PerfilCampos({
         placeholder="Ej: 11 2345-6789"
       />
 
-      <div className="grid grid-cols-2 gap-3">
-        <InputField
-          label="CUIT" required hideMessage
-          tooltip="El número con guiones, ej: 20-12345678-9. Lo usamos para facturar."
-          value={cuit} onChange={(e) => setCuit(e.target.value)}
-          placeholder="20-12345678-9"
-        />
+      {/* Primero la condición: decide si alcanza con DNI (consumidor final) o hace falta CUIT. */}
+      <div className="grid gap-3 sm:grid-cols-2">
         <SelectField
-          label="Condición IVA"
+          label="Condición frente al IVA" required
           options={OPCIONES_CONDICION_IVA}
           value={condicionIva}
           onChange={(e) => setCondicionIva(e.target.value)}
-          placeholder="No especificada"
+          placeholder="Elegí una opción"
+        />
+        <InputField
+          label={aceptaDni ? "CUIT o DNI" : "CUIT"} required hideMessage inputMode="numeric"
+          tooltip={aceptaDni ? "Como consumidor final alcanza con tu DNI. Lo usamos para la factura." : "11 números, con o sin guiones. Lo usamos para la factura."}
+          value={cuit} onChange={(e) => setCuit(e.target.value)}
+          placeholder={aceptaDni ? "Ej: 30123456" : "Ej: 20-12345678-6"}
         />
       </div>
 
       <InputField
         label="Razón social" hideMessage
-        tooltip="Dejalo vacío si facturás a tu propio nombre."
+        tooltip="El nombre de la empresa tal como figura en ARCA. Dejalo vacío si facturás a tu propio nombre."
         value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)}
         placeholder="(opcional)"
       />

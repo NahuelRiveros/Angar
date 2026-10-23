@@ -72,7 +72,7 @@ export async function crearNotaPedido(usuario_id, { notas = null, expectedItems,
   let creada = null;
   const resultado = await withCart(usuario_id, async (carrito, t) => idempotent(usuario_id, "order:" + key, { notas, expectedItems }, t, async () => {
     const perfil = await obtenerPerfil(usuario_id);
-    if (!perfilCompleto(perfil)) throw cartError("Completá tus datos (nombre, apellido, celular y entrega) antes de enviar el pedido.", 400, "PERFIL_INCOMPLETO");
+    if (!perfilCompleto(perfil)) throw cartError("Completá tus datos (nombre, apellido, celular, datos fiscales y entrega) antes de enviar el pedido.", 400, "PERFIL_INCOMPLETO");
     // Bloquear precios y disponibilidad hasta completar el snapshot. El pedido no reserva stock.
     const raw = await CarritoDistribuidoraItem.findAll({ where: { carrito_id: carrito.id }, transaction: t });
     const productIds = [...new Set(raw.map((i) => i.producto_id))].sort((a,b) => a-b);
@@ -103,7 +103,7 @@ export async function crearNotaPedido(usuario_id, { notas = null, expectedItems,
     await NotaPedidoItem.bulkCreate(items.map((i) => ({
       nota_pedido_id: nota.id, producto_id: i.producto_id, variedad_id: i.variedad_id,
       nombre_producto: i.nombre, variedad_nombre: i.variante, precio_unitario: i.precio,
-      cantidad: i.cantidad, subtotal: Math.round(i.precio * 100) * i.cantidad / 100,
+      cantidad: i.cantidad, subtotal: Math.round(i.precio * 100) * i.cantidad / 100, iva_porcentaje: i.iva_porcentaje,
     })), { transaction: t });
     await CarritoDistribuidoraItem.destroy({ where: { carrito_id: carrito.id }, transaction: t });
     creada = nota.id;

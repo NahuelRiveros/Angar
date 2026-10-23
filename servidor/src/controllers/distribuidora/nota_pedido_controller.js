@@ -1,5 +1,6 @@
 import { orderConfig } from "../../../../order_config.js";
 import ExcelJS from "exceljs";
+import { condicionIva, tipoFacturaSugerida } from "../../../../fiscal_config.js";
 import {
   crearNotaPedido, listarPropias, listarTodas, obtenerDetalle,
   cambiarEstado, cancelarPropia, registrarPago, anularPago,
@@ -122,12 +123,13 @@ export async function exportarNotaPedidoController(req, res) {
     const persona = nota.usuario?.persona;
     const workbook = new ExcelJS.Workbook();
     const hoja = workbook.addWorksheet(`Pedido ${nota.id}`);
-    hoja.columns = [{ width: 34 }, { width: 20 }, { width: 12 }, { width: 18 }, { width: 18 }];
+    hoja.columns = [{ width: 34 }, { width: 20 }, { width: 12 }, { width: 18 }, { width: 18 }, { width: 10 }];
 
     hoja.addRow([`Pedido #${nota.id}`]).font = { bold: true, size: 14 };
     hoja.addRow(["Cliente", persona ? `${persona.nombre} ${persona.apellido}` : "—"]);
     hoja.addRow(["Email", persona?.email ?? "—"]);
-    hoja.addRow(["CUIT", nota.cuit ?? "—", nota.razon_social ?? ""]);
+    hoja.addRow(["CUIT/DNI", nota.cuit ?? "—", nota.razon_social ?? ""]);
+    hoja.addRow(["Condición IVA", condicionIva(nota.condicion_iva)?.label ?? "Sin informar", tipoFacturaSugerida(nota.condicion_iva) ? "Factura " + tipoFacturaSugerida(nota.condicion_iva) : ""]);
     hoja.addRow(["Entrega", `${nota.direccion ?? ""}, ${nota.localidad ?? ""}, ${nota.provincia ?? ""}`]);
     hoja.addRow(["Fecha", new Date(nota.fecha_alta).toLocaleString("es-AR")]);
     hoja.addRow(["Estado", ESTADO_LABEL[nota.estado] ?? nota.estado]);
@@ -135,7 +137,7 @@ export async function exportarNotaPedidoController(req, res) {
     if (nota.notas) hoja.addRow(["Notas", nota.notas]);
     hoja.addRow([]);
 
-    const headerRow = hoja.addRow(["Producto", "Variedad", "Cantidad", "Precio unitario", "Subtotal"]);
+    const headerRow = hoja.addRow(["Producto", "Variedad", "Cantidad", "Precio unitario", "Subtotal", "IVA %"]);
     headerRow.font = { bold: true };
 
     for (const item of nota.items ?? []) {
@@ -145,6 +147,7 @@ export async function exportarNotaPedidoController(req, res) {
         item.cantidad,
         fmtMoneda(item.precio_unitario),
         fmtMoneda(item.subtotal),
+        item.iva_porcentaje == null ? "—" : Number(item.iva_porcentaje),
       ]);
     }
 

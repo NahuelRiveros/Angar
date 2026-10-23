@@ -187,7 +187,7 @@ test("continuar con Google envía la credencial, muestra errores y si Google no 
   await expect(page).toHaveURL(/distribuidora\/catalogo/);
   expect(enviados).toEqual([{ credencial: "credencial-de-prueba" }, { credencial: "credencial-de-prueba" }]);
 });
-test("cliente de Google sin apellido completa sus datos en el primer pedido", async ({ page }) => {
+test("cliente de Google sin apellido completa sus datos en el primer pedido", async ({ page }, info) => {
   await mockApi(page, [{ producto_id: 1, variedad_id: 11, cantidad: 2, item_id: 50, nombre: product.nombre, variante: "Paquete 1 kg", precio: 1200, precio_al_agregar: 1200, stock_disponible: 200, activo: true, variante_disponible: true }]);
   await page.addInitScript(() => localStorage.setItem("token", "mock-session"));
   const guardados = [];
@@ -213,14 +213,24 @@ test("cliente de Google sin apellido completa sus datos en el primer pedido", as
   expect(guardados).toHaveLength(0);
   await modal.getByLabel(/^Apellido/).fill("Google");
   await modal.getByLabel(/^Celular/).fill("11 2345-6789");
-  await modal.getByLabel(/^CUIT/).fill("20-12345678-9");
   await modal.getByLabel(/^Dirección/).fill("Calle 1 234");
   await modal.getByLabel(/^Provincia/).selectOption("Buenos Aires");
   await modal.getByLabel(/^Localidad/).selectOption("Buenos Aires");
+  // Como monotributista hace falta un CUIT válido; consumidor final acepta DNI.
+  await modal.getByLabel(/^Condición frente al IVA/).selectOption("monotributista");
+  await modal.getByLabel(/^CUIT/).fill("20-12345678-9");
+  await modal.getByRole("button", { name: "Guardar datos" }).click();
+  await expect(modal.getByRole("alert")).toContainText("Revisá el último número");
+  expect(guardados).toHaveLength(0);
+  await modal.getByLabel(/^Condición frente al IVA/).selectOption("consumidor_final");
+  await expect(modal.getByLabel(/^CUIT o DNI/)).toBeVisible();
+  await modal.getByLabel(/^CUIT o DNI/).fill("30123456");
   await noOverflow(page);
+  await modal.getByLabel(/^Condición frente al IVA/).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath("datos-fiscales.png") });
   await modal.getByRole("button", { name: "Guardar datos" }).click();
   await expect(page.getByText("Gise Google · 11 2345-6789")).toBeVisible();
-  expect(guardados[0]).toMatchObject({ nombre: "Gise", apellido: "Google", celular: "11 2345-6789", cuit: "20-12345678-9", provincia: "Buenos Aires" });
+  expect(guardados[0]).toMatchObject({ nombre: "Gise", apellido: "Google", celular: "11 2345-6789", condicion_iva: "consumidor_final", cuit: "30123456", provincia: "Buenos Aires" });
 });
 const RESUMEN_PANEL = {
   pedidos: {

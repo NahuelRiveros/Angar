@@ -6,6 +6,7 @@ import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
 import { getMiPerfil, guardarMiPerfil } from "../api/perfil_cliente_api.js";
 import PerfilCampos from "./perfil_campos.jsx";
+import { problemaFiscal } from "../../../../../fiscal_config.js";
 import { useCarritoDistribuidora } from "../carrito/carrito_context.jsx";
 
 /**
@@ -58,10 +59,12 @@ export default function PerfilPage() {
 
   async function submit(e) {
     e.preventDefault();
-    if (!nombre.trim() || !apellido.trim() || !celular.trim() || !cuit.trim() || !direccion.trim() || !provincia || !localidad.trim()) {
-      setError("Completá nombre, apellido, celular, CUIT, dirección, provincia y localidad");
+    if (!nombre.trim() || !apellido.trim() || !celular.trim() || !direccion.trim() || !provincia || !localidad.trim()) {
+      setError("Completá nombre, apellido, celular, dirección, provincia y localidad");
       return;
     }
+    const fiscal = problemaFiscal({ condicion_iva: condicionIva, cuit });
+    if (fiscal) { setError(fiscal); return; }
     setError("");
     setGuardando(true);
     try {

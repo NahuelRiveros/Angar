@@ -10,6 +10,7 @@ import InputField from "../../../controls/ui/input_field.jsx";
 import ActionButton from "../../../controls/ui/action_button.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import { ListaComprobantes } from "./pago_transferencia.jsx";
+import { condicionIva, tipoFacturaSugerida } from "../../../../../fiscal_config.js";
 const person = (u) => u?.persona ? [u.persona.nombre, u.persona.apellido].filter(Boolean).join(" ") : "Equipo";
 const date = (value) => new Date(value).toLocaleString("es-AR");
 
@@ -66,7 +67,8 @@ export default function NotaPedidoCard({ nota, operatorId, puedeCobrar = false, 
       <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-sm">
         <p className="font-semibold">Datos de entrega</p>
         <p className="break-words">{[nota.direccion, nota.localidad, nota.departamento, nota.provincia].filter(Boolean).join(", ")}{nota.codigo_postal ? " · CP " + nota.codigo_postal : ""}</p>
-        <p>CUIT: {nota.cuit || "—"} {nota.razon_social}</p>
+        <p>CUIT/DNI: {nota.cuit || "—"} {nota.razon_social}</p>
+        <p>Condición IVA: {condicionIva(nota.condicion_iva)?.label ?? "Sin informar"}{tipoFacturaSugerida(nota.condicion_iva) && <> · <strong>Factura {tipoFacturaSugerida(nota.condicion_iva)}</strong></>}</p>
         <p>Lista de precios: {nota.lista_precio_nombre ?? "General"}</p>
         {nota.notas && <p className="whitespace-pre-wrap break-words">Observaciones: {nota.notas}</p>}
       </div>
