@@ -7,9 +7,12 @@ import Pagination from "../../../controls/ui/pagination.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import AdminEmptyState from "../../../controls/ui/admin_empty_state.jsx";
+import AyudaTooltip from "../../../controls/ui/ayuda_tooltip.jsx";
 import { ESTADOS } from "../../../config/order_config.js";
 import { money } from "../../../controls/pedidos/order_format.js";
 import { getListaCarga, getTodasLasNotasPedido } from "../api/nota_pedido_api.js";
+
+const AYUDA = "Sirve para preparar la mercadería del depósito o cargar el reparto. Elegí uno o varios pedidos: se suman las cantidades de cada artículo y se agrupan por familia, en bultos y unidades sueltas. Podés imprimir la planilla. Armarla no modifica el stock ni el estado de los pedidos.";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition disabled:opacity-50";
 const fecha = (valor) => new Date(valor).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
@@ -128,7 +131,10 @@ export default function ListaCargaPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-3 sm:p-6 print:max-w-none print:p-0">
       <div className="print:hidden">
-        <h1 className="kt-display text-2xl font-bold text-(--kt-ink)">Lista de carga</h1>
+        <div className="flex items-center gap-1">
+          <h1 className="kt-display text-2xl font-bold text-(--kt-ink)">Lista de carga</h1>
+          <AyudaTooltip etiqueta="Para qué sirve la lista de carga" texto={AYUDA} />
+        </div>
         <p className="text-sm text-(--kt-ink-soft)">Elegí los pedidos a preparar y armá la lista de artículos a cargar, por familia, en bultos y sueltos.</p>
       </div>
       {ids.length
