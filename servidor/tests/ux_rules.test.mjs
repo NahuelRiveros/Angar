@@ -13,6 +13,8 @@ import {
   mailPedidoNuevoEquipo, mailPedidoRecibidoCliente,
 } from "../src/services/distribuidora/avisos_pedido_plantillas.js";
 import { detectarFormatoComprobante } from "../src/services/common/comprobante_rules.js";
+import { arcaConfig, credencialesArca, estadoArca } from "../src/configuracion_servidor/arca.js";
+import { armarComprobante, desglosarIva, documentoReceptor } from "../src/services/facturacion/arca_comprobante.js";
 import { safeReturnTo } from "../../frontend/src/controls/acceso/return_to.js";
 import { readGuestCart, mergeGuestItems } from "../../frontend/src/controls/carrito/guest_storage.js";
 import { filtrarNavbarPorRol } from "../../frontend/src/controls/layout/navbar/navbar_permissions.js";
@@ -144,6 +146,67 @@ test("comprobantes: se reconocen por contenido y no se adjuntan a pedidos cancel
   assert.match(rechazo.html, /Motivo: Importe &lt;distinto&gt;/);
   assert.match(rechazo.text, /mis-pedidos/);
   assert.equal(mailComprobanteNuevoEquipo({ id: 7, total: 100 }, cliente).subject, "Comprobante para revisar: pedido #7");
+});
+test("ARCA: arma la factura de un pedido con el IVA desglosado por alícuota, al centavo", () => {
+  const items = [
+    { nombre_producto: "Arroz", subtotal: 2420, iva_porcentaje: 21 },
+    { nombre_producto: "Aceite", subtotal: 1105, iva_porcentaje: 10.5 },
+  ];
+  const nota = { total: 3525, cuit: "20-12345678-6", condicion_iva: "responsable_inscripto" };
+  const fecha = new Date("2026-10-26T02:00:00Z"); // 25/10 a las 23 h en Argentina
+  const a = armarComprobante({ nota, items, numero: 152, puntoVenta: 3, fecha, condicionEmisor: "responsable_inscripto" });
+  assert.deepEqual(a.FeCabReq, { CantReg: 1, PtoVta: 3, CbteTipo: 1 });
+  assert.deepEqual(a.FeDetReq[0], {
+    Concepto: 1, DocTipo: 80, DocNro: 20123456786, CondicionIVAReceptorId: 1,
+    CbteDesde: 152, CbteHasta: 152, CbteFch: "20261025",
+    ImpTotal: 3525, ImpTotConc: 0, ImpOpEx: 0, ImpTrib: 0, ImpNeto: 3000, ImpIVA: 525, MonId: "PES", MonCotiz: 1,
+    Iva: [{ Id: 5, BaseImp: 2000, Importe: 420 }, { Id: 4, BaseImp: 1000, Importe: 105 }],
+  });
+  // Consumidor final con DNI: factura B; monotributista emisor: factura C sin IVA.
+  const b = armarComprobante({ nota: { ...nota, cuit: "30123456", condicion_iva: "consumidor_final" }, items, numero: 1, puntoVenta: 3, fecha, condicionEmisor: "responsable_inscripto" }).FeDetReq[0];
+  assert.deepEqual([b.DocTipo, b.DocNro, b.CondicionIVAReceptorId], [96, 30123456, 5]);
+  const c = armarComprobante({ nota, items, numero: 1, puntoVenta: 3, fecha, condicionEmisor: "monotributista" });
+  assert.deepEqual([c.FeCabReq.CbteTipo, c.FeDetReq[0].ImpNeto, c.FeDetReq[0].ImpIVA, "Iva" in c.FeDetReq[0]], [11, 3525, 0, false]);
+  // Redondeo: neto + IVA siempre igual a lo cobrado.
+  for (const total of [0.01, 99.99, 100, 1234.57]) {
+    const [linea] = desglosarIva([{ nombre_producto: "X", subtotal: total, iva_porcentaje: 21 }]);
+    assert.equal(Math.round((linea.neto + linea.iva) * 100), Math.round(total * 100), String(total));
+  }
+  assert.throws(() => desglosarIva([{ nombre_producto: "Yerba", subtotal: 10, iva_porcentaje: null }]), /Yerba.*anterior a la etapa 6/);
+  assert.throws(() => armarComprobante({ nota: { ...nota, total: 3500 }, items, numero: 1, puntoVenta: 3, condicionEmisor: "responsable_inscripto" }), /no coincide/);
+  assert.throws(() => armarComprobante({ nota, items, numero: 1, puntoVenta: 3, condicionEmisor: null }), /condición frente al IVA/);
+  assert.throws(() => documentoReceptor({ cuit: "123", condicion_iva: "monotributista" }), /CUIT válido/);
+  assert.deepEqual(documentoReceptor({ cuit: null, condicion_iva: "consumidor_final" }), { DocTipo: 99, DocNro: 0 });
+});
+test("ARCA: sin datos queda apagada, informa solo nombres de lo que falta y lee el certificado en base64", () => {
+  const previoEnv = { ...env };
+  const previoEmisor = fiscalConfig.emisor.condicion_iva;
+  const SECRETO = "-----BEGIN CERTIFICATE-----\nSECRETO\n-----END CERTIFICATE-----";
+  try {
+    Object.assign(env, { ARCA_CUIT_EMISOR: "", ARCA_PUNTO_VENTA: "", ARCA_CERTIFICADO_PEM: "", ARCA_CLAVE_PRIVADA_PEM: "", ARCA_PRODUCCION: false });
+    fiscalConfig.emisor.condicion_iva = null;
+    const apagada = estadoArca();
+    assert.equal(apagada.listo, false);
+    assert.equal(apagada.ambiente, "homologacion", "sin indicar nada, nunca factura en serio");
+    assert.deepEqual(apagada.faltan, ["ARCA_CUIT_EMISOR", "ARCA_PUNTO_VENTA", "ARCA_CERTIFICADO_PEM", "ARCA_CLAVE_PRIVADA_PEM", "fiscal_config.js → emisor.condicion_iva"]);
+    assert.throws(() => credencialesArca(), /sin configurar/);
+
+    Object.assign(env, { ARCA_CUIT_EMISOR: "30-71234567-1", ARCA_PUNTO_VENTA: "3", ARCA_CERTIFICADO_PEM: Buffer.from(SECRETO).toString("base64"), ARCA_CLAVE_PRIVADA_PEM: "no es un pem", ARCA_PRODUCCION: true });
+    fiscalConfig.emisor.condicion_iva = "responsable_inscripto";
+    assert.deepEqual(estadoArca(), { listo: true, ambiente: "produccion", faltan: [] });
+    assert.deepEqual(arcaConfig(), { ambiente: "produccion", urls: arcaConfig().urls, cuitEmisor: "30712345671", puntoVenta: 3, servicio: "wsfe" });
+    assert.match(arcaConfig().urls.wsfe, /^https:\/\/servicios1\.afip\.gov\.ar\//);
+    // La clave mal cargada se detecta al usarla, y el error no muestra su contenido.
+    assert.throws(() => credencialesArca(), (e) => /ARCA_CLAVE_PRIVADA_PEM no es un PEM/.test(e.message) && !e.message.includes("no es un pem"));
+    env.ARCA_CLAVE_PRIVADA_PEM = SECRETO;
+    assert.equal(credencialesArca().certificado, SECRETO, "base64 o texto PEM, las dos formas");
+    env.ARCA_CUIT_EMISOR = "30-71234567-9";
+    assert.deepEqual(estadoArca().faltan, ["ARCA_CUIT_EMISOR"], "CUIT con dígito verificador inválido");
+    assert.equal(JSON.stringify(estadoArca()).includes("SECRETO"), false, "el estado nunca expone valores");
+  } finally {
+    Object.assign(env, previoEnv);
+    fiscalConfig.emisor.condicion_iva = previoEmisor;
+  }
 });
 test("correo: con clave de Brevo envía por su API HTTPS y explica sus errores", async () => {
   const previo = { ...env };

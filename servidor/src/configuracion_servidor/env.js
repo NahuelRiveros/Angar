@@ -83,6 +83,15 @@ export const env = {
   CORREO_REMITENTE: process.env.CORREO_REMITENTE || "",
   NOMBRE_REMITENTE: process.env.NOMBRE_REMITENTE || "",
 
+  // ── Facturación electrónica ARCA (preparado, todavía sin uso) ──
+  // Opcionales: vacías, la facturación queda apagada y el servidor arranca igual.
+  // Ver configuracion_servidor/arca.js y docs/facturacion-arca.md.
+  ARCA_CUIT_EMISOR:       process.env.ARCA_CUIT_EMISOR       || "",
+  ARCA_PUNTO_VENTA:       process.env.ARCA_PUNTO_VENTA       || "",
+  ARCA_CERTIFICADO_PEM:   process.env.ARCA_CERTIFICADO_PEM   || "",
+  ARCA_CLAVE_PRIVADA_PEM: process.env.ARCA_CLAVE_PRIVADA_PEM || "",
+  ARCA_PRODUCCION:        String(process.env.ARCA_PRODUCCION || "").toLowerCase() === "true",
+
   // ── Email / SMTP (desarrollo local) ────────────────────────────
   SMTP_HOST:   process.env.SMTP_HOST   || "smtp.gmail.com",
   SMTP_PORT:   Number(process.env.SMTP_PORT || 587),

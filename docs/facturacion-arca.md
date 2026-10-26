@@ -19,6 +19,20 @@ programar: cambian con el tiempo.
 | Tipo de factura que corresponde | `tipoFacturaSugerida()` en `fiscal_config.js` | A, B o C según la condición de la distribuidora y la del cliente |
 | Código de condición IVA para ARCA | `codigoArca` en `fiscalConfig.condicionesIva` | Responsable Inscripto 1, Exento 4, Consumidor Final 5, Monotributo 6. Confirmar con `FEParamGetCondicionIvaReceptor` |
 
+**Configuración del servidor**: `servidor/src/configuracion_servidor/arca.js` lee las variables de ARCA,
+elige homologación o producción y sus direcciones (WSAA y WSFE), y con `estadoArca()` informa qué falta
+(solo nombres, nunca valores). `credencialesArca()` entrega el certificado y la clave al momento de facturar.
+Todo esto vive **solo en el servidor**: el navegador nunca habla con ARCA, sino con nuestra API.
+
+**Armado de la factura**: `servidor/src/services/facturacion/arca_comprobante.js` convierte un pedido en el
+comprobante que se le pide a ARCA (`FeCabReq`/`FeDetReq` de `FECAESolicitar`): tipo A/B/C, documento del
+cliente, condición de IVA, fecha, totales y el IVA desglosado por alícuota al centavo. Está probado
+(`ux_rules.test.mjs`, test "ARCA: arma la factura…") pero **no está integrado**: no llama a ARCA, no guarda
+nada y ninguna ruta lo usa.
+
+**Datos de la distribuidora para el PDF** (no viajan a ARCA): `fiscalConfig.emisor` tiene `razon_social`,
+`domicilio_comercial`, `ingresos_brutos` e `inicio_actividades` en `null`, marcados `[COMPLETAR]`.
+
 **Falta completar ya** (sin programar): `fiscalConfig.emisor.condicion_iva` con la condición
 de la distribuidora. Mientras esté en `null`, la gestión no muestra "Factura A/B/C".
 
@@ -66,13 +80,13 @@ iva   = subtotal - neto
 - **Factura C** (emisor monotributista o exento): sin discriminar IVA; el neto es el total.
 - La suma de netos más IVA tiene que coincidir **al centavo** con el total; ajustar el
   redondeo en la última alícuota.
-- La web ya tiene esta cuenta en `frontend/src/modules/eccomerce_distribuidora/utils/precio_iva.js`
-  (`precioSinIva`). Para facturar conviene llevarla a un archivo compartido de la raíz,
-  como `fiscal_config.js`, y probarla con casos de redondeo.
+- Ya está programado en `desglosarIva()` de `arca_comprobante.js`: trabaja en centavos y calcula el IVA
+  como total menos neto, así cada alícuota cierra exacta sin ajustes.
 
 ## Lo que falta programar
 
-1. **Variables de entorno** (nombres propuestos; los valores nunca van al repositorio):
+1. ~~Variables de entorno~~ y ~~armado del comprobante~~: **ya preparados** (`arca.js`, `arca_comprobante.js`).
+   Las variables están declaradas en `env.js` y `servidor/.env.example`, vacías; los valores nunca van al repositorio:
    - `ARCA_CUIT_EMISOR`: CUIT de la distribuidora.
    - `ARCA_PUNTO_VENTA`: número del punto de venta para Web Services.
    - `ARCA_CERTIFICADO_PEM` y `ARCA_CLAVE_PRIVADA_PEM`: certificado y clave, en base64.
@@ -89,13 +103,15 @@ iva   = subtotal - neto
    | `estado` | `emitida`, `rechazada` (con observaciones) |
    | `emitida_por`, `emitida_en`, `respuesta` | Auditoría |
 
-3. **Servicio y pantalla**: botón "Emitir factura" en la tarjeta del pedido, con un permiso
+3. **Cliente de los servicios**: pedir el ticket a WSAA (firmar con `credencialesArca()`), guardarlo hasta
+   que venza, y llamar a WSFE (`FECompUltimoAutorizado` y `FECAESolicitar` con lo que arma `armarComprobante()`).
+4. **Servicio y pantalla**: botón "Emitir factura" en la tarjeta del pedido, con un permiso
    nuevo en `permisos_config.js` (por ejemplo `facturas.emitir`).
-4. **Reintentos seguros**: si la respuesta no llega, antes de pedir otro CAE consultar
+5. **Reintentos seguros**: si la respuesta no llega, antes de pedir otro CAE consultar
    `FECompUltimoAutorizado` y el comprobante, para no emitir dos veces el mismo pedido
    (mismo criterio de idempotencia que los cobros).
-5. **Notas de crédito** para pedidos facturados que después se cancelan o se corrigen.
-6. **PDF con QR** y envío por mail al cliente (los avisos de la etapa 2 ya mandan correos).
+6. **Notas de crédito** para pedidos facturados que después se cancelan o se corrigen.
+7. **PDF con QR** y envío por mail al cliente (los avisos de la etapa 2 ya mandan correos).
 
 ## Decisiones pendientes con el cliente
 

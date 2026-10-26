@@ -6,7 +6,15 @@ export const fiscalConfig = {
   // Condición de la DISTRIBUIDORA frente al IVA: define si factura A/B o C.
   // [COMPLETAR] con la del cliente ("responsable_inscripto", "monotributista" o "exento").
   // Mientras sea null no se sugiere tipo de factura.
-  emisor: { condicion_iva: null },
+  // El resto no viaja a ARCA: lo tiene que mostrar el PDF de la factura. No son secretos
+  // (van impresos en cada factura), por eso viven acá y no en variables de entorno.
+  emisor: {
+    condicion_iva: null,
+    razon_social: null, // [COMPLETAR] como figura en ARCA
+    domicilio_comercial: null, // [COMPLETAR] calle, número, localidad
+    ingresos_brutos: null, // [COMPLETAR] número de IIBB o "Convenio Multilateral …"
+    inicio_actividades: null, // [COMPLETAR] "AAAA-MM-DD"
+  },
   // `documento`: "cuit" exige CUIT; "cuit_o_dni" acepta también DNI (consumidor final).
   // `codigoArca`: CondicionIVAReceptorId del servicio de facturación (FEParamGetCondicionIvaReceptor).
   condicionesIva: [

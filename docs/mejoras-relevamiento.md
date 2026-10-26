@@ -49,7 +49,8 @@ Decisiones técnicas tomadas en el camino (se pueden cambiar):
    localidad con "a convenir" y un permiso nuevo para configurar envíos y mínimo.
 2. **Punto 4**, cuando responda el cliente: precios sin cuenta, aprobación de cuentas y listas por cliente.
 3. **Facturación electrónica con ARCA**, si se decide facturar desde DistribuCG (guía en
-   `docs/facturacion-arca.md`).
+   `docs/facturacion-arca.md`). La configuración ya está preparada en `servidor/src/configuracion_servidor/arca.js`
+   con las variables `ARCA_*` (vacías); falta el servicio que pide el CAE, la tabla de facturas y la pantalla.
 4. Opcional: abrir los permisos en acciones más finas (ver, crear, editar, eliminar) si el cliente lo pide.
 
 ### Datos para completar (no se inventan)
