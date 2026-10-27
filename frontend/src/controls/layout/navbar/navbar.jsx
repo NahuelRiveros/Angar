@@ -9,14 +9,14 @@ import NavbarDesktop from "./navbar_desktop.jsx";
 import NavbarMobile from "./navbar_mobile.jsx";
 import NavbarUserBox from "./navbar_userbox.jsx";
 import { UI_NAVBAR as S } from "./navbar_style.js";
-import LogoMoovs from "../../brand/logo_moovs.jsx";
+import LogoMarca from "../../brand/logo_marca.jsx";
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { usuario, cargando, modulosHabilitados } = useAuth();
+  const { usuario, cargando } = useAuth();
   const location = useLocation();
   const returnTo = location.pathname + location.search + location.hash;
-  const config = filtrarNavbarPorRol(navbar_config, usuario, modulosHabilitados);
+  const config = filtrarNavbarPorRol(navbar_config, usuario);
   useEffect(() => {
     const media = window.matchMedia("(min-width: 1280px)");
     const close = () => { if (media.matches) setMobileOpen(false); };
@@ -29,7 +29,7 @@ export default function Navbar() {
       <div className={S.barra_linea_acento} />
       <nav aria-label="Navegación principal" className={S.barra_nav_container}>
         <Link to={config.brand.linkTo} className={S.brand_link} aria-label={config.brand.titulo}>
-          {config.brand.logoUrl ? <img src={config.brand.logoUrl} alt={config.brand.titulo} className="h-10 max-w-36 object-contain" /> : <LogoMoovs size="sm" />}
+          {config.brand.logoUrl ? <img src={config.brand.logoUrl} alt={config.brand.titulo} className="h-10 max-w-36 object-contain" /> : <LogoMarca size="sm" />}
         </Link>
         <NavbarDesktop config={config} />
         <div className="flex shrink-0 items-center gap-2">

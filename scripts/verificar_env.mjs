@@ -14,6 +14,7 @@ const RAIZ = process.argv[2] ? resolve(process.argv[2]) : join(dirname(fileURLTo
 const ANTERIORES = {
   NEON_DATABASE_URL: "BD_URL",
   NEON_DATABASE_URL_MIGRACION: "BD_URL",
+  SOFTWARE_PRECIO: "PRECIO_SUSCRIPCION_MENSUAL",
 };
 
 // Restos de los .env.example que no pueden llegar a un entorno real.
@@ -79,7 +80,7 @@ const problemas =
         cumple: (v) => !v.BD_URL || /^postgres(ql)?:\/\/[^@\s]+@[^\s]+$/.test(v.BD_URL),
       },
       {
-        mensaje: "DB_SCHEMA inválido: solo minúsculas, números y _ (ej. gc_dist_test)",
+        mensaje: "DB_SCHEMA inválido: solo minúsculas, números y _ (ej. mipadel_test)",
         cumple: (v) => !v.DB_SCHEMA || /^[a-z][a-z0-9_]*$/.test(v.DB_SCHEMA),
       },
       {

@@ -1,6 +1,6 @@
 ---
 name: e2e-test
-description: Crea o modifica pruebas Playwright de los flujos de DistribuCG, con API simulada y cobertura de escritorio y móviles.
+description: Crea o modifica pruebas Playwright de los flujos de MiPadel, con API simulada y cobertura de escritorio y móviles.
 ---
 
 # Pruebas de navegador

@@ -1,6 +1,6 @@
 ---
 name: crud-admin
-description: Construye o adapta listados y formularios administrativos de DistribuCG para entidades existentes, con permisos, filtros, paginación y confirmaciones.
+description: Construye o adapta listados y formularios administrativos de MiPadel para entidades existentes, con permisos, filtros, paginación y confirmaciones.
 ---
 
 # Administración de una entidad
@@ -9,7 +9,7 @@ Leer CLAUDE.md, la pantalla más cercana y frontend/src/hooks/use_crud_page.js.
 Reutilizar controles de frontend/src/controls/ui/ y servicios comunes del servidor.
 
 Definir listado, detalle y operaciones requeridas sin inventar capacidades de borrado.
-Mantener permisos concretos de cada router; los roles de pedidos no son una regla global
+Mantener permisos concretos de cada router; los permisos de un área no son una regla global
 para todas las entidades. Aplicar api-endpoint si falta una operación.
 
 Listado paginado con límites, orden permitido, búsqueda y filtros; conservar filtros

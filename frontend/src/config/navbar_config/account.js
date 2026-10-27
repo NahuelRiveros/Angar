@@ -1,8 +1,7 @@
-import { ClipboardList, UserCircle } from "lucide-react";
-import { projectModules } from "../gate_config.js";
+import { Trophy } from "lucide-react";
+
+// Enlaces de "Mi cuenta" en el navbar.
 export const accountLinks = [
-  ...(projectModules.eccomerce_distribuidora ? [
-    { label: "Mis pedidos", to: "/distribuidora/mis-pedidos", requiereAuth: true, modulo: "eccomerce_distribuidora", icon: ClipboardList },
-    { label: "Mis datos", to: "/perfil", requiereAuth: true, modulo: "eccomerce_distribuidora", icon: UserCircle },
-  ] : []),
+  // Para el jugador es la puerta para organizar; para el organizador, su plan.
+  { label: "Organizar torneos", to: "/mi-suscripcion", requiereAuth: true, icon: Trophy },
 ];

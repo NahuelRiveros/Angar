@@ -44,7 +44,7 @@ test("diagnóstico admin: informa variables incorrectas, cuentas ausentes y esta
   assert.equal((await diagnosticarSuperAdmin(contexto({ usuario: null }))).codigo, "SIN_USUARIO");
   assert.equal((await diagnosticarSuperAdmin(contexto({ usuario: { activo: false } }))).codigo, "USUARIO_INACTIVO");
   assert.equal((await diagnosticarSuperAdmin(contexto({ usuario: { eliminado_en: "2026-10-01" } }))).codigo, "USUARIO_ELIMINADO");
-  assert.equal((await diagnosticarSuperAdmin(contexto({ roles: ["cliente"] }))).codigo, "SIN_ROL_ADMIN");
+  assert.equal((await diagnosticarSuperAdmin(contexto({ roles: ["jugador"] }))).codigo, "SIN_ROL_ADMIN");
 });
 
 test("diagnóstico admin: detecta que email y DNI pertenecen a personas distintas", async () => {

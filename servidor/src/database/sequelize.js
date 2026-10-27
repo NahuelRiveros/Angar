@@ -1,11 +1,11 @@
 import { Sequelize } from "sequelize";
 import { env } from "../configuracion_servidor/env.js";
 
-// gc_dist en producción, gc_dist_test para pruebas. Solo minúsculas: el
+// mipadel en producción, mipadel_test para pruebas. Solo minúsculas: el
 // search_path de abajo va sin comillas y Postgres pasaría mayúsculas a minúsculas.
-export const DB_SCHEMA = process.env.DB_SCHEMA || "gc_dist_test";
+export const DB_SCHEMA = process.env.DB_SCHEMA || "mipadel_test";
 if (!/^[a-z][a-z0-9_]*$/.test(DB_SCHEMA)) {
-  throw new Error(`DB_SCHEMA inválido ("${DB_SCHEMA}"): usar solo minúsculas, números y _ (ej. gc_dist)`);
+  throw new Error(`DB_SCHEMA inválido ("${DB_SCHEMA}"): usar solo minúsculas, números y _ (ej. mipadel)`);
 }
 
 // Neon pooler no soporta search_path como parámetro de startup.

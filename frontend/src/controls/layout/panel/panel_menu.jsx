@@ -1,6 +1,6 @@
 import PanelItemMenu from "./panel_item_menu.jsx";
 
-/** Grupos del panel (Distribuidora, Admin, Sistema) ya filtrados por rol. Lo comparten la barra lateral y el menú del celular. */
+/** Grupos del panel (Admin, Sistema) ya filtrados por rol. Lo comparten la barra lateral y el menú del celular. */
 export default function PanelMenu({ grupos, achicado = false, onNavegar }) {
   return (
     <nav aria-label="Menú del panel" className="flex-1 overflow-y-auto px-3 pb-4">

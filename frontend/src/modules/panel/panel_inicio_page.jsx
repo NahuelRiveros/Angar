@@ -1,10 +1,8 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/auth_context.jsx";
-import { projectModules } from "../../config/gate_config.js";
 import { usePanelGrupos } from "../../controls/layout/panel/use_panel_grupos.js";
-import ResumenDistribuidora from "../eccomerce_distribuidora/panel/resumen_distribuidora.jsx";
 
-/** Inicio del panel: el resumen del negocio y un acceso a cada pantalla que el rol permite. */
+/** Inicio del panel: un acceso a cada pantalla que el rol permite. */
 export default function PanelInicioPage() {
   const { usuario } = useAuth();
   const secciones = usePanelGrupos().filter((grupo) => grupo.titulo);
@@ -13,10 +11,8 @@ export default function PanelInicioPage() {
     <div className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
       <div>
         <h1 className="kt-display text-2xl font-bold text-(--kt-ink)">Hola{usuario?.nombre ? `, ${usuario.nombre}` : ""}</h1>
-        <p className="text-sm text-(--kt-ink-soft)">Este es el resumen de tu negocio y todo lo que podés gestionar.</p>
+        <p className="text-sm text-(--kt-ink-soft)">Esto es todo lo que podés gestionar.</p>
       </div>
-
-      {projectModules.eccomerce_distribuidora && <ResumenDistribuidora />}
 
       <section aria-labelledby="panel-accesos" className="space-y-4">
         <h2 id="panel-accesos" className="text-lg font-bold text-(--kt-ink)">Accesos</h2>

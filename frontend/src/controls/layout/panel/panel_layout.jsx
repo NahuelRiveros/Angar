@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, PanelLeftClose, PanelLeftOpen, Store, X } from "lucide-react";
-import LogoMoovs from "../../brand/logo_moovs.jsx";
+import { Menu, PanelLeftClose, PanelLeftOpen, Globe, X } from "lucide-react";
+import LogoMarca from "../../brand/logo_marca.jsx";
 import SuscripcionBanner from "../../suscripcion/suscripcion_banner.jsx";
 import ErrorBoundary from "../../ui/error_boundary.jsx";
 import { cn } from "../../../utils/cn.js";
@@ -18,7 +18,7 @@ function leerAchicado() {
 const BOTON_ICONO = "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition outline-none focus-visible:ring-2 focus-visible:ring-(--kt-turquoise)";
 
 /**
- * Zona de gestión, separada de la tienda: sin navbar ni footer de la tienda, con menú
+ * Zona de gestión, separada del sitio: sin navbar ni footer del sitio, con menú
  * lateral propio (en celular, un menú que se abre con ☰). Las páginas de gestión
  * conservan sus direcciones; solo cambia el marco que las rodea.
  */
@@ -55,7 +55,7 @@ export default function PanelLayout({ children }) {
 
       <aside className={cn("fixed inset-y-0 left-0 z-40 hidden flex-col bg-(--kt-night) transition-[width] duration-200 lg:flex print:hidden", achicado ? "w-18" : "w-64")}>
         <div className={cn("flex h-16 shrink-0 items-center gap-2 px-4", achicado ? "justify-center" : "justify-between")}>
-          {!achicado && <Link to="/panel" aria-label="Panel de gestión, inicio" className="min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-(--kt-turquoise)"><LogoMoovs size="sm" variant="light" /></Link>}
+          {!achicado && <Link to="/panel" aria-label="Panel de gestión, inicio" className="min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-(--kt-turquoise)"><LogoMarca size="sm" variant="light" /></Link>}
           <button type="button" onClick={alternarAchicado} aria-label={achicado ? "Agrandar menú" : "Achicar menú"} title={achicado ? "Agrandar menú" : "Achicar menú"} className={cn(BOTON_ICONO, "text-slate-400 hover:bg-white/10 hover:text-white")}>
             <Alternar aria-hidden="true" className="h-5 w-5" />
           </button>
@@ -69,7 +69,7 @@ export default function PanelLayout({ children }) {
           <div aria-hidden="true" className="absolute inset-0 bg-black/50" onClick={() => setMenuAbierto(false)} />
           <aside role="dialog" aria-modal="true" aria-label="Menú del panel" className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-(--kt-night)">
             <div className="flex h-16 shrink-0 items-center justify-between gap-2 px-4">
-              <LogoMoovs size="sm" variant="light" />
+              <LogoMarca size="sm" variant="light" />
               <button type="button" autoFocus onClick={() => setMenuAbierto(false)} aria-label="Cerrar menú" className={cn(BOTON_ICONO, "text-slate-300 hover:bg-white/10 hover:text-white")}>
                 <X aria-hidden="true" className="h-5 w-5" />
               </button>
@@ -90,7 +90,7 @@ export default function PanelLayout({ children }) {
             <p className="truncate font-bold text-(--kt-ink)">{actual?.label ?? "Panel de gestión"}</p>
           </div>
           <Link to="/" className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-(--kt-teal-700) hover:bg-slate-100">
-            <Store aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">Ver tienda</span><span className="sr-only sm:hidden">Ver tienda</span>
+            <Globe aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">Ver sitio</span><span className="sr-only sm:hidden">Ver sitio</span>
           </Link>
         </header>
         <div className="print:hidden"><SuscripcionBanner /></div>

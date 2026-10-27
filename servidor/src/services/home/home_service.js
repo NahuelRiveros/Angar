@@ -16,7 +16,7 @@ const contactosCrud = crearCrudService(HomeContacto, { defaultOrder: [["orden", 
 function subirBufferACloudinary(buffer, { resourceType, area }) {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: `distribucg/home/${area}`, resource_type: resourceType },
+      { folder: `mipadel/home/${area}`, resource_type: resourceType },
       (error, result) => (error ? reject(error) : resolve(result))
     );
     Readable.from(buffer).pipe(stream);

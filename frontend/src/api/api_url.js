@@ -8,8 +8,5 @@ export function resolverApiUrl(valor, desarrollo = false) {
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash || !url.pathname.endsWith("/api")) {
     throw new Error("VITE_API_URL debe ser una URL http(s) del backend terminada en /api, sin credenciales ni parámetros.");
   }
-  if (url.hostname === "dynamic-gym.onrender.com") {
-    throw new Error(`VITE_API_URL apunta al backend anterior. Configurá ${deploymentConfig.backendUrl}/api y volvé a desplegar.`);
-  }
   return direccion;
 }

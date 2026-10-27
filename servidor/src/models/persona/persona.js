@@ -4,7 +4,7 @@ import { defineModel } from "../common/define_model.js";
 /**
  * Datos personales de cualquier individuo del sistema.
  * Una persona puede tener un usuario asociado (personal o cliente).
- * La búsqueda por documento es la operación más frecuente (kiosco de ingresos).
+ * La búsqueda por documento es la operación más frecuente.
  */
 export const Persona = defineModel("Persona", {
   tipo_documento_id: {

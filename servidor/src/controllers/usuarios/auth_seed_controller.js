@@ -14,7 +14,7 @@ export async function seedAdmin(req, res) {
 export async function seedStaff(req, res) {
   try {
     const { email, password, nombre, apellido, documento } = req.body ?? {};
-    const result = await crearUsuarioConRol({ email, password, nombre, apellido, documento, rolCodigo: "supervisor" });
+    const result = await crearUsuarioConRol({ email, password, nombre, apellido, documento, rolCodigo: "soporte" });
     return result.ok ? res.json(result) : res.status(400).json(result);
   } catch (e) {
     console.error("seedStaff:", e);

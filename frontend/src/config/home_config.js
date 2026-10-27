@@ -1,169 +1,51 @@
 /**
- * Contenido del Home — un objeto por cliente en `clientes`, mismo patrón que
- * `clientes`/`clienteActivo` de brand_config.js (de ahí se importa el switch,
- * para no tener dos interruptores de "qué cliente es este" desincronizados).
- * Para el próximo proyecto: sumar una entrada acá con la misma forma que
- * "gc", nunca sobreescribir la existente — así el cliente anterior queda
- * intacto y disponible si hace falta volver a él.
- *
- * Esta es la ÚNICA fuente de este contenido — ya NO se puede pisar desde la
- * base de datos. Antes `home_texto`/`home_pilar`/`home_contacto` tenían
- * prioridad si tenían filas, pero ese camino se eliminó: un seed viejo del
- * template original de gimnasio (seed_home.js, ver servidor/) las
- * repoblaba en cada reinicio del server sin gate de módulo, pisando en
- * silencio el contenido real de acá. home_page.jsx sigue teniendo un
- * fallback a esas tablas por compatibilidad, pero hoy están siempre vacías.
- *
- * hero_kicker, footer_cta_texto y footer_cta_titulo_resaltado no están acá
- * como strings fijos — leen de brandConfig (rubro/tagline/nombreCorto en
- * brand_config.js) para no duplicar el mismo dato de marca en dos archivos
- * de config. Cualquier texto que sea "el nombre de la empresa" debería
- * seguir este mismo patrón en vez de escribirse literal acá.
+ * Contenido del Home. Es la única fuente de estos textos: las tablas home_texto,
+ * home_pilar y home_contacto quedan vacías (home_page.jsx las usa solo si tuvieran filas).
+ * Los valores entre corchetes son placeholders: completarlos antes de publicar.
  */
+import { brandConfig } from "./brand_config.js";
 
-import { Package, Truck, Clock, ShieldCheck } from "lucide-react";
-import { clienteActivo, brandConfig } from "./brand_config.js";
-
-const clientes = {
-  gc: {
-    textos: {
-      hero_titulo: "Todo para abastecer",
-      hero_titulo_resaltado: "tu negocio.",
-      hero_subtitulo:
-        "Explorá nuestros productos, encontrá ofertas y armá tu pedido mayorista o minorista en un solo lugar.",
-      hero_cta_primario: "Ver catálogo",
-      hero_cta_secundario: "Cómo pedir",
-      // Sección "Quiénes somos" — el nombre de la empresa NO va acá adentro
-      // (mismo criterio que el resto del archivo, ver comentario de arriba
-      // de todo): home_page.jsx arma la oración completa intercalando
-      // brandConfig.nombre, así que este texto tiene que poder leerse
-      // seguido de "Somos {nombre}: ...".
-      quienes_kicker: "Quiénes somos",
-      quienes_titulo: "Una forma más simple de",
-      quienes_titulo_resaltado: "comprar mayorista",
-      quienes_texto:
-        "manejamos pedidos mayoristas y minoristas desde un catálogo online siempre actualizado: elegís los productos, armás tu pedido y coordinamos la entrega directo con vos, sin trámites de más.",
-      como_pedir_kicker: "Así es de simple",
-      como_pedir_titulo: "De la góndola a tu puerta",
-      pilares_kicker: "Por qué elegirnos",
-      pilares_titulo: "Distribución mayorista y minorista,",
-      pilares_titulo_resaltado: "sin vueltas",
-      galeria_kicker: "Nuestro depósito",
-      galeria_titulo: "Así trabajamos",
-      contacto_kicker: "Hablemos",
-      contacto_titulo: "Hacé tu pedido",
-      footer_cta_titulo: "Pedí con",
-      // Antes hardcodeado ("GC") — eso rompía la promesa de que renombrar la
-      // marca alcanza con tocar brand_config.js. Ahora sale de ahí (forma
-      // corta, ver nombreCorto) así este texto se actualiza solo.
-      footer_cta_titulo_resaltado: brandConfig.nombreCorto,
-    },
-
-    // Chips de la sección "VALOR" — sin conexión a la base, siempre estos 4.
-    // Redacción distinta a footer_config.js (enfoque/diferenciales) a
-    // propósito — misma idea, la misma página no debería repetirse palabra
-    // por palabra a sí misma más abajo.
-    valor: [
-      { icon: Package, label: "Catálogo completo" },
-      { icon: Truck, label: "Entrega puntual" },
-      { icon: Clock, label: "Stock al día" },
-      { icon: ShieldCheck, label: "Pedidos sin sorpresas" },
-    ],
-
-    // "Cómo pedir" — 3 pasos, es una secuencia real (por eso la numeración).
-    comoPedir: [
-      { numero: "01", titulo: "Elegís del catálogo", texto: "Buscá por nombre o categoría, con precio y stock siempre al día." },
-      { numero: "02", titulo: "Armás tu pedido", texto: "Sumá lo que necesites a tu pedido — podés dejarlo a medias y volver después." },
-      { numero: "03", titulo: "Coordinamos la entrega", texto: "Confirmamos disponibilidad y te avisamos cuándo llega tu pedido." },
-    ],
-
-    // "Lo que nos diferencia" — mismo shape que HomePilar de la base
-    // (id, icono [nombre de ICONOS_HOME], titulo, texto), para que
-    // home_page.jsx los use igual sin importar de dónde vienen.
-    pilares: [
-      {
-        id: "catalogo",
-        icono: "Package",
-        titulo: "Catálogo siempre actualizado",
-        texto: "Productos organizados por categoría, con precios y stock al día para armar tu pedido sin sorpresas.",
-      },
-      {
-        id: "entregas",
-        icono: "Truck",
-        titulo: "Entrega puntual",
-        texto: "Coordinamos el despacho de cada pedido y te avisamos su estado — sin vueltas, sin esperas innecesarias.",
-      },
-      {
-        id: "pagos",
-        icono: "ShieldCheck",
-        titulo: "Pagos flexibles",
-        texto: "Podés dejar una seña y coordinar el resto del pago — no hace falta abonar todo por adelantado.",
-      },
-    ],
-
-    // Mismo shape que HomeContacto de la base (id, icono, label, valor, href).
-    // Los valores entre corchetes son placeholders reales — completar con los
-    // datos del negocio (dirección, WhatsApp, etc.) antes de publicar.
-    contactos: [
-      { id: "ubicacion", icono: "MapPin", label: "Ubicación", valor: "[Tu dirección acá]", href: "#" },
-      { id: "whatsapp", icono: "MessageCircle", label: "WhatsApp", valor: "[Tu número acá]", href: "#" },
-      { id: "catalogo", icono: "Package", label: "Catálogo online", valor: "Mirá los productos y armá tu pedido", href: "/distribuidora/catalogo" },
-    ],
-  },
-
-  // Cliente placeholder (ver brand_config.js: "NOMBRE INC" / "RUBRO FUTURO")
-  // — completar esta entrada cuando este cliente se active de verdad, nunca
-  // reusar/pisar la de "gc".
-  moovs: {
-    textos: {
-      hero_titulo: brandConfig.nombre,
-      hero_titulo_resaltado: brandConfig.tagline,
-      hero_subtitulo: "Completá este texto en home_config.js antes de activar este cliente.",
-      hero_cta_primario: "Conocé más",
-      hero_cta_secundario: "Contacto",
-      quienes_kicker: "Quiénes somos",
-      quienes_titulo: "Título de quiénes somos,",
-      quienes_titulo_resaltado: "a definir",
-      quienes_texto: "Completá este texto en home_config.js antes de activar este cliente.",
-      como_pedir_kicker: "Así es de simple",
-      como_pedir_titulo: "Cómo funciona",
-      pilares_kicker: "Por qué elegirnos",
-      pilares_titulo: "Título de pilares,",
-      pilares_titulo_resaltado: "a definir",
-      galeria_kicker: "Galería",
-      galeria_titulo: "Así trabajamos",
-      contacto_kicker: "Hablemos",
-      contacto_titulo: "Contactanos",
-      footer_cta_titulo: "Sumate a",
-      footer_cta_titulo_resaltado: "nosotros",
-    },
-    valor: [],
-    comoPedir: [],
-    pilares: [],
-    contactos: [],
-  },
+export const HOME_TEXTOS_DEFAULT = {
+  hero_kicker: brandConfig.rubro,
+  hero_titulo: "Tu torneo de pádel,",
+  hero_titulo_resaltado: "organizado en serio.",
+  hero_subtitulo: "Inscripciones, zonas, llaves, partidos, reglas y premios en un solo lugar. Los jugadores siguen todo desde el celular.",
+  hero_cta_primario: "Crear cuenta",
+  hero_cta_secundario: "Cómo funciona",
+  // home_page.jsx arma la oración "Somos {nombre}: ..." con este texto.
+  quienes_kicker: "Qué es",
+  quienes_titulo: "Menos planillas,",
+  quienes_titulo_resaltado: "más pádel",
+  quienes_texto: "una plataforma para que clubes y organizadores armen sus torneos sin perder tiempo en planillas, grupos de WhatsApp y cuadros a mano.",
+  como_funciona_kicker: "Así es de simple",
+  como_funciona_titulo: "Del anuncio a la final",
+  pilares_kicker: "Todo lo que incluye",
+  pilares_titulo: "Lo que necesita un torneo,",
+  pilares_titulo_resaltado: "sin vueltas",
+  galeria_kicker: "Torneos",
+  galeria_titulo: "Así se juega",
+  contacto_kicker: "Hablemos",
+  contacto_titulo: "Contacto",
+  footer_cta_titulo: "Organizá con",
+  footer_cta_titulo_resaltado: brandConfig.nombreCorto,
 };
 
-const contenido = clientes[clienteActivo] ?? clientes.gc;
+// Secuencia real (por eso la numeración).
+export const HOME_COMO_FUNCIONA = [
+  { numero: "01", titulo: "Creás el torneo", texto: "Fechas, sede, categorías, reglas y premios." },
+  { numero: "02", titulo: "Se anotan las parejas", texto: "Armás las zonas y el sistema calcula las posiciones." },
+  { numero: "03", titulo: "Se juegan las llaves", texto: "Cargás los resultados y el cuadro avanza solo hasta la final." },
+];
 
-export const HOME_TEXTOS_DEFAULT = contenido.textos;
-export const HOME_VALOR = contenido.valor;
-export const HOME_COMO_PEDIR = contenido.comoPedir;
-export const HOME_PILARES = contenido.pilares;
-export const HOME_CONTACTOS = contenido.contactos;
+// Mismo shape que HomePilar de la base (id, icono [nombre de ICONOS_HOME], titulo, texto).
+export const HOME_PILARES = [
+  { id: "zonas", icono: "Users", titulo: "Zonas y posiciones", texto: "Grupos todos contra todos con la tabla calculada al cargar cada resultado." },
+  { id: "llaves", icono: "Trophy", titulo: "Llaves automáticas", texto: "El cuadro eliminatorio se arma con los clasificados de cada zona." },
+  { id: "premios", icono: "Award", titulo: "Reglas y premios", texto: "Publicá el reglamento y los premios de cada categoría para que todos los vean." },
+];
 
-export const HOME_TIENDA = {
-  buscarPlaceholder: "Producto, marca o código",
-  promoEtiqueta: "Ofertas destacadas",
-  promoTitulo: "Oportunidades para tu próximo pedido.",
-  promoTexto: "Descubrí los productos con precio especial y sumalos a tu compra.",
-  promoCta: "Explorar ofertas",
-  catalogoEtiqueta: "Nuestro catálogo",
-  catalogoTitulo: "Todo en un solo pedido.",
-  catalogoTexto: "Descubrí nuestros productos y encontrá lo que necesitás para tu negocio o tu casa.",
-  catalogoCta: "Explorar productos",
-  familiasEtiqueta: "Encontrá lo que necesitás",
-  familiasTitulo: "Comprá por categoría",
-  productosEtiqueta: "Seguí explorando",
-  productosTitulo: "Productos para tu pedido",
-};
+// Mismo shape que HomeContacto de la base (id, icono, label, valor, href).
+export const HOME_CONTACTOS = [
+  { id: "whatsapp", icono: "MessageCircle", label: "WhatsApp", valor: "[Tu número acá]", href: "#" },
+  { id: "email", icono: "Mail", label: "Email", valor: "[Tu email acá]", href: "#" },
+];

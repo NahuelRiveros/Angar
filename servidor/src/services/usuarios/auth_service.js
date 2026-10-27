@@ -93,11 +93,11 @@ async function abrirSesion({ persona, usuario }) {
 
 /**
  * Auto-registro público (POST /auth/register) — siempre asigna el rol fijo
- * "cliente" (ver seed_rbac.js). Distinto de crearStaff (admin_staff_service.js),
+ * "jugador" (ver seed_rbac.js). Distinto de crearStaff (admin_staff_service.js),
  * que es para personal interno cargado por un admin.
  *
  * `documento` de Persona es NOT NULL + unique y el formulario de registro no
- * lo pide (no tiene sentido pedir DNI para un cliente mayorista) — se genera
+ * lo pide (no hace falta el DNI para crear la cuenta) — se genera
  * un valor sintético único, no es un documento real.
  */
 const NOMBRE_USUARIO_DUPLICADO = { ok: false, codigo: "NOMBRE_USUARIO_DUPLICADO", mensaje: "Ese usuario ya está en uso. Probá con otro." };
@@ -212,11 +212,9 @@ async function crearCliente({ nombreN, apellidoN, emailN, pass, usuarioN, google
       { transaction: t }
     );
 
-    const rolCliente = await Rol.findOne({ where: { codigo: "cliente" }, transaction: t });
-    if (!rolCliente) throw new Error("Falta configurar el rol cliente");
-    if (rolCliente) {
-      await UsuarioRol.create({ usuario_id: usuario.id, rol_id: rolCliente.id }, { transaction: t });
-    }
+    const rolJugador = await Rol.findOne({ where: { codigo: "jugador" }, transaction: t });
+    if (!rolJugador) throw new Error("Falta configurar el rol jugador");
+    await UsuarioRol.create({ usuario_id: usuario.id, rol_id: rolJugador.id }, { transaction: t });
 
     return { ok: true, codigo: "REGISTRO_OK", mensaje: "Cuenta creada correctamente", usuario_id: usuario.id };
   });

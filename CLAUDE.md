@@ -2,47 +2,47 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## DistribuCG
+## MiPadel
 
-Guía de trabajo para Claude Code en este repositorio. Adaptada de `../dynamic-gym`
-a la estructura y los comandos reales de DistribuCG. Las instrucciones explícitas
+Guía de trabajo para Claude Code en este repositorio. Las instrucciones explícitas
 del usuario tienen prioridad; no volver a pedir una autorización ya otorgada.
 
 ## Proyecto y fuentes de verdad
 
-Distribuidora con catálogo, presentaciones de productos, carrito invitado y de cuenta,
-notas de pedido, cobros manuales e importación de productos.
-El proyecto es solo distribuidora: gimnasio y kinesiología se eliminaron (código, seeds y
-tablas). El bootstrap borra sus tablas viejas en cada arranque (`TABLAS_RETIRADAS` en
-`database/bootstrap.js`); no volver a agregar código de esos rubros. Quedan, apagados,
-`eccomerce_indumentaria` y `stock`: su presencia no significa que estén activos.
+Sistema web (SaaS) para organizar torneos de pádel. Un organizador paga una suscripción
+mensual y gestiona sus torneos: categorías, reglas, premios, inscripción de parejas,
+zonas (grupos), llaves eliminatorias y partidos. Los jugadores tienen cuenta gratis.
 
-- `gate_config.js`: módulos de la instalación; solo `eccomerce_distribuidora` está activo.
-  Frontend y servidor (`configuracion_servidor/gate_config.js`) re-exportan este mismo
-  archivo. Decide qué tablas crea el bootstrap; no cambiarlo como un simple ajuste visual.
-- `client_config.js`: cliente activo, acceso público y políticas del carrito.
-- `order_config.js`: estados, transiciones, stock por estado y comprobantes de cobro.
-- `permisos_config.js`: lista de permisos del personal (`pedidos.ver`, `cobros.gestionar`, `precios.editar`…),
-  sus grupos, dependencias (`requiere`) y los roles que los reciben al aparecer (`porDefecto`). Qué rol tiene
-  cada permiso vive en la base (`rol_permiso`) y se edita en `/admin/permisos`. `admin` y `super_admin` tienen
-  todos siempre. El rol `staff` se renombró a `supervisor` (`renombrarStaffASupervisor` en `seed_rbac.js`).
-- `catalog_import_config.js`: configuración compartida de importación.
-- `fiscal_config.js`: condiciones frente al IVA, validación de CUIT/DNI, tipo de factura sugerida y la
-  condición de la distribuidora (`emisor`, a completar). La facturación con ARCA está documentada, no programada:
-  `docs/facturacion-arca.md`; su configuración (variables `ARCA_*`, URLs, estado) está en
-  `servidor/src/configuracion_servidor/arca.js` y nunca va al frontend. Los precios guardados son FINALES (con IVA); `nota_pedido_item.iva_porcentaje` los desglosa.
-- `unidades_config.js`: unidades de venta, bultos (equivalencia) y el cálculo de bultos/sueltos
-  que usan la ficha del artículo, el catálogo y la lista de carga.
-- `docs/distribuidora-pedidos.md`: contrato y reglas del pedido; leer para cambios de negocio.
-- Catálogo en dos niveles (Familia › Categoría). Las marcas son tabla propia (`marca_distribuidora`)
-  asociada a familias o categorías (`marca_categoria_distribuidora`); el artículo guarda `marca_id` y
-  `producto_distribuidora.marca` es una copia del nombre que mantiene `marcas_distribuidora_service.js`
-  (no escribirla a mano). El bootstrap migra marcas en texto viejas (`sincronizarMarcasLegado`).
-- Precios: la "General" es `variedad.precio`/`precio_anterior`. Las listas regionales (`lista_precio*`) solo
-  guardan excepciones por presentación y aplican por la localidad del perfil del cliente (una localidad, una
-  lista). Todo precio que ve o paga un cliente pasa por `listas_precio_service.js` (catálogo, detalle,
-  ofertas, carrito y pedido); la gestión ve la General. Oferta = `precio_anterior > precio` de su lista.
-- `frontend/src/config/`: marca, tema, navegación, catálogo y textos.
+Nació de la base de DistribuCG (una distribuidora): se conservaron usuarios, registro,
+login con Google, recuperación de contraseña, roles y permisos, panel de gestión, home
+configurable, cinta de anuncios, ubicación, subida de imágenes y la suscripción con
+MercadoPago. Distribuidora, indumentaria, stock, ARCA y el sistema de módulos de negocio
+(`gate_config.js`, `modulo_negocio`) se eliminaron: no volver a agregarlos.
+
+Decisiones de negocio ya tomadas (no inventar otras; preguntar lo que falte):
+- Suscripción **por organizador**: MercadoPago automático y también extensión manual desde el
+  panel (`/admin/suscripciones`). Prueba gratis de 14 días, una sola vez por cuenta. Cada pago suma
+  30 días al vencimiento (o desde hoy si ya venció). Aviso 7 días antes; sin días de gracia.
+  Vencida = solo lectura (ve sus torneos, no crea ni edita, tampoco carga resultados de un torneo
+  en curso); la vista pública del torneo sigue andando.
+- Al registrarse todos son `jugador`; el rol `organizador` se suma al empezar a organizar.
+- Zonas configurables por torneo (parejas por zona, cuántas clasifican; la llave cruza
+  zonas: 1ºA vs 2ºB). Formato de partido configurable (mejor de 3, super tie-break, set único).
+- El precio del mes es configurable por variable de entorno; el valor del ejemplo no es real.
+
+Plan por etapas: 1) limpieza de la base ✅ 2) suscripción por organizador ✅
+3) torneos, categorías, reglas y premios 4) inscripciones y zonas 5) llaves y partidos
+6) vista pública del torneo.
+
+- `client_config.js`: id de la instalación y políticas de acceso (registro público, contraseñas).
+- `permisos_config.js`: permisos del **equipo de la plataforma** (`suscripciones.ver`,
+  `contenido.editar`, `usuarios.gestionar`…), sus grupos, dependencias (`requiere`) y los roles
+  que los reciben al aparecer (`porDefecto`). Qué rol tiene cada permiso vive en la base
+  (`rol_permiso`) y se edita en `/admin/permisos`. `admin` y `super_admin` tienen todos siempre.
+  `organizador` y `jugador` son `rolesFuera`: no usan permisos; lo de un torneo lo autoriza
+  ser su dueño y tener la suscripción vigente.
+- `deployment_config.js`: direcciones públicas de Render/Vercel (hoy de EJEMPLO).
+- `frontend/src/config/`: marca, tema, navegación y textos del home.
 - Ante diferencias entre comentarios y código, comprobar rutas, servicios y tests antes de concluir.
 
 ## Stack y estructura
@@ -53,36 +53,39 @@ Express 5, Sequelize 6 y PostgreSQL en el servidor. Zod no está instalado en el
 
 ```text
 frontend/src/
-  app/router.jsx, app/routes/       rutas por módulo
-  auth/                            sesión y permisos de interfaz
+  app/router.jsx, app/routes/       rutas (sitio y panel)
+  auth/                            sesión
   api/                             cliente HTTP y APIs comunes
-  controls/                        controles compartidos, layout, carrito, pedidos
+  controls/                        controles compartidos, layout, acceso
   controls/layout/panel/           marco del panel de gestión (/panel): menú lateral por rol
   controls/ui/                     campos, modal, data_grid, confirm_dialog
-  modules/eccomerce_distribuidora/  pantallas y API de distribuidora
+  modules/                         pantallas por área (home, usuarios, panel; torneos a crear)
   hooks/                           hooks compartidos
   config/                          configuración visual y funcional
 servidor/src/
   app.js, server.js                app y arranque con bootstrap/seed
   routes/ -> controllers/ -> services/  capas agrupadas por dominio
   services/common/                reglas compartidas y utilidades
-  models/                         modelos y relaciones actuales
+  models/                         modelos y relaciones (models/index.js)
   database/                       conexión, bootstrap y seeds
-  middleware/                     autenticación, roles y módulos
-  validator/                      validadores manuales de body (sin Zod)
+  middleware/                     autenticación, permisos y suscripción
   configuracion_servidor/env.js    configuración de entorno
-servidor/tests/                    node:test y PostgreSQL local
-frontend/tests/browser/           Playwright con API simulada
+servidor/tests/                    node:test sin base de datos
+frontend/tests/browser/           Playwright con API simulada (hoy sin specs)
 ```
 
-Dos marcos en `app/router.jsx`: la tienda (`AppLayout`, navbar y footer) y el panel de gestión
-(`PanelLayout`). Todo lo que maneja el personal va en `app/routes/panel.routes.jsx` y su menú se arma en
-`config/navbar_config/panel_gestion.js` reutilizando los ítems (roles y `modulo`) de cada dropdown.
-El resumen del inicio sale de `GET /api/distribuidora/panel/resumen`, filtrado por rol en el servidor.
+Dos marcos en `app/router.jsx`: el sitio (`AppLayout`, navbar y footer) y el panel de gestión
+(`PanelLayout`). Lo del equipo va en `app/routes/panel.routes.jsx` y su menú se arma en
+`config/navbar_config/panel_gestion.js` reutilizando los ítems (roles y permisos) de cada dropdown.
 
-No existen `servidor/src/nucleo/`, `models_v2/`, ni `frontend/src/components/ui/`
-en esta instalación. No copiar imports o fixtures del gimnasio suponiendo que existen.
-No trabajar sobre `proyecto_futuro/`, `sin_usar/` o scaffolds sin verificar sus consumidores.
+Suscripción: tablas `suscripcion` (una por organizador) y `pago_suscripcion` (pagos de
+MercadoPago, extensiones manuales y ajustes). Reglas puras en
+`services/suscripciones/suscripcion_reglas.js` (fechas `YYYY-MM-DD` en hora argentina; rige mientras
+hoy <= vencimiento); base de datos en `suscripcion_service.js`. El webhook consulta el pago a
+MercadoPago y es idempotente por `mp_payment_id` (fila bloqueada en la transacción). Toda ruta que
+crea o edita algo de un organizador lleva `requireAuth, requireSuscripcionVigente`
+(`middleware/suscripcion_middleware.js`: 403 sin plan, 402 vencido; los GET no lo llevan).
+Precio: `PRECIO_SUSCRIPCION_MENSUAL` (0 = pago online deshabilitado).
 
 ## Comandos reales (desde la raíz)
 
@@ -97,38 +100,36 @@ No hay package.json raíz ni workspaces; cada paquete instala sus dependencias.
 | Lint del frontend | `npm --prefix frontend run lint` |
 | Build del frontend | `npm --prefix frontend run build` |
 | Reglas unitarias | `npm --prefix servidor test` |
-| Integración PostgreSQL | `npm --prefix servidor run test:integration` |
+| Integración (PostgreSQL local) | `npm --prefix servidor run test:integration` |
 | Navegador | `npm --prefix frontend run test:e2e` |
-| Precios de demostración (escribe en la base del `.env`; nunca en `gc_dist`) | `npm --prefix servidor run seed:precios-demo` (lo corre el usuario). Con `CATALOGO_DEMO_AL_INICIAR=true` lo hace el arranque (`seed/catalogo_demo.js`) |
 | Revisar los `.env` (solo nombres, sin valores) | `npm --prefix servidor run env:verificar` (lo corre el usuario; lee sus `.env`) |
 
-Un solo test: `node --test --test-name-pattern="carrito" servidor/tests/ux_rules.test.mjs`;
+Un solo test: `node --test --test-name-pattern="permisos" servidor/tests/ux_rules.test.mjs`;
 en Playwright, `npm --prefix frontend run test:e2e -- --project=desktop -g "texto del test"`
 (proyectos: `desktop`, `mobile`, `small-mobile`).
 
 No hay Vitest, MSW ni Supertest configurados, ni lint de backend.
 No anunciar que se ejecutó una suite inexistente.
-Los scripts unitarios y de integración apuntan a archivos concretos: al agregar otro test,
-actualizar el script correspondiente o ejecutarlo explícitamente con `node --test`.
+El script `test` apunta a archivos concretos: al agregar otro test,
+actualizar el script o ejecutarlo explícitamente con `node --test`.
 
 ## Base de datos y pruebas
 
-- Proteger los datos de negocio. No ejecutar migraciones, DDL, seeds, escrituras de prueba,
+- Proteger los datos. No ejecutar migraciones, DDL, seeds, escrituras de prueba,
   scripts de mantenimiento ni sincronizaciones contra la base real como verificación.
-- El arranque de `server.js` ejecuta bootstrap y seed; el bootstrap existente puede hacer
+- El arranque de `server.js` ejecuta bootstrap y seed; el bootstrap puede hacer
   `sync({ alter: true })`. Arrancar el backend no es una comprobación de solo lectura.
   Verificar un destino de desarrollo aislado antes de iniciarlo.
 - Un cambio de esquema/modelos requiere una petición que lo incluya o una decisión explícita.
-  Si hace falta pero está fuera del alcance, explicar el cambio concreto y continuar lo independiente.
-- No agregar sincronizaciones automáticas ni importar las bases/esquemas del gimnasio.
-  La conexión actual está en `database/sequelize.js`; la URL sale de `BD_URL` (Supabase).
-  Esquemas: `gc_dist` en producción y `gc_dist_test` (predeterminado) para pruebas; solo minúsculas.
+- La conexión está en `database/sequelize.js`; la URL sale de `BD_URL`.
+  Esquemas: `mipadel` en producción y `mipadel_test` (predeterminado) para pruebas; solo minúsculas.
+  Nunca apuntar a `gc_dist`/`gc_dist_test` (son de DistribuCG).
+- Base local de desarrollo: PostgreSQL 17 en `localhost`, base `mipadel` (la de DistribuCG es
+  `Distribuidora`: no usarla). El `.env` local deja `BD_URL` vacía y usa `DB_*`.
 - `servidor/tests/ux_rules.test.mjs` prueba reglas sin conexión a la base.
-- `checkout.integration.mjs` fuerza localhost, vacía `BD_URL`, crea un schema
-  `codex_ux_test_<uuid>` y elimina solo ese schema al terminar. Necesita PostgreSQL local.
-  Sus sincronizaciones están limitadas a ese schema temporal; conservar esos límites.
-- Playwright levanta solo Vite en `127.0.0.1:4178` y simula la API; no necesita iniciar el backend.
-  Usa Chromium en desktop, mobile y small-mobile. No prueba por sí solo la persistencia real.
+- `suscripcion.integration.mjs` solo corre contra `localhost` (si `BD_URL` está cargada, se saltea),
+  crea un schema `mipadel_it_<aleatorio>` y borra solo ese schema al terminar.
+- Playwright levanta solo Vite en `127.0.0.1:4178` y simula la API; no necesita el backend.
 - No enviar correos, procesar pagos externos ni subir archivos reales al ejecutar pruebas.
 
 ## Forma de trabajar
@@ -150,42 +151,37 @@ actualizar el script correspondiente o ejecutarlo explícitamente con `node --te
 - `const`, `async/await`, `===`, `?.` y `??`; comentarios sobre decisiones, no sobre lo obvio.
 - React: controles genéricos en `controls/`; pantallas y lógica del rubro en `modules/`.
   APIs con el cliente `api/http.js`; usar TanStack Query y los patrones existentes para datos.
-  Mantener el adapter de persistencia del carrito, sin reemplazarlo por consultas independientes.
 - Hooks antes de returns condicionales. Cubrir carga, error recuperable, vacío y envío pendiente.
   Formularios con React Hook Form/Zod cuando corresponda; labels, teclado y tamaños móviles.
 - Reutilizar los tokens de tema y configuración de marca; no cambiar la identidad por aplicar un skill.
 - Servidor: rutas autorizan, controladores adaptan HTTP y servicios contienen negocio/SQL.
   Mantener los contratos existentes `{ ok, data, mensaje, codigo, ... }`.
   Los controladores actuales usan try/catch: no quitarlos sin verificar el manejo de errores.
-- Validar body/query/params con las utilidades reales; no inventar `req.datos` ni middlewares.
+- Validar body/query/params a mano (no hay Zod en el backend); no inventar `req.datos` ni middlewares.
   Usar allowlists de campos y parámetros SQL; no interpolar entradas del usuario.
-- Dinero, envío, fusión del carrito y operaciones concurrentes: conservar transacciones,
-  locks y claves de idempotencia. Revisar `services/common/` y tests existentes.
-- Autorización efectiva en servidor, incluyendo propietario del recurso y módulo habilitado.
-  Las rutas del personal usan `requirePermiso(...)` (alcanza con uno) y la interfaz `permisos`/`cumpleAcceso`;
-  no asumir privilegios por nombre de rol. `requireRole` queda para `super_admin` y módulos apagados.
+- Pagos de suscripción, resultados que avanzan una llave y operaciones concurrentes:
+  transacciones, locks e idempotencia (el webhook de MercadoPago puede repetirse).
+- Autorización efectiva en servidor: dueño del torneo y suscripción vigente para organizadores;
+  `requirePermiso(...)` (alcanza con uno) para el equipo; `requireRole` para `super_admin`.
   Un permiso nuevo se agrega en `permisos_config.js` y lo sincroniza el arranque (`sincronizarPermisos`).
 - Para fechas de negocio usar explícitamente `America/Argentina/Buenos_Aires`.
-- Neon: evitar N+1, listas ilimitadas y polling nuevo sin necesidad. El polling existente de
-  pedidos es parte del comportamiento actual: evaluar su necesidad antes de cambiarlo.
+- Neon/Supabase: evitar N+1, listas ilimitadas y polling sin necesidad.
 
 ## Secretos y permisos de Claude
 
 No leer ni mostrar archivos .env reales, tokens, contraseñas o cadenas de conexión.
 Consultar nombres y ejemplos sanitizados; `VITE_*` es público. No copiar permisos locales
 de otro proyecto ni habilitar bypass de permisos. `.claude/settings.json` conserva permisos
-existentes y agrega comandos de verificación y restricciones del flujo importado.
-Las reglas de herramientas complementan estas instrucciones; no garantizan bloquear todos
-los comandos equivalentes de otras shells.
+existentes. Las reglas de herramientas complementan estas instrucciones; no garantizan
+bloquear todos los comandos equivalentes de otras shells.
 
 ## Skills y revisión
 
 Skills en `.claude/skills/`: `feature`, `api-endpoint`, `react-component`,
-`crud-admin`, `auth-rbac`, `dominio-distribuidora`, `e2e-test`, `pre-pr`,
-`security-audit`, `perf-audit`, `frontend-design`.
-Usar cada uno según el trabajo, no ejecutar auditorías completas para cualquier cambio.
-El revisor `.claude/agents/code-reviewer.md` revisa en solo lectura cuando se solicita
-una revisión independiente; no exige delegar todo trabajo.
+`crud-admin`, `auth-rbac`, `e2e-test`, `pre-pr`, `security-audit`, `perf-audit`,
+`frontend-design`. Usar cada uno según el trabajo, no ejecutar auditorías completas
+para cualquier cambio. El revisor `.claude/agents/code-reviewer.md` revisa en solo lectura
+cuando se solicita una revisión independiente.
 
 El skill frontend-design ya existía en `frontend/.agents/skills/frontend-design/`.
 Su copia en `.claude/skills/` permite invocarlo desde Claude en la raíz; conservar la licencia

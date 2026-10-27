@@ -3,30 +3,30 @@
 Direcciones de esta instalación, compartidas por frontend y API mediante
 `deployment_config.js`:
 
-- Frontend: `https://distribu-cg.vercel.app`.
-- API: `https://distribucg.onrender.com/api`.
+- Frontend: `https://mipadel.vercel.app`.
+- API: `https://mipadel.onrender.com/api`.
 
 ## Variables de las plataformas
 
 En Vercel, proyecto del frontend, Environment Variables para Production:
 
 ```dotenv
-VITE_API_URL=https://distribucg.onrender.com/api
+VITE_API_URL=https://mipadel.onrender.com/api
 VITE_GOOGLE_CLIENT_ID=EL_CLIENT_ID_PUBLICO_DE_GOOGLE
 ```
 
 En Render, servicio del backend, Environment:
 
 ```dotenv
-CORS_ORIGIN=https://distribu-cg.vercel.app
-VERCEL_FRONTEND_URL=https://distribu-cg.vercel.app
-RENDER_APP_URL=https://distribucg.onrender.com
+CORS_ORIGIN=https://mipadel.vercel.app
+VERCEL_FRONTEND_URL=https://mipadel.vercel.app
+RENDER_APP_URL=https://mipadel.onrender.com
 GOOGLE_CLIENT_ID=EL_MISMO_CLIENT_ID_PUBLICO_DE_VERCEL
 # Correo (avisos de pedidos y recuperación de contraseña). Render gratis bloquea
 # el SMTP: usar la API de Brevo. Ver servidor/.env.example.
 CLAVE_API_BREVO=[COMPLETAR]
 CORREO_REMITENTE=[COMPLETAR con el correo verificado en Brevo]
-NOMBRE_REMITENTE=[COMPLETAR, ej. Distribuidora EJEMPLO]
+NOMBRE_REMITENTE=[COMPLETAR, ej. MiPadel]
 ```
 
 No agregar `/api` al origen de CORS. Los dominios adicionales autorizados
@@ -43,7 +43,7 @@ credenciales a ese proyecto.
 ## Google Cloud
 
 En el cliente OAuth de tipo aplicación web, incluir como origen JavaScript
-autorizado `https://distribu-cg.vercel.app`. El código usa Google Identity
+autorizado `https://mipadel.vercel.app`. El código usa Google Identity
 Services con callback de credencial, no un client secret en el navegador.
 Los dos Client ID deben coincidir. Si se usa un cliente OAuth en modo
 Testing, revisar también sus usuarios de prueba según la configuración
@@ -63,9 +63,9 @@ de la tienda, confirmando un problema independiente de CORS.
 
 Después de desplegar, comprobar en Network:
 
-1. El destino es `https://distribucg.onrender.com/api/auth/google`.
+1. El destino es `https://mipadel.onrender.com/api/auth/google`.
 2. `OPTIONS` responde 204 con
-   `Access-Control-Allow-Origin: https://distribu-cg.vercel.app`.
+   `Access-Control-Allow-Origin: https://mipadel.vercel.app`.
 3. Se envía el `POST` y se recibe su respuesta.
 
 Un 403 de CORS ocurre antes de validar la credencial de Google. Si CORS

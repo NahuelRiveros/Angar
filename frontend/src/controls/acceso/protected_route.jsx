@@ -9,7 +9,7 @@ import { cumpleAcceso } from "./acceso.js";
  * Uso:
  *   <ProtectedRoute>                                   → solo requiere estar logueado
  *   <ProtectedRoute roles={["super_admin"]}>           → solo ese rol
- *   <ProtectedRoute permisos={["pedidos.ver"]}>        → quien tenga el permiso
+ *   <ProtectedRoute permisos={["contenido.editar"]}>   → quien tenga el permiso
  *
  * Comportamiento:
  *   - Cargando auth  → muestra spinner

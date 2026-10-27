@@ -1,6 +1,7 @@
 // Direcciones públicas de esta instalación. No incluir secretos.
+// [COMPLETAR] con las direcciones reales cuando se creen los servicios en Render y Vercel.
 export const deploymentConfig = {
-  nombre: "DistribuCG",
-  backendUrl: "https://distribucg.onrender.com",
-  frontendUrl: "https://distribu-cg.vercel.app",
+  nombre: "MiPadel",
+  backendUrl: "https://mipadel.onrender.com",
+  frontendUrl: "https://mipadel.vercel.app",
 };

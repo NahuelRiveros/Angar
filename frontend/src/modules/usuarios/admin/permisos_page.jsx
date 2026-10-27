@@ -21,7 +21,7 @@ export default function PermisosPage() {
   const queryClient = useQueryClient();
   const { recargarUsuario } = useAuth();
   const consulta = useQuery({ queryKey: ["permisos"], queryFn: getPermisos });
-  // Cambios sin guardar: { [rolId]: ["pedidos.ver", ...] }. Se guardan todos juntos.
+  // Cambios sin guardar: { [rolId]: ["contenido.editar", ...] }. Se guardan todos juntos.
   const [borrador, setBorrador] = useState({});
   const [nombreNuevo, setNombreNuevo] = useState("");
   const [aBorrar, setABorrar] = useState(null);

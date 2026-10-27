@@ -1,12 +1,11 @@
 ---
 name: feature
-description: Implementa una funcionalidad de DistribuCG que cruza API y frontend, desde el análisis del contrato hasta la verificación del flujo.
+description: Implementa una funcionalidad de MiPadel que cruza API y frontend, desde el análisis del contrato hasta la verificación del flujo.
 ---
 
 # Funcionalidad completa
 
-Leer CLAUDE.md, docs/distribuidora-pedidos.md y el código del flujo afectado.
-Consultar dominio-distribuidora cuando cambien reglas de catálogo, carrito o pedidos.
+Leer CLAUDE.md, docs/ del área y el código del flujo afectado.
 
 Presentar objetivo, contrato de API, pantallas y archivos previstos. Identificar decisiones
 de negocio pendientes y posibles cambios de esquema. Continuar con el alcance autorizado;

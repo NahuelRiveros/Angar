@@ -19,8 +19,7 @@ export function useHomeContent() {
         if (!alive) return;
         setError(e);
       } finally {
-        if (!alive) return;
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
 

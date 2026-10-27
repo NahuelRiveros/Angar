@@ -1,43 +1,23 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Package, HelpCircle, ShoppingCart, ClipboardList, UserCircle, Phone, Undo2, Scale } from "lucide-react";
+import { HelpCircle, Phone } from "lucide-react";
 import { footer_config } from "../../config/footer_config.js";
-import { storefrontConfig } from "../../config/storefront_config.js";
-import { moduloHabilitado } from "../config/modulos_config.js";
 import { iconoHome } from "../config/home_iconos.js";
-import { useAuth } from "../../auth/auth_context.jsx";
 import { useHomeConfig } from "../../hooks/use_home_config.js";
 import { HOME_CONTACTOS } from "../../config/home_config.js";
 import { brandConfig } from "../../config/brand_config.js";
-import LogoMoovs from "../brand/logo_moovs.jsx";
+import LogoMarca from "../brand/logo_marca.jsx";
 
 // Un placeholder sin completar en home_config.js se ve como "[Tu número acá]"
 // — mostrarlo tal cual a un cliente real sería peor que no mostrar nada.
 const esPlaceholder = (v) => /^\[.*\]$/.test(String(v ?? "").trim());
 
-/**
- * Segunda vuelta de diseño: la primera versión tenía estética "panel técnico"
- * (scan line animada, grillas de puntos, status blink, mono uppercase por
- * todos lados) — más "dashboard de sistema" que footer de una distribuidora
- * de productos, y la marca en sí quedaba reducida a un ícono de 40px sin el
- * nombre del negocio escrito en ningún lado visible. Acá: fondo sólido
- * (--kt-night, sin texturas superpuestas que le restaban contraste al
- * texto), una banda de llamado a la acción real arriba (no solo texto de
- * marca), y el nombre del negocio presente de verdad.
- */
 export default function Footer() {
   const { diferenciales, callout, legal } = footer_config;
-  const { modulosHabilitados } = useAuth();
   const { contactos } = useHomeConfig();
-
-  const activo = (item) => item.habilitado && moduloHabilitado(item.modulo, modulosHabilitados);
-  const diferencialesActivos = diferenciales.filter(activo);
+  const diferencialesActivos = diferenciales.filter((item) => item.habilitado);
 
   const contactosReales = (contactos.length > 0 ? contactos : HOME_CONTACTOS)
     .filter((c) => !esPlaceholder(c.valor));
-
-  // Solo tiene sentido en un deploy con la tienda prendida — en un cliente
-  // que solo use el panel (sin tienda) este bloque no debería aparecer.
-  const comercioActivo = storefrontConfig.enabled;
 
   return (
     <footer className="kt-body relative overflow-hidden bg-(--kt-night) text-white">
@@ -52,25 +32,6 @@ export default function Footer() {
           competía visualmente con el contenido de abajo) ── */}
       <div className="h-0.75 bg-linear-to-r from-(--kt-petrol) via-(--kt-turquoise) to-(--kt-petrol)" />
 
-      {/* ── Banda de llamado a la acción — un footer de tienda tiene que
-          seguir vendiendo, no solo despedir la página ── */}
-      {comercioActivo && (
-        <div className="relative border-b border-white/10 bg-black/15">
-          <div className="mx-auto flex max-w-7xl flex-col items-start gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="kt-display text-xl font-bold text-white sm:text-2xl">¿Ya armaste tu pedido?</h3>
-              <p className="mt-1 text-sm text-slate-300">Catálogo completo, precios y stock siempre al día.</p>
-            </div>
-            <Link
-              to={storefrontConfig.catalogPath}
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-(--kt-accent-comercial) px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-(--kt-accent-comercial-hover)"
-            >
-              Ver catálogo <ArrowRight size={16} />
-            </Link>
-          </div>
-        </div>
-      )}
-
       {/* ── Columnas ── */}
       <div className="relative mx-auto w-full max-w-7xl px-6">
         <div className="grid grid-cols-1 gap-x-10 gap-y-12 py-14 md:grid-cols-2 xl:grid-cols-[1.3fr_1fr_1fr_1fr]">
@@ -78,10 +39,9 @@ export default function Footer() {
           {/* ── Marca ── */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <LogoMoovs size="md" variant="light" slot="footer" />
               <div>
-                <p className="kt-display text-lg font-bold leading-tight text-white">{brandConfig.nombre}</p>
-                <p className="text-xs text-slate-400">{brandConfig.rubro}</p>
+                <LogoMarca size="sm" variant="light" />
+                <p className="mt-1 text-xs text-slate-400">{brandConfig.rubro}</p>
               </div>
             </div>
             <p className="max-w-70 text-sm leading-6 text-slate-300">
@@ -89,39 +49,13 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* ── Comprar — accesos reales a la tienda, no solo texto ── */}
-          {comercioActivo && (
-            <FooterColumn label="Comprar">
-              <FooterLink to={storefrontConfig.catalogPath} icon={Package}>Catálogo</FooterLink>
-              <FooterLink to="/#como-pedir" icon={HelpCircle}>Cómo pedir</FooterLink>
-              <FooterLink to={storefrontConfig.cartPath} icon={ShoppingCart}>Mi carrito</FooterLink>
-              <FooterLink to={storefrontConfig.ordersPath} icon={ClipboardList}>Mis pedidos</FooterLink>
-              <FooterLink to={storefrontConfig.profilePath} icon={UserCircle}>Mi perfil</FooterLink>
-            </FooterColumn>
-          )}
-
           {/* ── Ayuda / Contacto — datos reales (home_config.js), nunca inventados ── */}
           <div>
             <FooterColumn label="Ayuda">
-              <FooterLink to="/#contacto" icon={Phone}>Contacto</FooterLink>
-              {comercioActivo && (
-                <>
-                  {/* Resolución 424/2020 (Secretaría de Comercio Interior): exige un
-                      link accesible desde la home, no un logo/gráfico específico —
-                      no hay un asset oficial que descargar para esto. */}
-                  <FooterLink to="/#contacto" icon={Undo2}>Botón de arrepentimiento</FooterLink>
-                  <ExternalFooterLink href="https://www.argentina.gob.ar/economia/industria-y-comercio/defensadelconsumidor" icon={Scale}>
-                    Defensa del Consumidor
-                  </ExternalFooterLink>
-                </>
-              )}
+              <FooterLink to="/#como-funciona" icon={HelpCircle}>Cómo funciona</FooterLink>
+              {contactosReales.length > 0 && <FooterLink to="/#contacto" icon={Phone}>Contacto</FooterLink>}
             </FooterColumn>
 
-            {comercioActivo && (
-              <p className="mt-4 text-xs leading-5 text-slate-400">
-                {storefrontConfig.labels.orderNotice}
-              </p>
-            )}
 
             {contactosReales.length > 0 && (
               <ul className="mt-5 space-y-2.5 border-t border-white/10 pt-5">
@@ -208,20 +142,6 @@ function FooterLink({ to, icon, children }) {
         <Icon size={15} className="shrink-0 text-(--kt-accent-on-dark)" />
         {children}
       </Link>
-    </li>
-  );
-}
-
-// Para links a sitios externos (ej. argentina.gob.ar) — <Link> de react-router
-// es solo para rutas internas de la SPA, un href absoluto ahí navega mal.
-function ExternalFooterLink({ href, icon, children }) {
-  const Icon = icon;
-  return (
-    <li>
-      <a href={href} target="_blank" rel="noopener noreferrer" className={FOOTER_LINK_CLASS}>
-        <Icon size={15} className="shrink-0 text-(--kt-accent-on-dark)" />
-        {children}
-      </a>
     </li>
   );
 }

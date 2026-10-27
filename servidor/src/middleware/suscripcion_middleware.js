@@ -1,63 +1,23 @@
-import jwt from "jsonwebtoken";
-import { obtenerEstado } from "../services/sistema/software_suscripcion_service.js";
-import { env } from "../configuracion_servidor/env.js";
+import { vigenciaDeUsuario } from "../services/suscripciones/suscripcion_service.js";
 
-// ── Cache en memoria — evita golpear la DB en cada request ───────────────────
-let _cache   = null;
-let _cacheTs = 0;
-const CACHE_MS = 5 * 60 * 1000; // 5 minutos
-
-// Rutas que SIEMPRE pasan (GET y POST) aunque la suscripción esté vencida
-const RUTAS_SIEMPRE_LIBRES = [
-  "/auth",        // login / logout / me
-  "/suscripcion", // ver estado y renovar
-  "/health",      // health check
-  "/catalogos",   // listas desplegables (necesarias para ver formularios)
-];
-
-export async function verificarSuscripcion(req, res, next) {
-  // Los GET siempre pasan — el dueño siempre puede ver sus datos
-  if (req.method === "GET") return next();
-
-  const ruta = req.path;
-  if (RUTAS_SIEMPRE_LIBRES.some((r) => ruta.startsWith("/" + r) || ruta === "/" + r)) {
-    return next();
-  }
-
+/**
+ * Para las rutas que crean o editan algo de un organizador (va después de requireAuth).
+ * Plan vencido = solo lectura: los GET no llevan este middleware. El super admin pasa
+ * siempre para poder dar soporte.
+ */
+export async function requireSuscripcionVigente(req, res, next) {
   try {
-    const ahora = Date.now();
-    if (!_cache || ahora - _cacheTs > CACHE_MS) {
-      _cache   = await obtenerEstado();
-      _cacheTs = ahora;
+    if ((req.user?.roles ?? []).includes("super_admin")) return next();
+    const vigencia = await vigenciaDeUsuario(req.user.usuario_id);
+    if (!vigencia) {
+      return res.status(403).json({ ok: false, codigo: "NO_ES_ORGANIZADOR", mensaje: "Activá tu cuenta de organizador para crear torneos." });
     }
-
-    if (_cache?.bloqueado) {
-      // Admin siempre puede operar aunque la suscripción esté vencida
-      const authHeader = req.headers["authorization"] || "";
-      if (authHeader.startsWith("Bearer ")) {
-        try {
-          jwt.verify(authHeader.slice(7), env.JWT_SECRET);
-          return next();
-        } catch {
-          // token inválido/expirado → caer al bloqueo normal
-        }
-      }
-      return res.status(402).json({
-        ok:      false,
-        codigo:  "SUSCRIPCION_VENCIDA",
-        mensaje: "Plan vencido. Renovalo para registrar nuevos datos.",
-      });
+    if (!vigencia.vigente) {
+      return res.status(402).json({ ok: false, codigo: "SUSCRIPCION_VENCIDA", mensaje: vigencia.mensaje });
     }
-
+    req.suscripcion = vigencia;
     return next();
-  } catch {
-    // Si falla la consulta → dejar pasar (no bloquear por error técnico)
-    return next();
+  } catch (e) {
+    return next(e);
   }
-}
-
-// Llamar después de extender/fijar para que el bloqueo se levante al instante
-export function invalidarCacheSuscripcion() {
-  _cache   = null;
-  _cacheTs = 0;
 }

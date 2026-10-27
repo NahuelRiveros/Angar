@@ -6,7 +6,7 @@ import { cloudinary } from "../../configuracion_servidor/cloudinary.js";
  * producto, logos de marca, lo que haga falta). Ver home_service.js para
  * el mismo patrón aplicado al contenido del home.
  */
-export function subirImagen(buffer, { folder = "distribucg/general" } = {}) {
+export function subirImagen(buffer, { folder = "mipadel/general" } = {}) {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       { folder, resource_type: "image", transformation: [{ quality: "auto", fetch_format: "auto" }] },

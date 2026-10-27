@@ -1,6 +1,6 @@
 ---
 name: pre-pr
-description: Revisa cambios de DistribuCG antes de un commit o PR y selecciona verificaciones pertinentes, sin publicar ni commitear automáticamente.
+description: Revisa cambios de MiPadel antes de un commit o PR y selecciona verificaciones pertinentes, sin publicar ni commitear automáticamente.
 ---
 
 # Preparar cambios para revisión

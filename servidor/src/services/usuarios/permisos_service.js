@@ -4,7 +4,7 @@ import { Modulo, Permiso, Rol, RolPermiso, UsuarioRol } from "../../models/index
 import { CODIGOS_PERMISO, conRequeridos, permisosConfig } from "../../../../permisos_config.js";
 
 // Roles que el sistema necesita: se editan sus permisos pero no se borran.
-export const ROLES_BASE = [...permisosConfig.rolesTotales, ...permisosConfig.rolesFuera, "supervisor", "vendedor"];
+export const ROLES_BASE = [...permisosConfig.rolesTotales, ...permisosConfig.rolesFuera, "soporte"];
 const error = (mensaje, status = 400, codigo = "PERMISOS_INVALIDOS") => Object.assign(new Error(mensaje), { status, codigo });
 
 /**
@@ -95,7 +95,7 @@ export async function crearRol({ nombre, permisos = [] }) {
   if (limpio.length < 3 || limpio.length > 40) throw error("El nombre del rol tiene que tener entre 3 y 40 caracteres.");
   const codigo = codigoDeRol(limpio);
   if (codigo.length < 3) throw error("Usá letras o números en el nombre del rol.");
-  if (ROLES_BASE.includes(codigo) || codigo === "staff") throw error("Ese nombre está reservado para un rol del sistema.", 409, "ROL_EXISTENTE");
+  if (ROLES_BASE.includes(codigo) ) throw error("Ese nombre está reservado para un rol del sistema.", 409, "ROL_EXISTENTE");
   const rol = await Rol.create({ codigo, descripcion: limpio }).catch((e) => {
     if (e.name === "SequelizeUniqueConstraintError") throw error("Ya existe un rol con ese nombre.", 409, "ROL_EXISTENTE");
     throw e;

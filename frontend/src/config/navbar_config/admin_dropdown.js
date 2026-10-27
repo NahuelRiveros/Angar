@@ -4,8 +4,8 @@ import {
   Megaphone,
   Settings,
   LayoutTemplate,
-  Receipt,
   ShieldCheck,
+  CreditCard,
 } from "lucide-react";
 
 // Dropdown de primer nivel con 2 ítems que además tienen `children` (un
@@ -18,13 +18,28 @@ export const adminDropdown = {
   icon: LayoutDashboard,
   items: [
     {
+      label: "Plataforma",
+      icon: CreditCard,
+      requiereAuth: true,
+      permisos: ["suscripciones.ver"],
+      children: [
+        {
+          label: "Suscripciones",
+          to: "/admin/suscripciones",
+          requiereAuth: true,
+          permisos: ["suscripciones.ver"],
+          icon: CreditCard,
+        },
+      ],
+    },
+    {
       label: "Gestión",
       icon: Users,
       requiereAuth: true,
       permisos: ["usuarios.gestionar", "permisos.gestionar"],
       children: [
         {
-          label: "Personal",
+          label: "Equipo",
           to: "/admin/staffManager",
           requiereAuth: true,
           permisos: ["usuarios.gestionar"],
@@ -59,13 +74,6 @@ export const adminDropdown = {
           permisos: ["contenido.editar"],
           icon: Megaphone,
         },
-        // {
-        //   label: "Mi suscripción",
-        //   to: "/admin/suscripcion",
-        //   requiereAuth: true,
-        //   roles: ["admin"],
-        //   icon: Receipt,
-        // },
       ],
     },
   ],

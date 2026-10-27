@@ -26,19 +26,18 @@ async function conServidor(probar) {
 
 test("variables pegadas con comillas o espacios en Render se limpian", () => {
   assert.equal(limpiarValor(`  "https://api.onrender.com"  `), "https://api.onrender.com");
-  assert.equal(limpiarValor("'gc_dist'"), "gc_dist");
+  assert.equal(limpiarValor("'mipadel'"), "mipadel");
   assert.equal(limpiarValor(`"sin cerrar`), `"sin cerrar`);
   assert.deepEqual(parsearOrigenes(` "https://a.vercel.app/" ,, https://b.com `), ["https://a.vercel.app", "https://b.com"]);
   assert.deepEqual(parsearOrigenes(undefined), []);
 });
 
-test("la API de producción usa DistribuCG y rechaza el dominio anterior antes de enviar credenciales", () => {
-  assert.equal(resolverApiUrl(undefined), "https://distribucg.onrender.com/api");
-  assert.equal(resolverApiUrl(""), "https://distribucg.onrender.com/api");
+test("la API de producción usa MiPadel y rechaza direcciones mal formadas antes de enviar credenciales", () => {
+  assert.equal(resolverApiUrl(undefined), "https://mipadel.onrender.com/api");
+  assert.equal(resolverApiUrl(""), "https://mipadel.onrender.com/api");
   assert.equal(resolverApiUrl(undefined, true), "http://localhost:3001/api");
-  assert.equal(resolverApiUrl(' "https://distribucg.onrender.com/api/" '), "https://distribucg.onrender.com/api");
+  assert.equal(resolverApiUrl(' "https://mipadel.onrender.com/api/" '), "https://mipadel.onrender.com/api");
   assert.equal(resolverApiUrl("https://otra-api.example.com/api"), "https://otra-api.example.com/api");
-  assert.throws(() => resolverApiUrl("https://dynamic-gym.onrender.com/api"), /backend anterior/);
   for (const invalida of ["/api", "https://api.example.com", "https://api.example.com/api?clave=1", "https://usuario:clave@api.example.com/api"]) {
     assert.throws(() => resolverApiUrl(invalida), /VITE_API_URL/);
   }
@@ -79,7 +78,7 @@ test("CORS acepta la tienda configurada aunque tenga / final y rechaza otros con
   });
 });
 
-test("producción permite el frontend de DistribuCG por defecto y muestra la identidad correcta", () => {
+test("producción permite el frontend de MiPadel por defecto y muestra la identidad correcta", () => {
   const appJs = new URL("../src/app.js", import.meta.url).href;
   const script = `
     import assert from 'node:assert/strict';
@@ -89,13 +88,13 @@ test("producción permite el frontend de DistribuCG por defecto y muestra la ide
     try {
       const base = 'http://127.0.0.1:' + servidor.address().port;
       const r = await fetch(base + '/api/auth/google', { method: 'OPTIONS', headers: {
-        Origin: 'https://distribu-cg.vercel.app', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type'
+        Origin: 'https://mipadel.vercel.app', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type'
       }});
       assert.equal(r.status, 204);
-      assert.equal(r.headers.get('access-control-allow-origin'), 'https://distribu-cg.vercel.app');
+      assert.equal(r.headers.get('access-control-allow-origin'), 'https://mipadel.vercel.app');
       const portada = await (await fetch(base + '/')).json();
-      assert.equal(portada.nombre, 'DistribuCG API');
-      assert.equal(portada.frontend, 'https://distribu-cg.vercel.app');
+      assert.equal(portada.nombre, 'MiPadel API');
+      assert.equal(portada.frontend, 'https://mipadel.vercel.app');
     } finally { await new Promise(r => servidor.close(r)); }
   `;
   const r = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
@@ -126,7 +125,7 @@ test("verificar_env avisa nombres viejos y valores de ejemplo sin mostrar valore
   try {
     mkdirSync(join(raiz, "servidor"));
     mkdirSync(join(raiz, "frontend"));
-    writeFileSync(join(raiz, "servidor/.env.example"), "BD_URL=\nDB_SSL=true\nDB_SCHEMA=gc_dist_test\n");
+    writeFileSync(join(raiz, "servidor/.env.example"), "BD_URL=\nDB_SSL=true\nDB_SCHEMA=mipadel_test\n");
     writeFileSync(join(raiz, "frontend/.env.example"), "VITE_API_URL=http://localhost:3001/api\n");
     writeFileSync(join(raiz, "servidor/.env"), "NEON_DATABASE_URL=postgres://SECRETO_NO_MOSTRAR\nBD_URL=postgresql://u:[COMPLETAR]@host/db\nDB_SSL=true\n");
     writeFileSync(join(raiz, "frontend/.env"), "VITE_API_URL=https://api.onrender.com/api\n");
@@ -139,7 +138,7 @@ test("verificar_env avisa nombres viejos y valores de ejemplo sin mostrar valore
     assert.match(r.stdout, /✅ VITE_API_URL/);
     assert.doesNotMatch(r.stdout, /SECRETO_NO_MOSTRAR|onrender\.com/);
 
-    writeFileSync(join(raiz, "servidor/.env"), "BD_URL=postgresql://u:clave@host/db\nDB_SSL=true\nDB_SCHEMA=gc_dist_test\n");
+    writeFileSync(join(raiz, "servidor/.env"), "BD_URL=postgresql://u:clave@host/db\nDB_SSL=true\nDB_SCHEMA=mipadel_test\n");
     const ok = spawnSync(process.execPath, [script, raiz], { encoding: "utf8" });
     assert.equal(ok.status, 0, ok.stdout);
     assert.match(ok.stdout, /Todo en orden/);

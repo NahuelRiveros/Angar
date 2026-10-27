@@ -19,7 +19,7 @@ const collator = new Intl.Collator("es");
  * cambia en runtime), por eso vive en memoria y no en una tabla de la DB.
  * Los JSON fuente no traen código postal — el Correo Argentino usa CPA de
  * 8 caracteres sin relación 1 a 1 con localidad, así que ese campo se pide
- * como texto libre en el perfil/pedido (ver perfil_cliente_service.js).
+ * como texto libre en el perfil.
  */
 const provincias = cargarJson("provincias.json")
   .provincias.map((p) => ({ id: p.id, nombre: p.nombre }))

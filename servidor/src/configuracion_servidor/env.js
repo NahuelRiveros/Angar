@@ -39,7 +39,7 @@ export const env = {
   BD_URL:       process.env.BD_URL || "",
   DB_HOST:      process.env.DB_HOST      || "localhost",
   DB_PORT:      Number(process.env.DB_PORT || 5432),
-  DB_NAME:      process.env.DB_NAME      || "dynamicgym",
+  DB_NAME:      process.env.DB_NAME      || "mipadel",
   DB_USER:      process.env.DB_USER      || "postgres",
   DB_PASS:      process.env.DB_PASS      || "",          // ← NUNCA hardcodear
   DB_SSL:       String(process.env.DB_SSL || "").toLowerCase() === "true",
@@ -62,19 +62,17 @@ export const env = {
   MP_ACCESS_TOKEN: process.env.MP_ACCESS_TOKEN || "",
 
   // URL COMPLETA del backend en Render (para que MP envíe el webhook).
-  // Ejemplo: "https://distribucg.onrender.com"
+  // Ejemplo: "https://mipadel.onrender.com" (EJEMPLO)
   // En local: dejar vacío (el webhook no llegará, pero el flujo funciona).
   RENDER_APP_URL: process.env.RENDER_APP_URL || "",
 
   // URL COMPLETA del frontend en Vercel (para la redirección post-pago de MP).
-  // Ejemplo: "https://distribu-cg.vercel.app"
+  // Ejemplo: "https://mipadel.vercel.app" (EJEMPLO)
   VERCEL_FRONTEND_URL: process.env.VERCEL_FRONTEND_URL || (esProduccion ? deploymentConfig.frontendUrl : "http://localhost:5173"),
 
-  // ── Plan del software ──────────────────────────────────────────
-  // Precio mensual en ARS (sin centavos). Ej: 10000 = $10.000
-  SOFTWARE_PRECIO: Number(process.env.SOFTWARE_PRECIO || 0),
-  // Nombre visible del cliente / gimnasio en la factura MP.
-  SOFTWARE_CLIENTE: process.env.SOFTWARE_CLIENTE || "DistribuCG",
+  // ── Plan de los organizadores ──────────────────────────────────
+  // Precio de 30 días en ARS, sin centavos. 0 o vacío = pago con MercadoPago deshabilitado.
+  PRECIO_SUSCRIPCION_MENSUAL: Number(process.env.PRECIO_SUSCRIPCION_MENSUAL || 0),
 
   // ── Email por API de Brevo (producción en Render) ──────────────
   // Con CLAVE_API_BREVO cargada se usa Brevo y se ignora el SMTP.
@@ -82,15 +80,6 @@ export const env = {
   CLAVE_API_BREVO:  process.env.CLAVE_API_BREVO  || "",
   CORREO_REMITENTE: process.env.CORREO_REMITENTE || "",
   NOMBRE_REMITENTE: process.env.NOMBRE_REMITENTE || "",
-
-  // ── Facturación electrónica ARCA (preparado, todavía sin uso) ──
-  // Opcionales: vacías, la facturación queda apagada y el servidor arranca igual.
-  // Ver configuracion_servidor/arca.js y docs/facturacion-arca.md.
-  ARCA_CUIT_EMISOR:       process.env.ARCA_CUIT_EMISOR       || "",
-  ARCA_PUNTO_VENTA:       process.env.ARCA_PUNTO_VENTA       || "",
-  ARCA_CERTIFICADO_PEM:   process.env.ARCA_CERTIFICADO_PEM   || "",
-  ARCA_CLAVE_PRIVADA_PEM: process.env.ARCA_CLAVE_PRIVADA_PEM || "",
-  ARCA_PRODUCCION:        String(process.env.ARCA_PRODUCCION || "").toLowerCase() === "true",
 
   // ── Email / SMTP (desarrollo local) ────────────────────────────
   SMTP_HOST:   process.env.SMTP_HOST   || "smtp.gmail.com",
@@ -100,7 +89,7 @@ export const env = {
   SMTP_PASS:   process.env.SMTP_PASS   || "",
   SMTP_FROM:   process.env.SMTP_FROM   || "",
 
-  // ── Cloudinary (subida de imágenes: home, marcas, fotos de producto) ─────
+  // ── Cloudinary (subida de imágenes: home, logos y fotos de torneos) ─────
   // Obligatorio en producción — a diferencia de MP/SMTP (que degradan sin
   // romper nada visible), sin esto CUALQUIER subida de imagen falla en
   // tiempo de ejecución con un error de auth de Cloudinary poco claro. Mejor
@@ -114,11 +103,6 @@ export const env = {
   // Client ID público de Google Cloud (el mismo que VITE_GOOGLE_CLIENT_ID).
   // Vacío = ingreso con Google deshabilitado. No se usa el client secret.
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
-
-  // ── Catálogo de demostración ─────────────────────────────────────
-  // true = en cada arranque completa el catálogo del seed y pone precios inventados
-  // (ver database/seed/catalogo_demo.js). Nunca se aplica en el esquema gc_dist.
-  CATALOGO_DEMO_AL_INICIAR: String(process.env.CATALOGO_DEMO_AL_INICIAR || "").toLowerCase() === "true",
 
   // ── Seed: usuario super admin ────────────────────────────────────
   SUPERADMIN_NOMBRE:   process.env.SUPERADMIN_NOMBRE   || "",

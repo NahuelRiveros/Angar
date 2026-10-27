@@ -1,6 +1,6 @@
 ---
 name: security-audit
-description: Audita seguridad de DistribuCG cuando se solicita una revisión de permisos, datos, autenticación, dependencias o exposición de información; informa hallazgos sin modificar código.
+description: Audita seguridad de MiPadel cuando se solicita una revisión de permisos, datos, autenticación, dependencias o exposición de información; informa hallazgos sin modificar código.
 ---
 
 # Auditoría de seguridad
@@ -12,8 +12,8 @@ Priorizar:
 - SQL parametrizado, allowlists de orden/campos y validación de entradas.
 - Roles, propietario del recurso y módulo habilitado, incluso en exportaciones e importaciones.
 - JWT, versión de contraseña, revocación de roles, recuperación y rate limits.
-- Precios/IVA/cantidades en servidor, transacciones, saldo e idempotencia de pedidos/cobros.
-  Los cobros de distribuidora son manuales; no presumir webhooks de una pasarela.
+- Dueño del torneo, suscripción vigente, transacciones e idempotencia de pagos y resultados.
+  La suscripción se cobra con MercadoPago (webhook) o a mano por el super admin; validar ambos caminos.
 - Datos sensibles en respuestas/logs, HTML no confiable, URLs y redirects externos.
 - CORS, headers y límites/tipos de archivos importados o subidos.
 - Seguimiento de archivos sensibles en git sin imprimir sus valores; reportar ruta y tipo,

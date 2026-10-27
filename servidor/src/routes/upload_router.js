@@ -14,5 +14,5 @@ const upload = multer({
 
 export const uploadRouter = Router();
 
-uploadRouter.post("/imagen", requireAuth, requirePermiso("contenido.editar", "productos.editar"), upload.single("imagen"), subirImagenController);
-uploadRouter.delete("/imagen", requireAuth, requirePermiso("contenido.editar", "productos.editar"), eliminarImagenController);
+uploadRouter.post("/imagen", requireAuth, requirePermiso("contenido.editar"), upload.single("imagen"), subirImagenController);
+uploadRouter.delete("/imagen", requireAuth, requirePermiso("contenido.editar"), eliminarImagenController);
