@@ -1,0 +1,118 @@
+/* Home: composición deportiva, imágenes locales y movimiento sin consultas de red. */
+.padel-hero { position:relative; isolation:isolate; overflow:hidden; color:white; background:var(--kt-night); }
+.padel-hero::before { content:""; position:absolute; inset:0; z-index:-1; background:radial-gradient(ellipse at 85% 37%,#3d7941 0,transparent 53%),linear-gradient(115deg,#062b21,var(--kt-night) 55%,#164d32); }
+.padel-hero-inner { position:relative; display:grid; grid-template-columns:1fr 1fr; max-width:1280px; min-height:690px; margin:auto; padding:65px 48px 45px; align-items:center; }
+.padel-court { position:absolute; top:16%; left:51%; width:70%; height:100%; opacity:.13; border:1px solid var(--kt-accent-on-dark); transform:rotate(-19deg); background:linear-gradient(90deg,transparent 49.85%,#d2f36b 50%,transparent 50.15%),linear-gradient(0deg,transparent 49.85%,#d2f36b 50%,transparent 50.15%); }
+.padel-hero-word { position:absolute; top:23px; right:-25px; color:transparent; -webkit-text-stroke:1px #d2f36b30; font-size:clamp(130px,20vw,300px); line-height:1; font-weight:900; letter-spacing:-.08em; user-select:none; }
+.padel-hero-copy { position:relative; z-index:4; padding-bottom:24px; animation:padel-enter .7s both; }
+.padel-eyebrow { display:flex; align-items:center; gap:10px; font-size:10px; font-weight:800; letter-spacing:.2em; color:var(--kt-accent-on-dark); }
+.padel-eyebrow>span { width:7px; height:7px; border-radius:50%; background:currentColor; box-shadow:0 0 16px #d2f36b66; }
+.padel-hero-kicker { margin-top:26px; color:#d4e6da; font-size:12px; }
+.padel-hero h1 { max-width:650px; margin-top:13px; font-size:clamp(42px,4.7vw,68px); line-height:1.02; letter-spacing:-.045em; font-weight:800; }
+.padel-hero h1>span { display:block; color:var(--kt-accent-on-dark); }
+.padel-hero-description { max-width:450px; margin-top:25px; font-size:15px; line-height:1.85; color:#d4e6da; }
+.padel-hero-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:30px; }
+.padel-primary,.padel-secondary { display:inline-flex; align-items:center; justify-content:center; gap:12px; min-height:50px; padding:13px 23px; border-radius:8px; font-size:13px; font-weight:800; transition:transform .2s,background .2s; }
+.padel-primary { background:var(--kt-accent-on-dark); color:var(--kt-night); }
+.padel-primary:hover { background:#e2fc9a; transform:translateY(-2px); }
+.padel-secondary { border:1px solid #ffffff40; color:white; }
+.padel-secondary:hover { background:#ffffff10; transform:translateY(-2px); }
+.padel-how { display:inline-flex; align-items:center; gap:9px; margin-top:15px; min-height:44px; font-size:12px; color:#c1d7c9; }
+.padel-how:hover { color:white; }
+.padel-athletes { position:relative; height:555px; min-width:0; margin-left:-45px; margin-right:-30px; }
+.padel-athletes-halo { position:absolute; width:380px; height:380px; left:15%; top:45px; border-radius:50%; background:radial-gradient(circle,#a4ce6460,transparent 68%); }
+.padel-argentina { position:absolute; right:8px; top:37px; z-index:5; display:flex; align-items:center; gap:9px; font-size:9px; letter-spacing:.17em; color:#d7eac9; }
+.padel-argentina>span { width:22px; height:11px; background:linear-gradient(#86c7e5 33%,white 33%,white 66%,#86c7e5 66%); }
+.padel-athlete-stage { position:absolute; inset:20px -50px 70px -40px; overflow:hidden; mask-image:linear-gradient(to bottom,black 80%,transparent 100%); }
+.padel-athlete { position:absolute; width:600px; height:auto; max-width:none; top:20px; left:50%; transform-origin:50% 100%; transition:transform .75s cubic-bezier(.22,1,.36,1),opacity .6s,filter .6s; mask-image:linear-gradient(90deg,transparent 10%,black 28%,black 67%,transparent 93%); }
+.padel-athlete-position-0 { z-index:3; transform:translateX(-50%) translateY(8px) scale(1.05); filter:drop-shadow(-14px 8px 24px #021b2180); }
+.padel-athlete-position-1 { z-index:1; transform:translateX(-78%) translateY(-16px) scale(.77); opacity:.62; filter:saturate(.45); }
+.padel-athlete-position-2 { z-index:2; transform:translateX(-16%) translateY(5px) scale(.83); opacity:.7; filter:saturate(.6); }
+.padel-athlete-position-3 { z-index:0; transform:translateX(-50%) translateY(25px) scale(.62); opacity:0; }
+.padel-player-caption { position:absolute; bottom:77px; left:18%; z-index:5; display:flex; flex-direction:column; gap:4px; padding-left:13px; border-left:2px solid var(--kt-accent-on-dark); text-shadow:0 2px 15px #062b21; }
+.padel-player-caption>span:first-child { font-size:8px; font-weight:700; letter-spacing:.18em; color:var(--kt-accent-on-dark); }
+.padel-player-caption strong { font-size:27px; line-height:1.3; }
+.padel-player-caption>span:last-child { font-size:11px; color:#d4e6da; }
+.padel-player-picker { position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:max-content; display:flex; gap:4px; border-top:1px solid #ffffff25; padding-top:13px; }
+.padel-player-picker button { min-height:44px; padding:8px 13px; font-size:11px; font-weight:600; color:#c0d3c5; border-radius:5px; transition:background .2s,color .2s; cursor:pointer; }
+.padel-player-picker button[aria-pressed="true"] { color:var(--kt-night); background:var(--kt-accent-on-dark); }
+.padel-player-picker button:hover:not([aria-pressed="true"]) { background:#ffffff12; color:white; }
+.padel-hero-baseline { position:relative; max-width:1184px; margin:auto; display:flex; align-items:center; justify-content:space-between; gap:15px; border-top:1px solid #ffffff20; padding:19px 0; font-size:11px; color:#c3d9ca; }
+.padel-hero-baseline>span:last-child { display:flex; align-items:center; gap:14px; font-size:9px; letter-spacing:.15em; font-weight:700; }
+.padel-hero-baseline i { display:block; width:3px; height:3px; background:var(--kt-accent-on-dark); border-radius:50%; }
+.padel-brands { padding:30px 0 22px; background:var(--kt-bg-soft); border-bottom:1px solid var(--kt-border); overflow:hidden; }
+.padel-brands-heading { max-width:1184px; margin:auto; display:flex; justify-content:space-between; align-items:center; gap:15px; padding:0 24px; }
+.padel-brands .padel-eyebrow { color:var(--kt-ink-soft); font-size:9px; letter-spacing:.17em; }
+.padel-brands h2 { margin-top:6px; color:var(--kt-ink); font-size:24px; font-weight:750; letter-spacing:-.025em; }
+.padel-motion-toggle { display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px; min-width:44px; font-size:11px; color:var(--kt-ink-soft); cursor:pointer; }
+.padel-motion-toggle:hover { color:var(--kt-ink); }
+.padel-brands-window { max-width:1440px; margin:14px auto 0; overflow:hidden; mask-image:linear-gradient(90deg,transparent,black 8%,black 92%,transparent); }
+.padel-brands-track { display:flex; width:max-content; animation:padel-brands-flow 32s linear infinite; }
+.padel-brands-group { display:flex; flex:none; align-items:center; list-style:none; padding:0; margin:0; }
+.padel-brands-group li { display:flex; align-items:center; justify-content:center; width:220px; height:100px; padding:20px 32px; position:relative; background:var(--kt-bg-soft); }
+.padel-brands-group li::after { content:""; position:absolute; right:0; width:1px; height:24px; background:var(--kt-border); }
+.padel-brands-group img { width:145px; height:65px; object-fit:contain; filter:grayscale(1); mix-blend-mode:multiply; opacity:.75; transition:filter .3s,opacity .3s; }
+.padel-brands-group img.compact { width:95px; }
+.padel-brands-group img.monochrome { filter:brightness(0); }
+.padel-brands-window:hover .padel-brands-track,.padel-brands-window:focus-within .padel-brands-track,.padel-brands-window[data-paused="true"] .padel-brands-track { animation-play-state:paused; }
+.padel-brands-group li:hover img { filter:none; opacity:1; }
+.padel-brands-group li:hover img.monochrome { filter:brightness(0); }
+.padel-feature-photo { background:radial-gradient(ellipse at 50% 100%,#55854a,var(--kt-night) 75%); }
+.padel-feature-photo img { object-fit:contain; object-position:center top; transform:scale(1.35); transform-origin:50% 0; mask-image:linear-gradient(90deg,transparent,black 23%,black 75%,transparent); }
+.padel-home :is(a,button):focus-visible { outline:3px solid var(--kt-accent-comercial); outline-offset:4px; }
+@keyframes padel-enter { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes padel-brands-flow { to { transform:translateX(-50%); } }
+@media(min-width:1440px) { .padel-hero-inner { min-height:735px; } }
+@media(max-width:1100px) {
+  .padel-hero-inner { padding:50px 32px 35px; min-height:650px; }
+  .padel-athletes { margin-left:-40px; margin-right:-10px; height:520px; }
+  .padel-athlete { width:540px; }
+  .padel-player-caption { left:12%; bottom:85px; }
+  .padel-player-picker button { padding-inline:10px; }
+  .padel-hero-baseline { margin-inline:32px; }
+}
+@media(max-width:767px) {
+  .padel-hero-inner { display:flex; flex-direction:column; padding:38px 24px 14px; min-height:0; align-items:stretch; }
+  .padel-hero-copy { padding-bottom:0; }
+  .padel-eyebrow { font-size:8px; letter-spacing:.17em; }
+  .padel-hero-kicker { margin-top:20px; font-size:11px; }
+  .padel-hero h1 { font-size:clamp(39px,8.5vw,58px); max-width:580px; }
+  .padel-hero-description { margin-top:18px; font-size:13px; line-height:1.75; max-width:470px; }
+  .padel-hero-actions { margin-top:22px; gap:10px; }
+  .padel-primary,.padel-secondary { padding:12px 16px; font-size:12px; min-height:48px; gap:8px; }
+  .padel-how { margin-top:8px; }
+  .padel-athletes { height:390px; margin:-2px -12px 0; }
+  .padel-hero-word { top:auto; bottom:185px; right:-10px; font-size:150px; }
+  .padel-court { left:15%; top:45%; }
+  .padel-athletes-halo { top:0; left:5%; height:300px; width:90%; }
+  .padel-argentina { top:8px; right:12px; font-size:7px; }
+  .padel-athlete-stage { top:8px; left:-25px; right:-25px; bottom:60px; }
+  .padel-athlete { width:430px; top:0; }
+  .padel-athlete-position-0 { transform:translateX(-50%) translateY(8px) scale(1.08); }
+  .padel-player-caption { bottom:67px; left:12%; }
+  .padel-player-caption strong { font-size:22px; }
+  .padel-player-caption>span:last-child { font-size:10px; }
+  .padel-player-picker { bottom:0; padding-top:9px; gap:2px; }
+  .padel-player-picker button { font-size:10px; padding-inline:12px; }
+  .padel-hero-baseline { margin-inline:24px; padding-block:16px; }
+  .padel-hero-baseline>span:first-child { font-size:10px; max-width:160px; }
+  .padel-hero-baseline>span:last-child { font-size:7px; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
+  .padel-brands { padding-top:25px; padding-bottom:14px; }
+  .padel-brands h2 { font-size:21px; }
+  .padel-brands-group li { width:170px; height:85px; padding:16px 28px; }
+  .padel-brands-group img { width:120px; height:54px; }
+  .padel-brands-group img.compact { width:78px; }
+}
+@media(max-width:359px) {
+  .padel-hero-inner { padding-inline:20px; }
+  .padel-hero h1 { font-size:37px; }
+  .padel-primary,.padel-secondary { padding-inline:12px; font-size:11px; }
+  .padel-player-picker button { padding-inline:9px; }
+  .padel-motion-toggle>span { display:none; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .padel-home *, .padel-home *::before, .padel-home *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
+  .padel-brands-window { overflow-x:auto; mask-image:none; }
+  .padel-brands-group[aria-hidden="true"] { display:none; }
+  .padel-motion-toggle { display:none; }
+}

@@ -6,42 +6,14 @@ import { iconoHome } from "../../controls/config/home_iconos.js";
 import { brandConfig } from "../../config/brand_config.js";
 import { HOME_TEXTOS_DEFAULT, HOME_COMO_FUNCIONA, HOME_PILARES, HOME_CONTACTOS } from "../../config/home_config.js";
 import HomeCarousel from "./home_carousel.jsx";
+import HomeHero from "./home_hero.jsx";
+import MarcasCarousel from "./marcas_carousel.jsx";
+import { JUGADORES_HOME } from "./home_media.js";
+import "./home_visual.css";
 
 const esPlaceholder = (v) => /^\[.*\]$/.test(String(v ?? "").trim());
 
-const marcasPadel = [
-  { titulo: "Palas que marcan el juego", nombres: ["BULLPADEL", "NOX", "HEAD"] },
-  { titulo: "Rendimiento dentro y fuera de la pista", nombres: ["adidas", "Wilson", "Babolat"] },
-  { titulo: "El equipamiento de cada punto", nombres: ["Siux", "ASICS", "StarVie"] },
-];
-
-const referentesArgentinos = [
-  {
-    categoria: "El Mozart de Catamarca",
-    nombre: "Agustín Tapia",
-    imagen: "https://upload.wikimedia.org/wikipedia/commons/6/6c/Agustin-tapia.jpg",
-    descripcionImagen: "Agustín Tapia, jugador argentino de pádel",
-    credito: "Daniel Luque Jiménez · CC BY-SA 4.0",
-    fuente: "https://commons.wikimedia.org/wiki/File:Agustin-tapia.jpg",
-  },
-  {
-    categoria: "Una referente argentina",
-    nombre: "Delfina Brea",
-    imagen: "https://images.pexels.com/photos/35248259/pexels-photo-35248259.jpeg?auto=compress&cs=tinysrgb&w=900",
-    descripcionImagen: "Jugadora de pádel en una cancha; foto ilustrativa, no es Delfina Brea",
-    credito: "Foto ilustrativa · Pexels",
-    fuente: "https://www.pexels.com/photo/woman-playing-padel-tennis-indoors-with-focus-35248286/",
-    ilustrativa: true,
-  },
-  {
-    categoria: "El chaqueño de revés potente",
-    nombre: "Franco Stupaczuk",
-    imagen: "https://upload.wikimedia.org/wikipedia/commons/b/b1/Stupaczuk_%28cropped%29.jpg",
-    descripcionImagen: "Franco Stupaczuk, jugador argentino de pádel",
-    credito: "Harpagornis · CC BY 4.0",
-    fuente: "https://commons.wikimedia.org/wiki/File:Stupaczuk_(cropped).jpg",
-  },
-];
+const referentesArgentinos = JUGADORES_HOME;
 
 const referentePorPilar = {
   zonas: referentesArgentinos[0],
@@ -63,89 +35,9 @@ export default function HomePage() {
     .filter((a) => a.slides.length > 0);
 
   return (
-    <div className="kt-body min-h-screen bg-white text-(--kt-ink)">
-      {/* ── HERO ── */}
-      <section className="relative isolate flex min-h-[620px] items-center overflow-hidden bg-(--kt-night) px-6 py-16 text-white sm:min-h-[680px] sm:py-20">
-        <img
-          src="https://images.pexels.com/photos/38155778/pexels-photo-38155778/free-photo-of-indoor-padel-tennis-courts-with-blue-surface.jpeg?auto=compress&cs=tinysrgb&w=1800"
-          alt=""
-          fetchPriority="high"
-          className="absolute inset-0 h-full w-full object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-linear-to-r from-[#062F22]/95 via-[#073D2B]/75 to-[#073D2B]/25" />
-        <div className="pointer-events-none absolute -right-36 -top-40 h-120 w-120 rounded-full border border-[#D2F36B]/25" />
-        <div className="pointer-events-none absolute -right-20 -top-24 h-88 w-88 rounded-full border border-white/20" />
-        <div className="relative mx-auto w-full max-w-6xl">
-          <div className="relative z-10 max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#D2F36B]/45 bg-[#073D2B]/50 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#D2F36B] backdrop-blur-sm sm:text-xs">
-              <span className="h-2 w-2 rounded-full bg-[#D2F36B] shadow-[0_0_14px_#D2F36B]" />
-              La pasión se juega en equipo
-            </span>
-            <div className="mt-4">
-              <SectionKicker claro>{texto("hero_kicker", HOME_TEXTOS_DEFAULT.hero_kicker)}</SectionKicker>
-            </div>
-            <h1 className="kt-display mt-5 max-w-3xl text-4xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
-              {texto("hero_titulo", HOME_TEXTOS_DEFAULT.hero_titulo)}{" "}
-              <span className="text-(--kt-accent-on-dark)">{texto("hero_titulo_resaltado", HOME_TEXTOS_DEFAULT.hero_titulo_resaltado)}</span>
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-white/85 sm:text-lg">
-              {texto("hero_subtitulo", HOME_TEXTOS_DEFAULT.hero_subtitulo)}
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link to="/register" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-(--kt-accent-comercial) px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-(--kt-accent-comercial-hover)">
-                {texto("hero_cta_primario", HOME_TEXTOS_DEFAULT.hero_cta_primario)} <ArrowRight size={18} aria-hidden="true" />
-              </Link>
-              <a href="#como-funciona" className="inline-flex min-h-11 items-center text-sm font-semibold text-white/85 underline-offset-4 hover:underline">
-                {texto("hero_cta_secundario", HOME_TEXTOS_DEFAULT.hero_cta_secundario)}
-              </a>
-            </div>
-          </div>
-        </div>
-        <div className="absolute bottom-7 right-6 hidden items-center gap-3 text-white/85 sm:flex lg:right-12">
-          <span className="h-px w-12 bg-[#D2F36B]" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Tu cancha, tus reglas</span>
-        </div>
-      </section>
-
-      <section aria-label="Marcas reconocidas de pádel" className="overflow-hidden bg-[#EAF2D8] px-6 py-10 sm:py-14">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <SectionKicker>En cada punto</SectionKicker>
-              <h2 className="kt-display mt-2 text-2xl font-bold leading-tight text-(--kt-ink) sm:text-3xl">
-                El universo del pádel
-              </h2>
-            </div>
-            <p className="max-w-sm text-xs leading-relaxed text-[var(--kt-ink-soft)] sm:text-right sm:text-sm">
-              Marcas que acompañan a quienes viven el juego. Mencionadas con fines informativos, sin afiliación comercial.
-            </p>
-          </div>
-          <HomeCarousel
-            items={marcasPadel}
-            anchoItem="w-full"
-            renderItem={(slide, index) => (
-              <div className="relative flex min-h-44 items-center overflow-hidden rounded-[1.75rem] bg-(--kt-night) px-6 py-8 text-white shadow-xl sm:min-h-52 sm:px-12">
-                <span className="pointer-events-none absolute -right-8 -top-24 h-64 w-64 rounded-full border border-[#D2F36B]/20" />
-                <span className="pointer-events-none absolute -right-2 -top-16 h-48 w-48 rounded-full border border-white/10" />
-                <div className="relative z-10 w-full">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#D2F36B]">Selección MiPadel · 0{index + 1}</p>
-                  <h3 className="kt-display mt-2 text-xl font-bold sm:text-2xl">{slide.titulo}</h3>
-                  <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 sm:gap-x-14">
-                    {slide.nombres.map((marca) => (
-                      <span key={marca} className="kt-display text-xl font-extrabold tracking-tight text-white sm:text-3xl">
-                        {marca}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <span aria-hidden="true" className="absolute bottom-0 right-5 kt-display text-8xl font-black leading-none text-white/5 sm:right-10 sm:text-9xl">
-                  P
-                </span>
-              </div>
-            )}
-          />
-        </div>
-      </section>
+    <div className="padel-home kt-body min-h-screen bg-white text-(--kt-ink)">
+      <HomeHero texto={texto} />
+      <MarcasCarousel />
 
       {/* ── PILARES CON IMÁGENES (editables desde /admin/home-config) ── */}
       <section id="pilares" aria-labelledby="pilares-titulo" className="relative isolate overflow-hidden bg-(--kt-night) px-6 py-14 sm:py-20">
@@ -174,17 +66,17 @@ export default function HomePage() {
                   key={id}
                   className="group flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-white shadow-xl shadow-black/15 transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
                 >
-                  <div className="relative h-52 overflow-hidden bg-(--kt-petrol) sm:h-60">
+                  <div className="padel-feature-photo relative h-52 overflow-hidden sm:h-60">
                     <img
                       src={referente.imagen}
                       alt={referente.descripcionImagen}
                       loading="lazy"
                       decoding="async"
-                      className="h-full w-full object-cover object-top transition duration-700 group-hover:scale-105"
+                      className="h-full w-full transition duration-700"
                     />
                     <div className="absolute inset-0 bg-linear-to-t from-[#062F22]/90 via-[#062F22]/10 to-transparent" />
                     <span className="absolute left-4 top-4 rounded-full border border-white/40 bg-[#073D2B]/70 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
-                      {referente.ilustrativa ? "Imagen ilustrativa" : "Referente del pádel"}
+                      Referente del pádel
                     </span>
                     <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5">
                       <div>
@@ -207,10 +99,7 @@ export default function HomePage() {
                     </div>
                     <h3 className="kt-display mt-5 text-xl font-bold text-[var(--kt-ink)]">{titulo}</h3>
                     <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--kt-ink-soft)]">{cuerpo}</p>
-                    <p className="mt-5 border-t border-[var(--kt-border)] pt-3 text-[10px] leading-relaxed text-[var(--kt-ink-soft)]">
-                      {referente.credito}
-                      {referente.ilustrativa && " · La imagen no retrata a Delfina Brea."}
-                    </p>
+
                   </div>
                 </article>
               );
@@ -337,6 +226,16 @@ export default function HomePage() {
           </div>
         </div>
       </section>}
+
+      <div className="border-t border-(--kt-border) bg-(--kt-bg-soft) px-6 py-4">
+        <details className="mx-auto max-w-5xl text-xs text-(--kt-ink-soft)">
+          <summary className="cursor-pointer py-2 font-semibold">Créditos de imágenes</summary>
+          <p className="mt-2 leading-relaxed">Fotografías de referentes argentinos: Premier Padel.</p>
+          <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+            {referentesArgentinos.map((p) => <li key={p.id}><a href={p.fuente} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-4">{p.nombre}</a></li>)}
+          </ul>
+        </details>
+      </div>
 
       {/* ── FOOTER CTA (editable desde /admin/home-config) ── */}
       <section className="relative overflow-hidden border-t border-[var(--kt-border)] bg-linear-to-br from-[var(--kt-petrol)] to-(--kt-teal-700) py-12 px-6 text-center text-white">
