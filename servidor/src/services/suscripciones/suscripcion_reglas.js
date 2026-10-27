@@ -103,3 +103,34 @@ function validarNota(nota) {
   if (typeof nota !== "string" || nota.trim().length > 300) return { error: "La nota puede tener hasta 300 caracteres." };
   return { valor: nota.trim() || null };
 }
+
+// ── Transferencias ──────────────────────────────────────────────────────────
+
+/** Formato real del comprobante por sus primeros bytes (no se confía en el nombre ni en el tipo que manda el navegador). */
+export function detectarFormatoComprobante(buffer) {
+  if (!buffer || buffer.length < 12) return null;
+  const empieza = (...bytes) => bytes.every((b, i) => buffer[i] === b);
+  if (empieza(0xff, 0xd8, 0xff)) return "jpg";
+  if (empieza(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) return "png";
+  if (buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") return "webp";
+  if (buffer.toString("ascii", 0, 5) === "%PDF-") return "pdf";
+  return null;
+}
+
+/** Comprobante + nota opcional del aviso de transferencia. */
+export function validarAvisoTransferencia({ archivo, nota }, { maxBytes, formatos }) {
+  if (!archivo?.buffer?.length) return { error: "Adjuntá el comprobante de la transferencia." };
+  if (archivo.buffer.length > maxBytes) return { error: `El comprobante puede pesar hasta ${Math.round(maxBytes / 1024 / 1024)} MB.` };
+  const formato = detectarFormatoComprobante(archivo.buffer);
+  if (!formato || !formatos.includes(formato)) return { error: "El comprobante tiene que ser una foto (JPG, PNG o WEBP) o un PDF." };
+  const n = validarNota(nota);
+  if (n.error) return n;
+  return { datos: { formato, nota: n.valor } };
+}
+
+/** Motivo obligatorio al rechazar: lo lee el organizador. */
+export function validarRechazo(body) {
+  const motivo = typeof body?.motivo === "string" ? body.motivo.trim() : "";
+  if (motivo.length < 5 || motivo.length > 300) return { error: "Escribí el motivo del rechazo (entre 5 y 300 caracteres)." };
+  return { datos: { motivo } };
+}

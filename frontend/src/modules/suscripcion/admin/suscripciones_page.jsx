@@ -14,9 +14,10 @@ import InputField from "../../../controls/ui/input_field.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
 import Pagination from "../../../controls/ui/pagination.jsx";
 import SearchField from "../../../controls/ui/search_field.jsx";
-import { getSuscripciones, getPagosDeUsuario, extenderSuscripcion, fijarVencimientoSuscripcion } from "../../../api/suscripcion_api.js";
+import { getSuscripciones, getPagosDeUsuario, extenderSuscripcion, fijarVencimientoSuscripcion, getTransferencias } from "../../../api/suscripcion_api.js";
 import { formatearFechaAR } from "../../../utils/formatear_fecha.js";
-import { ESTADOS_PLAN, ORIGENES_PAGO, ESTADOS_PAGO, formatearPesos, formatearMomento } from "../estado_plan.js";
+import { ESTADOS_PLAN, ORIGENES_PAGO, ESTADOS_PAGO, formatearPesos, formatearMomento, claveTransferencias } from "../estado_plan.js";
+import TransferenciasPanel from "./transferencias_panel.jsx";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const mensajeDe = (error, porDefecto) => error?.response?.data?.mensaje || porDefecto;
@@ -33,7 +34,35 @@ const esquemaFijar = z.object({
   nota,
 });
 
+const FILTRO_PENDIENTES = { estado: "pendiente", page: 1 };
+
 export default function SuscripcionesPage() {
+  const [vista, setVista] = useState("organizadores");
+  // Misma consulta que la primera página de la pestaña: el número sale gratis de la caché.
+  const pendientes = useQuery({ queryKey: claveTransferencias(FILTRO_PENDIENTES), queryFn: () => getTransferencias(FILTRO_PENDIENTES) });
+  const cantidad = pendientes.data?.pendientes ?? 0;
+  const pestanias = [["organizadores", "Organizadores"], ["transferencias", `Transferencias${cantidad ? ` (${cantidad})` : ""}`]];
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-4 p-3 sm:p-6">
+      <div>
+        <h1 className="kt-display text-2xl font-bold text-(--kt-ink)">Suscripciones</h1>
+        <p className="text-sm text-(--kt-ink-soft)">Organizadores, vencimientos y pagos. Las transferencias se revisan acá; las extensiones manuales sirven para cortesías o correcciones.</p>
+      </div>
+      <div role="tablist" aria-label="Secciones de suscripciones" className="flex gap-1 border-b border-slate-200">
+        {pestanias.map(([codigo, etiqueta]) => (
+          <button key={codigo} type="button" role="tab" aria-selected={vista === codigo} onClick={() => setVista(codigo)}
+            className={`-mb-px min-h-11 border-b-2 px-4 text-sm font-semibold ${vista === codigo ? "border-(--kt-petrol) text-(--kt-ink)" : "border-transparent text-(--kt-ink-soft) hover:text-(--kt-ink)"}`}>
+            {etiqueta}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel">{vista === "organizadores" ? <OrganizadoresPanel /> : <TransferenciasPanel />}</div>
+    </div>
+  );
+}
+
+function OrganizadoresPanel() {
   const { usuario } = useAuth();
   const puedeGestionar = tienePermiso(usuario, "suscripciones.gestionar");
   const [filtros, setFiltros] = useState({ busqueda: "", estado: "", page: 1, limit: 20 });
@@ -64,12 +93,7 @@ export default function SuscripcionesPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 p-3 sm:p-6">
-      <div>
-        <h1 className="kt-display text-2xl font-bold text-(--kt-ink)">Suscripciones</h1>
-        <p className="text-sm text-(--kt-ink-soft)">Organizadores, vencimientos y pagos. Las extensiones manuales sirven para transferencias, cortesías o correcciones.</p>
-      </div>
-
+    <div className="space-y-4">
       <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
         <FiltroEstado activo={!filtros.estado} onClick={() => cambiar({ estado: "" })}>Todos</FiltroEstado>
         {Object.entries(ESTADOS_PLAN).map(([codigo, { etiqueta }]) => (

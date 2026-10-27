@@ -6,10 +6,10 @@ export const ESTADOS_PLAN = {
   vencido: { etiqueta: "Vencido", clase: "bg-red-50 text-red-800 ring-red-200" },
 };
 
-export const ORIGENES_PAGO = { mercadopago: "MercadoPago", manual: "Extensión manual", ajuste: "Ajuste de fecha" };
+export const ORIGENES_PAGO = { mercadopago: "MercadoPago", transferencia: "Transferencia", manual: "Extensión manual", ajuste: "Ajuste de fecha" };
 
 export const ESTADOS_PAGO = {
-  aprobado: "Aprobado", pendiente: "Pendiente", rechazado: "Rechazado",
+  aprobado: "Aprobado", pendiente: "En revisión", rechazado: "Rechazado",
   monto_insuficiente: "Monto distinto al precio", sin_plan: "Sin plan",
 };
 
@@ -19,3 +19,6 @@ export const formatearPesos = (monto) => (monto == null ? "—" : pesos.format(N
 // creado_en es un instante (UTC): se muestra el día que era en Argentina.
 const diaArgentina = new Intl.DateTimeFormat("es-AR", { timeZone: "America/Argentina/Buenos_Aires", day: "2-digit", month: "2-digit", year: "numeric" });
 export const formatearMomento = (instante) => (instante ? diaArgentina.format(new Date(instante)) : "");
+
+// Clave de las transferencias del panel: la pestaña cuenta las pendientes con la misma consulta.
+export const claveTransferencias = (filtros) => ["suscripciones", "transferencias", filtros];

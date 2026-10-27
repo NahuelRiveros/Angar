@@ -5,7 +5,7 @@ import {
   Sexo, TipoDocumento, TipoPersona, Rol, Modulo, HomeArea,
   Permiso, Persona, HomeContenido, RolPermiso, Usuario,
   UsuarioRol, BannerAnuncio, HomeTexto, HomePilar, HomeContacto,
-  Suscripcion, PagoSuscripcion,
+  Suscripcion, PagoSuscripcion, Torneo, TorneoCategoria, TorneoPremio, Inscripcion, Zona, Partido,
 } from "../models/index.js";
 
 /**
@@ -90,6 +90,12 @@ async function sincronizar_modelos() {
     UsuarioRol,      // usuario_rol → usuario, rol
     Suscripcion,     // suscripcion → usuario
     PagoSuscripcion, // pago_suscripcion → usuario
+    Torneo,          // torneo → usuario
+    TorneoCategoria, // torneo_categoria → torneo
+    TorneoPremio,    // torneo_premio → torneo_categoria
+    Zona,            // zona → torneo_categoria
+    Inscripcion,     // inscripcion → torneo, torneo_categoria, usuario, zona
+    Partido,         // partido → torneo_categoria, zona, inscripcion
   ];
 
   for (const modelo of MODELOS_COMPARTIDOS) {

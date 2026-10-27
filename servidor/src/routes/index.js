@@ -11,6 +11,8 @@ import { homeRouter } from "./home/home_router.js";
 import { ubicacionRouter } from "./ubicacion/ubicacion_router.js";
 import { bannerAnuncioRouter } from "./sistema/banner_anuncio_router.js";
 import { uploadRouter } from "./upload_router.js";
+import { torneoRouter } from "./torneos/torneo_router.js";
+import { inscripcionJugadorRouter, torneoPublicoRouter } from "./torneos/jugador_router.js";
 
 const router = Router();
 
@@ -54,5 +56,8 @@ router.use("/home",  homeRouter);                     // ← contenido configura
 router.use("/ubicacion", ubicacionRouter);            // ← provincia/departamento/localidad (público, sin auth)
 router.use("/banner", bannerAnuncioRouter);           // ← cinta de anuncios (GET público, gestión solo super_admin)
 router.use("/upload", uploadRouter);                  // ← subida genérica de imágenes (Cloudinary)
+router.use("/torneos", torneoRouter);                // ← torneos del organizador (categorías, reglas y premios)
+router.use("/inscripciones", inscripcionJugadorRouter); // ← el jugador se anota y ve sus inscripciones
+router.use("/publico/torneos", torneoPublicoRouter);    // ← torneos publicados (sin cuenta)
 
 export default router;

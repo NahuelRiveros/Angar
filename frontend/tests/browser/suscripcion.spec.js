@@ -1,9 +1,12 @@
+import { Buffer } from "node:buffer";
 import { test, expect } from "@playwright/test";
 import { permisosConfig, permisosEfectivos } from "../../../permisos_config.js";
 
 const porDefecto = (rol) => permisosConfig.permisos.filter((p) => p.porDefecto.includes(rol)).map((p) => p.codigo);
 const conPermisos = (usuario) => ({ ...usuario, permisos: permisosEfectivos(usuario.roles, usuario.roles.flatMap(porDefecto)) });
-const PLAN_BASE = { es_organizador: true, fecha_inicio: "2026-10-01", en_prueba: false, vigente: true, precio_mensual: 15000, dias_por_pago: 30 };
+const SOLO_MP = { mercadopago: true, transferencia: null };
+const DATOS_BANCO = { titular: "Titular EJEMPLO", banco: "Banco EJEMPLO", cbu: "0000003100000000000001", alias: "MIPADEL.EJEMPLO", cuit: "20-00000000-0" };
+const PLAN_BASE = { es_organizador: true, fecha_inicio: "2026-10-01", en_prueba: false, vigente: true, precio_mensual: 15000, dias_por_pago: 30, medios_pago: SOLO_MP, ultima_transferencia: null };
 const PLAN_POR_VENCER = { ...PLAN_BASE, fecha_vencimiento: "2026-10-31", estado: "por_vencer", dias_restantes: 5, mensaje: "Tu plan vence en 5 días. Renovalo para no quedar en solo lectura." };
 
 async function noOverflow(page) {
@@ -18,7 +21,9 @@ async function entrarComo(page, roles, rutas = {}) {
     const request = route.request();
     const url = new URL(request.url());
     const clave = `${request.method()} ${url.pathname.replace(/^\/api/, "")}`;
-    pedidos.push({ clave, query: Object.fromEntries(url.searchParams), body: request.postDataJSON() });
+    let body = null;
+    try { body = request.postDataJSON(); } catch { /* multipart (comprobante): no es JSON */ }
+    pedidos.push({ clave, query: Object.fromEntries(url.searchParams), body });
     if (clave === "GET /auth/me") return route.fulfill({ json: { ok: true, usuario: conPermisos({ usuario_id: 8, nombre: "Eva", roles: typeof roles === "function" ? roles() : roles }) } });
     const respuesta = rutas[clave];
     if (respuesta) return typeof respuesta === "function" ? respuesta(route, request) : route.fulfill({ json: respuesta });
@@ -171,4 +176,113 @@ test("panel: un jugador que entra a /admin/suscripciones vuelve al inicio", asyn
   await entrarComo(page, ["jugador"]);
   await page.goto("/admin/suscripciones");
   await expect(page).not.toHaveURL(/\/admin\/suscripciones/);
+});
+
+const PDF = { name: "comprobante.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7\n%prueba\n") };
+
+test("transferencia: el organizador ve los datos, copia el CBU y envía el comprobante; queda en revisión", async ({ page, context }, info) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  let plan = { ...PLAN_POR_VENCER, medios_pago: { mercadopago: false, transferencia: DATOS_BANCO } };
+  const pedidos = await entrarComo(page, ["organizador"], {
+    "POST /suscripcion/transferencia": (route) => {
+      plan = { ...plan, ultima_transferencia: { id: 9, estado: "pendiente", motivo_rechazo: null, creado_en: "2026-10-27T15:00:00Z" } };
+      return route.fulfill({ status: 201, json: { ok: true, mensaje: "¡Recibimos tu comprobante! Te avisamos apenas confirmemos la transferencia.", data: { id: 9, estado: "pendiente" } } });
+    },
+  });
+  await page.route("**/api/suscripcion/mia", (route) => route.fulfill({ json: { ok: true, data: plan } }));
+  await page.goto("/mi-suscripcion");
+  await expect(page.getByRole("heading", { name: "Pagar por transferencia" })).toBeVisible();
+  await expect(page.getByText("MIPADEL.EJEMPLO")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Pagar con MercadoPago" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Copiar CBU / CVU" }).click();
+  await expect(page.getByText("CBU / CVU copiado")).toBeVisible();
+  if (info.project.name === "desktop") expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(DATOS_BANCO.cbu);
+
+  await page.getByRole("button", { name: "Enviar comprobante" }).click();
+  await expect(page.getByText("Adjuntá el comprobante.")).toBeVisible();
+  await page.getByLabel(/^Comprobante/).setInputFiles({ name: "notas.txt", mimeType: "text/plain", buffer: Buffer.from("hola") });
+  await page.getByRole("button", { name: "Enviar comprobante" }).click();
+  await expect(page.getByText("Tiene que ser una foto (JPG, PNG o WEBP) o un PDF.")).toBeVisible();
+  expect(pedidos.filter((p) => p.clave === "POST /suscripcion/transferencia")).toHaveLength(0);
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("transferencia.png"), fullPage: true });
+
+  await page.getByLabel(/^Comprobante/).setInputFiles(PDF);
+  await page.getByLabel("Nota (opcional)").fill("Desde la cuenta del club");
+  const envio = page.waitForRequest((r) => r.url().endsWith("/api/suscripcion/transferencia"));
+  await page.getByRole("button", { name: "Enviar comprobante" }).click();
+  const cuerpo = (await envio).postDataBuffer().toString("latin1");
+  expect(cuerpo).toContain(`name="comprobante"; filename="comprobante.pdf"`);
+  expect(cuerpo).toContain("Desde la cuenta del club");
+  await expect(page.getByText(/Recibimos tu comprobante del 27\/10\/2026/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Enviar comprobante" })).toHaveCount(0);
+});
+
+test("transferencia rechazada: el organizador ve el motivo y puede mandar otro comprobante", async ({ page }) => {
+  await entrarComo(page, ["organizador"], {
+    "GET /suscripcion/mia": { ok: true, data: { ...PLAN_POR_VENCER, medios_pago: { mercadopago: false, transferencia: DATOS_BANCO }, ultima_transferencia: { id: 4, estado: "rechazado", motivo_rechazo: "El monto no coincide", creado_en: "2026-10-20T15:00:00Z" } } },
+  });
+  await page.goto("/mi-suscripcion");
+  await expect(page.getByRole("alert")).toContainText("El monto no coincide");
+  await expect(page.getByRole("button", { name: "Enviar comprobante" })).toBeVisible();
+});
+
+test("sin datos bancarios ni MercadoPago, el organizador ve que tiene que escribirnos", async ({ page }) => {
+  await entrarComo(page, ["organizador"], { "GET /suscripcion/mia": { ok: true, data: { ...PLAN_POR_VENCER, medios_pago: { mercadopago: false, transferencia: null } } } });
+  await page.goto("/mi-suscripcion");
+  await expect(page.getByText("Los medios de pago todavía no están cargados")).toBeVisible();
+});
+
+const TRANSFERENCIAS = {
+  ok: true, page: 1, limit: 20, total: 2, totalPages: 1, pendientes: 2,
+  data: [
+    { id: 31, usuario_id: 5, estado: "pendiente", monto: "15000.00", nota: "Desde Galicia", motivo_rechazo: null, comprobante_formato: "pdf", creado_en: "2026-10-26T13:00:00Z", nombre: "Beto", apellido: "Pérez", email: "beto@example.test", fecha_vencimiento: "2026-10-20" },
+    { id: 32, usuario_id: 4, estado: "pendiente", monto: "15000.00", nota: null, motivo_rechazo: null, comprobante_formato: "jpg", creado_en: "2026-10-27T13:00:00Z", nombre: "Ana", apellido: "Gómez", email: "ana@example.test", fecha_vencimiento: "2026-12-10" },
+  ],
+};
+
+test("panel: el admin abre el comprobante, aprueba una transferencia y rechaza otra con motivo", async ({ page, context }, info) => {
+  const pedidos = await entrarComo(page, ["admin"], {
+    "GET /suscripcion/admin": LISTA,
+    "GET /suscripcion/admin/transferencias": TRANSFERENCIAS,
+    "GET /suscripcion/comprobantes/31": { ok: true, data: { url: "https://res.cloudinary.test/firmado/31.pdf", formato: "pdf" } },
+    "POST /suscripcion/admin/transferencias/31/aprobar": { ok: true, mensaje: "Transferencia aprobada: el plan vence el 2026-11-25.", data: {} },
+    "POST /suscripcion/admin/transferencias/32/rechazar": { ok: true, mensaje: "Transferencia rechazada. El organizador ve el motivo en su plan." },
+  });
+  await context.route("https://res.cloudinary.test/**", (route) => route.fulfill({ contentType: "text/plain", body: "comprobante" }));
+  await page.goto("/admin/suscripciones");
+  await page.getByRole("tab", { name: "Transferencias (2)" }).click();
+  await expect(page.getByText("“Desde Galicia”")).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("transferencias.png"), fullPage: true });
+
+  const tarjetaBeto = page.getByRole("listitem").filter({ hasText: "Beto Pérez" });
+  const pestania = context.waitForEvent("page");
+  await tarjetaBeto.getByRole("button", { name: "Ver comprobante" }).click();
+  await expect(await pestania).toHaveURL("https://res.cloudinary.test/firmado/31.pdf");
+
+  await tarjetaBeto.getByRole("button", { name: "Aprobar" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Aprobar" }).click();
+  await expect(page.getByText("Transferencia aprobada")).toBeVisible();
+
+  await page.getByRole("listitem").filter({ hasText: "Ana Gómez" }).getByRole("button", { name: "Rechazar" }).click();
+  const modal = page.getByRole("dialog", { name: /Rechazar · Ana Gómez/ });
+  await modal.getByRole("button", { name: "Rechazar transferencia" }).click();
+  await expect(modal.getByText("Contale el motivo")).toBeVisible();
+  await modal.getByLabel("Motivo").fill("No llegó el dinero");
+  await modal.getByRole("button", { name: "Rechazar transferencia" }).click();
+  await expect(page.getByText("Transferencia rechazada.")).toBeVisible();
+  expect(pedidos.filter((p) => p.clave.startsWith("POST")).map((p) => [p.clave, p.body])).toEqual([
+    ["POST /suscripcion/admin/transferencias/31/aprobar", null],
+    ["POST /suscripcion/admin/transferencias/32/rechazar", { motivo: "No llegó el dinero" }],
+  ]);
+});
+
+test("panel: soporte ve las transferencias y el comprobante, pero no aprueba ni rechaza", async ({ page }) => {
+  await entrarComo(page, ["soporte"], { "GET /suscripcion/admin": LISTA, "GET /suscripcion/admin/transferencias": TRANSFERENCIAS });
+  await page.goto("/admin/suscripciones");
+  await page.getByRole("tab", { name: /Transferencias/ }).click();
+  await expect(page.getByRole("button", { name: "Ver comprobante" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Aprobar" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Rechazar" })).toHaveCount(0);
 });

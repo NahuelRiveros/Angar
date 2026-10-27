@@ -1,8 +1,9 @@
 import {
   obtenerMiSuscripcion, empezarAOrganizar, historialPagos, crearPagoMercadoPago,
   procesarPagoMercadoPago, listarSuscripciones, extenderManual, fijarVencimiento, ESTADOS_FILTRABLES,
+  avisarTransferencia, enlaceComprobante, listarTransferencias, aprobarTransferencia, rechazarTransferencia,
 } from "../../services/suscripciones/suscripcion_service.js";
-import { validarExtensionManual, validarAjusteFecha } from "../../services/suscripciones/suscripcion_reglas.js";
+import { validarExtensionManual, validarAjusteFecha, validarRechazo } from "../../services/suscripciones/suscripcion_reglas.js";
 
 // Errores de negocio con status propio; el resto, 500 con mensaje genérico.
 function responderError(res, e, mensaje) {
@@ -98,4 +99,48 @@ export async function fijarController(req, res) {
     const data = await fijarVencimiento(usuarioId, datos, req.user.usuario_id);
     return res.json({ ok: true, mensaje: `Vencimiento fijado al ${datos.fecha}.`, data });
   } catch (e) { return responderError(res, e, "No pudimos cambiar el vencimiento."); }
+}
+
+// ── Transferencias ──────────────────────────────────────────────────────────
+
+const pagoIdValido = usuarioIdValido;
+
+export async function avisarTransferenciaController(req, res) {
+  try {
+    const pago = await avisarTransferencia(req.user.usuario_id, { archivo: req.file, nota: req.body?.nota });
+    return res.status(201).json({ ok: true, mensaje: "¡Recibimos tu comprobante! Te avisamos apenas confirmemos la transferencia.", data: { id: pago.id, estado: pago.estado } });
+  } catch (e) { return responderError(res, e, "No pudimos registrar tu transferencia."); }
+}
+
+export async function comprobanteController(req, res) {
+  const pagoId = pagoIdValido(req.params.pagoId);
+  if (!pagoId) return res.status(400).json({ ok: false, codigo: "ID_INVALIDO", mensaje: "Comprobante inválido." });
+  try {
+    return res.json({ ok: true, data: await enlaceComprobante(pagoId, req.user) });
+  } catch (e) { return responderError(res, e, "No pudimos abrir el comprobante."); }
+}
+
+export async function listarTransferenciasController(req, res) {
+  try {
+    return res.json({ ok: true, ...await listarTransferencias({ estado: req.query.estado, page: req.query.page, limit: req.query.limit }) });
+  } catch (e) { return responderError(res, e, "No pudimos listar las transferencias."); }
+}
+
+export async function aprobarTransferenciaController(req, res) {
+  const pagoId = pagoIdValido(req.params.pagoId);
+  if (!pagoId) return res.status(400).json({ ok: false, codigo: "ID_INVALIDO", mensaje: "Transferencia inválida." });
+  try {
+    const pago = await aprobarTransferencia(pagoId, req.user.usuario_id);
+    return res.json({ ok: true, mensaje: `Transferencia aprobada: el plan vence el ${pago.vencimiento_nuevo}.`, data: pago });
+  } catch (e) { return responderError(res, e, "No pudimos aprobar la transferencia."); }
+}
+
+export async function rechazarTransferenciaController(req, res) {
+  const pagoId = pagoIdValido(req.params.pagoId);
+  const { datos, error } = validarRechazo(req.body);
+  if (!pagoId || error) return res.status(400).json({ ok: false, codigo: "DATOS_INVALIDOS", mensaje: error ?? "Transferencia inválida." });
+  try {
+    await rechazarTransferencia(pagoId, datos, req.user.usuario_id);
+    return res.json({ ok: true, mensaje: "Transferencia rechazada. El organizador ve el motivo en su plan." });
+  } catch (e) { return responderError(res, e, "No pudimos rechazar la transferencia."); }
 }

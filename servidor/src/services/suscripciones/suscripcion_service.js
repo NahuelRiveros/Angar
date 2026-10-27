@@ -4,12 +4,23 @@ import { env } from "../../configuracion_servidor/env.js";
 import { Suscripcion, PagoSuscripcion, Rol, UsuarioRol, Usuario } from "../../models/index.js";
 import { normalizarPaginacion, armarPaginacion } from "../common/pagination.js";
 import { crearPreferencia, verificarPago } from "./mercadopago_service.js";
+import { subirArchivoPrivado, eliminarArchivoPrivado, enlaceArchivoPrivado } from "../common/upload_service.js";
+import { cobroConfig, transferenciaLista } from "../../../../cobro_config.js";
+import { tienePermiso } from "../../../../permisos_config.js";
 import {
   DIAS_PRUEBA, DIAS_POR_PAGO, DIAS_AVISO, hoyArgentina, sumarDias, vencimientoDePrueba,
-  nuevoVencimiento, calcularEstado, evaluarPagoMercadoPago,
+  nuevoVencimiento, calcularEstado, evaluarPagoMercadoPago, validarAvisoTransferencia,
 } from "./suscripcion_reglas.js";
 
 const error = (mensaje, status, codigo) => Object.assign(new Error(mensaje), { status, codigo });
+
+const mercadoPagoActivo = () => cobroConfig.mercadoPagoHabilitado && env.PRECIO_SUSCRIPCION_MENSUAL > 0 && Boolean(env.MP_ACCESS_TOKEN);
+
+/** Cómo puede pagar hoy un organizador: transferencia null = datos bancarios sin cargar. */
+const mediosDePago = () => ({
+  mercadopago: mercadoPagoActivo(),
+  transferencia: transferenciaLista() ? cobroConfig.transferencia : null,
+});
 
 function formatear(suscripcion, hoy = hoyArgentina()) {
   const { fecha_inicio, fecha_vencimiento, en_prueba } = suscripcion;
@@ -19,6 +30,7 @@ function formatear(suscripcion, hoy = hoyArgentina()) {
     ...calcularEstado({ fecha_vencimiento, en_prueba }, hoy),
     precio_mensual: env.PRECIO_SUSCRIPCION_MENSUAL,
     dias_por_pago: DIAS_POR_PAGO,
+    medios_pago: mediosDePago(),
   };
 }
 
@@ -27,7 +39,13 @@ export async function obtenerMiSuscripcion(usuarioId) {
   if (!suscripcion) {
     return { es_organizador: false, dias_prueba: DIAS_PRUEBA, precio_mensual: env.PRECIO_SUSCRIPCION_MENSUAL, dias_por_pago: DIAS_POR_PAGO };
   }
-  return formatear(suscripcion);
+  // La última transferencia dice si hay una en revisión o si la rechazaron (y por qué).
+  const ultimaTransferencia = await PagoSuscripcion.findOne({
+    where: { usuario_id: usuarioId, origen: "transferencia" },
+    attributes: ["id", "estado", "motivo_rechazo", "creado_en", "revisado_en"],
+    order: [["creado_en", "DESC"], ["id", "DESC"]],
+  });
+  return { ...formatear(suscripcion), ultima_transferencia: ultimaTransferencia };
 }
 
 /** Lo usa requireSuscripcionVigente: null si no es organizador. */
@@ -59,7 +77,7 @@ export async function empezarAOrganizar(usuarioId) {
 export async function historialPagos(usuarioId, limite = 24) {
   return PagoSuscripcion.findAll({
     where: { usuario_id: usuarioId },
-    attributes: ["id", "origen", "estado", "monto", "dias", "vencimiento_anterior", "vencimiento_nuevo", "nota", "creado_en"],
+    attributes: ["id", "origen", "estado", "monto", "dias", "vencimiento_anterior", "vencimiento_nuevo", "nota", "motivo_rechazo", "comprobante_formato", "creado_en"],
     order: [["creado_en", "DESC"], ["id", "DESC"]],
     limit: limite,
   });
@@ -68,7 +86,7 @@ export async function historialPagos(usuarioId, limite = 24) {
 export async function crearPagoMercadoPago(usuarioId) {
   const suscripcion = await Suscripcion.findOne({ where: { usuario_id: usuarioId } });
   if (!suscripcion) throw error("Primero activá tu cuenta de organizador.", 403, "NO_ES_ORGANIZADOR");
-  if (!(env.PRECIO_SUSCRIPCION_MENSUAL > 0) || !env.MP_ACCESS_TOKEN) {
+  if (!mercadoPagoActivo()) {
     throw error("Los pagos con MercadoPago todavía no están habilitados. Escribinos para renovar.", 503, "PAGOS_NO_CONFIGURADOS");
   }
   return crearPreferencia({ usuarioId, monto: env.PRECIO_SUSCRIPCION_MENSUAL, dias: DIAS_POR_PAGO });
@@ -132,6 +150,102 @@ export function fijarVencimiento(usuarioId, { fecha, nota }, adminId) {
     await s.update({ fecha_vencimiento: fecha, en_prueba: false, actualizado_en: new Date() }, { transaction: t });
     return { vencimiento_anterior: anterior, vencimiento_nuevo: fecha, dias: 0 };
   });
+}
+
+// ── Transferencias ──────────────────────────────────────────────────────────
+
+const PENDIENTE = { origen: "transferencia", estado: "pendiente" };
+const YA_PENDIENTE = "Ya tenés una transferencia en revisión. Te avisamos apenas la confirmemos.";
+
+/**
+ * El organizador avisa que transfirió y adjunta el comprobante. Queda pendiente hasta que
+ * el equipo lo revisa; una sola pendiente a la vez para no duplicar meses.
+ */
+export async function avisarTransferencia(usuarioId, { archivo, nota }, { subir = subirArchivoPrivado, borrar = eliminarArchivoPrivado } = {}) {
+  if (!transferenciaLista()) throw error("Los datos para transferir todavía no están cargados. Escribinos para renovar.", 503, "TRANSFERENCIA_NO_CONFIGURADA");
+  const { datos, error: invalido } = validarAvisoTransferencia({ archivo, nota }, cobroConfig.comprobante);
+  if (invalido) throw error(invalido, 400, "COMPROBANTE_INVALIDO");
+  if (!await Suscripcion.count({ where: { usuario_id: usuarioId } })) throw error("Primero activá tu cuenta de organizador.", 403, "NO_ES_ORGANIZADOR");
+  if (await PagoSuscripcion.count({ where: { usuario_id: usuarioId, ...PENDIENTE } })) throw error(YA_PENDIENTE, 409, "TRANSFERENCIA_PENDIENTE");
+
+  let subido;
+  try {
+    subido = await subir(archivo.buffer, { folder: "mipadel/comprobantes", public_id: `usuario_${usuarioId}_${Date.now()}` });
+  } catch (e) {
+    console.error("No se pudo guardar el comprobante:", e.message);
+    throw error("No pudimos guardar el comprobante. Probá de nuevo en unos minutos.", 503, "COMPROBANTE_NO_GUARDADO");
+  }
+  try {
+    return await sequelize.transaction(async (t) => {
+      // Bloquear el plan serializa dos avisos simultáneos del mismo organizador.
+      await Suscripcion.findOne({ where: { usuario_id: usuarioId }, transaction: t, lock: t.LOCK.UPDATE });
+      if (await PagoSuscripcion.count({ where: { usuario_id: usuarioId, ...PENDIENTE }, transaction: t })) throw error(YA_PENDIENTE, 409, "TRANSFERENCIA_PENDIENTE");
+      return PagoSuscripcion.create({
+        usuario_id: usuarioId, ...PENDIENTE, monto: env.PRECIO_SUSCRIPCION_MENSUAL || null, nota: datos.nota,
+        comprobante_id: subido.public_id, comprobante_formato: datos.formato,
+      }, { transaction: t });
+    });
+  } catch (e) {
+    // Sin registro en la base, el archivo quedaría huérfano en Cloudinary.
+    await borrar(subido.public_id).catch(() => {});
+    throw e;
+  }
+}
+
+const ESTADOS_TRANSFERENCIA = ["pendiente", "aprobado", "rechazado"];
+
+/** Transferencias para el panel: pendientes (las más viejas primero) o ya revisadas. */
+export async function listarTransferencias({ estado = "pendiente", page, limit } = {}) {
+  const pag = normalizarPaginacion({ page, limit, maxLimit: 50, defaultLimit: 20 });
+  const filtro = ESTADOS_TRANSFERENCIA.includes(estado) ? estado : "pendiente";
+  const orden = filtro === "pendiente" ? "ASC" : "DESC"; // de una lista fija, no del usuario
+  const filas = await sequelize.query(`
+    SELECT ps.id, ps.usuario_id, ps.estado, ps.monto, ps.nota, ps.motivo_rechazo, ps.comprobante_formato,
+           ps.dias, ps.vencimiento_nuevo, ps.creado_en, ps.revisado_en,
+           p.nombre, p.apellido, p.email, s.fecha_vencimiento, COUNT(*) OVER() AS total
+    FROM pago_suscripcion ps
+    JOIN usuario u ON u.id = ps.usuario_id
+    JOIN persona p ON p.id = u.persona_id
+    LEFT JOIN suscripcion s ON s.usuario_id = ps.usuario_id
+    WHERE ps.origen = 'transferencia' AND ps.estado = :estado
+    ORDER BY ps.creado_en ${orden}, ps.id
+    LIMIT :limite OFFSET :offset`, { replacements: { estado: filtro, limite: pag.limit, offset: pag.offset }, type: QueryTypes.SELECT });
+  const [{ pendientes }] = await sequelize.query(
+    "SELECT COUNT(*)::int AS pendientes FROM pago_suscripcion WHERE origen = 'transferencia' AND estado = 'pendiente'", { type: QueryTypes.SELECT });
+  const total = Number(filas[0]?.total ?? 0);
+  return { data: filas.map(({ total: _total, ...f }) => f), pendientes, ...armarPaginacion({ page: pag.page, limit: pag.limit, total }) };
+}
+
+async function revisarTransferencia(pagoId, adminId, resolver) {
+  return sequelize.transaction(async (t) => {
+    const pago = await PagoSuscripcion.findOne({ where: { id: pagoId, origen: "transferencia" }, transaction: t, lock: t.LOCK.UPDATE });
+    if (!pago) throw error("No encontramos esa transferencia.", 404, "TRANSFERENCIA_INEXISTENTE");
+    if (pago.estado !== "pendiente") throw error("Esa transferencia ya fue revisada.", 409, "TRANSFERENCIA_REVISADA");
+    const cambios = await resolver(pago, t);
+    await pago.update({ ...cambios, registrado_por: adminId, revisado_en: new Date(), actualizado_en: new Date() }, { transaction: t });
+    return pago;
+  });
+}
+
+export function aprobarTransferencia(pagoId, adminId) {
+  return revisarTransferencia(pagoId, adminId, async (pago, t) => {
+    const suscripcion = await Suscripcion.findOne({ where: { usuario_id: pago.usuario_id }, transaction: t, lock: t.LOCK.UPDATE });
+    if (!suscripcion) throw error("Esa persona no tiene plan de organizador.", 404, "SIN_PLAN");
+    return { estado: "aprobado", ...await aplicarDias(suscripcion, DIAS_POR_PAGO, hoyArgentina(), t) };
+  });
+}
+
+export function rechazarTransferencia(pagoId, { motivo }, adminId) {
+  return revisarTransferencia(pagoId, adminId, async () => ({ estado: "rechazado", motivo_rechazo: motivo }));
+}
+
+/** Enlace que vence a los 5 minutos; solo para el dueño o el equipo con suscripciones.ver. */
+export async function enlaceComprobante(pagoId, usuario, { enlazar = enlaceArchivoPrivado } = {}) {
+  const pago = await PagoSuscripcion.findByPk(pagoId, { attributes: ["usuario_id", "comprobante_id", "comprobante_formato"] });
+  const autorizado = pago && (pago.usuario_id === usuario.usuario_id || tienePermiso(usuario, "suscripciones.ver"));
+  // Mismo 404 exista o no: no revela comprobantes ajenos.
+  if (!autorizado || !pago.comprobante_id) throw error("No encontramos ese comprobante.", 404, "COMPROBANTE_INEXISTENTE");
+  return { url: enlazar(pago.comprobante_id, pago.comprobante_formato), formato: pago.comprobante_formato };
 }
 
 // Estados como condiciones SQL fijas (allowlist): el filtro elige una clave, nunca escribe SQL.

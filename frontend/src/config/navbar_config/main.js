@@ -1,4 +1,4 @@
-import { Home } from "lucide-react";
+import { Home, Trophy, CalendarDays } from "lucide-react";
 import { accountLinks } from "./account.js";
 import { brandConfig } from "../brand_config.js";
 import { panelGestionLink } from "./panel_gestion.js";
@@ -27,6 +27,8 @@ export const navbar_config = {
 
   links: [
     { label: "Inicio", to: "/", exact: true, icon: Home },
+    { label: "Torneos", to: "/torneos", icon: CalendarDays },
+    { label: "Mis torneos", to: "/mis-torneos", requiereAuth: true, roles: ["organizador"], icon: Trophy },
     panelGestionLink,
   ],
 

@@ -38,6 +38,14 @@ import { BannerAnuncio }    from "./sistema/banner_anuncio.js";
 import { Suscripcion }      from "./suscripcion/suscripcion.js";
 import { PagoSuscripcion }  from "./suscripcion/pago_suscripcion.js";
 
+// ── torneos/ — torneos de cada organizador, sus categorías y premios ─────────
+import { Torneo }           from "./torneos/torneo.js";
+import { TorneoCategoria }  from "./torneos/torneo_categoria.js";
+import { TorneoPremio }     from "./torneos/torneo_premio.js";
+import { Inscripcion }      from "./torneos/inscripcion.js";
+import { Zona }             from "./torneos/zona.js";
+import { Partido }          from "./torneos/partido.js";
+
 // Cada entrada es una asociación explícita y unidireccional — igual que antes,
 // solo que ahora es un array de datos en vez de llamadas sueltas. aplicarRelaciones
 // valida cada una (modelo importado, alias no duplicado, belongsToMany con
@@ -78,6 +86,18 @@ aplicarRelaciones([
   { tipo: "belongsTo", from: Suscripcion,     to: Usuario,         foreignKey: "usuario_id", as: "usuario" },
   { tipo: "hasMany",   from: Usuario,         to: PagoSuscripcion, foreignKey: "usuario_id", as: "pagos_suscripcion" },
   { tipo: "belongsTo", from: PagoSuscripcion, to: Usuario,         foreignKey: "registrado_por", as: "registrado_por_usuario" },
+
+  // ─── Torneo → categorías → premios ──────────────────────────────────────
+  { tipo: "belongsTo", from: Torneo,          to: Usuario,         foreignKey: "organizador_id", as: "organizador" },
+  { tipo: "hasMany",   from: Torneo,          to: TorneoCategoria, foreignKey: "torneo_id", as: "categorias" },
+  { tipo: "belongsTo", from: TorneoCategoria, to: Torneo,          foreignKey: "torneo_id", as: "torneo" },
+  { tipo: "hasMany",   from: TorneoCategoria, to: TorneoPremio,    foreignKey: "categoria_id", as: "premios" },
+
+  // ─── Inscripciones, zonas y partidos de una categoría ────────────────────
+  { tipo: "belongsTo", from: Inscripcion, to: Torneo,          foreignKey: "torneo_id", as: "torneo" },
+  { tipo: "belongsTo", from: Inscripcion, to: TorneoCategoria, foreignKey: "categoria_id", as: "categoria" },
+  { tipo: "hasMany",   from: Zona,        to: Inscripcion,     foreignKey: "zona_id", as: "parejas" },
+  { tipo: "hasMany",   from: Zona,        to: Partido,         foreignKey: "zona_id", as: "partidos" },
 ]);
 
 export {
@@ -87,4 +107,5 @@ export {
   HomeArea, HomeContenido, HomeTexto, HomePilar, HomeContacto,
   BannerAnuncio,
   Suscripcion, PagoSuscripcion,
+  Torneo, TorneoCategoria, TorneoPremio, Inscripcion, Zona, Partido,
 };

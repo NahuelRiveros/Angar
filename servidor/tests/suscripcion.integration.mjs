@@ -128,3 +128,55 @@ test("requireSuscripcionVigente: vencido 402, sin plan 403, vigente y super admi
   assert.equal(await llamar({ usuario_id: 999999, roles: ["jugador"] }), 403);
   assert.equal(await llamar({ usuario_id: 999999, roles: ["super_admin"] }), "sigue");
 });
+
+test("transferencia: comprobante pendiente, una por vez, y el equipo la aprueba (30 días) o la rechaza con motivo", { skip: !esLocal && "sin PostgreSQL local" }, async () => {
+  const { cobroConfig } = await import("../../cobro_config.js");
+  const original = { ...cobroConfig.transferencia };
+  Object.assign(cobroConfig.transferencia, { titular: "Titular EJEMPLO", banco: "Banco EJEMPLO", cbu: "0000000000000000000000", alias: "ALIAS.EJEMPLO", cuit: "20-00000000-0" });
+  const subidos = [];
+  const borrados = [];
+  const falsos = { subir: async (_buffer, { public_id }) => { subidos.push(public_id); return { public_id }; }, borrar: async (id) => { borrados.push(id); } };
+  const pdf = { buffer: Buffer.concat([Buffer.from("%PDF-1.7\n"), Buffer.alloc(32)]) };
+  try {
+    await assert.rejects(servicio.avisarTransferencia(999999, { archivo: pdf }, falsos), /activá tu cuenta/);
+    await assert.rejects(servicio.avisarTransferencia(ana, { archivo: { buffer: Buffer.from("no es un comprobante......") } }, falsos), /JPG, PNG o WEBP/);
+    assert.equal(subidos.length, 0, "lo inválido no llega a Cloudinary");
+
+    const aviso = await servicio.avisarTransferencia(ana, { archivo: pdf, nota: "Desde Galicia" }, falsos);
+    assert.deepEqual([aviso.estado, aviso.comprobante_formato, aviso.monto], ["pendiente", "pdf", "15000.00"]);
+    await assert.rejects(servicio.avisarTransferencia(ana, { archivo: pdf }, falsos), /en revisión/);
+    assert.equal((await servicio.obtenerMiSuscripcion(ana)).ultima_transferencia.estado, "pendiente");
+
+    // Si falla la base después de subir, el archivo se borra de Cloudinary.
+    await PagoSuscripcion.update({ estado: "rechazado" }, { where: { id: aviso.id } });
+    // Un id más largo que la columna hace fallar el INSERT después de la subida.
+    const conBaseCaida = { ...falsos, subir: async () => ({ public_id: "x".repeat(300) }) };
+    await assert.rejects(servicio.avisarTransferencia(ana, { archivo: pdf }, conBaseCaida));
+    assert.equal(borrados.length, 1);
+    await PagoSuscripcion.update({ estado: "pendiente" }, { where: { id: aviso.id } });
+
+    const lista = await servicio.listarTransferencias({});
+    assert.deepEqual([lista.pendientes, lista.data[0].nombre, lista.data[0].nota], [1, "Ana", "Desde Galicia"]);
+
+    const antes = await vencimiento(ana);
+    const [a1, a2] = await Promise.allSettled([servicio.aprobarTransferencia(aviso.id, beto), servicio.aprobarTransferencia(aviso.id, beto)]);
+    assert.equal([a1, a2].filter((r) => r.status === "fulfilled").length, 1, "dos clics simultáneos aprueban una sola vez");
+    assert.match([a1, a2].find((r) => r.status === "rejected").reason.message, /ya fue revisada/);
+    assert.equal(await vencimiento(ana), sumarDias(antes, 30));
+
+    const otro = await servicio.avisarTransferencia(ana, { archivo: pdf }, falsos);
+    await servicio.rechazarTransferencia(otro.id, { motivo: "No llegó el dinero" }, beto);
+    const plan = await servicio.obtenerMiSuscripcion(ana);
+    assert.deepEqual([plan.ultima_transferencia.estado, plan.ultima_transferencia.motivo_rechazo], ["rechazado", "No llegó el dinero"]);
+    assert.equal(await vencimiento(ana), sumarDias(antes, 30), "rechazar no suma días");
+    await assert.rejects(servicio.rechazarTransferencia(otro.id, { motivo: "Otra vez" }, beto), /ya fue revisada/);
+
+    // El comprobante lo ven su dueño y el equipo; a otro organizador le da "no encontramos".
+    const enlazar = (id, formato) => `https://firmado.test/${id}.${formato}`;
+    assert.match((await servicio.enlaceComprobante(otro.id, { usuario_id: ana, permisos: [] }, { enlazar })).url, /firmado\.test/);
+    assert.ok(await servicio.enlaceComprobante(otro.id, { usuario_id: 77, permisos: ["suscripciones.ver"] }, { enlazar }));
+    await assert.rejects(servicio.enlaceComprobante(otro.id, { usuario_id: beto, permisos: [] }, { enlazar }), /No encontramos/);
+  } finally {
+    Object.assign(cobroConfig.transferencia, original);
+  }
+});

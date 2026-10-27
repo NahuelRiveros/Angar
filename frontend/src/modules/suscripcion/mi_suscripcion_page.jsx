@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { CalendarDays, CheckCircle2, CreditCard, Trophy, Users, Award } from "lucide-react";
+import { CalendarDays, CheckCircle2, FileText, Trophy, Users, Award } from "lucide-react";
 import { useAuth } from "../../auth/auth_context.jsx";
 import { useToast } from "../../controls/toast/toast_context.jsx";
 import AdminSpinner from "../../controls/ui/admin_spinner.jsx";
 import ErrorBanner from "../../controls/ui/error_banner.jsx";
 import { useMiSuscripcion, claveMiSuscripcion } from "../../hooks/use_mi_suscripcion.js";
-import { empezarAOrganizar, crearPagoSuscripcion, getMisPagos } from "../../api/suscripcion_api.js";
+import { empezarAOrganizar, getMisPagos } from "../../api/suscripcion_api.js";
 import { formatearFechaAR } from "../../utils/formatear_fecha.js";
 import { ESTADOS_PLAN, ORIGENES_PAGO, ESTADOS_PAGO, formatearPesos, formatearMomento } from "./estado_plan.js";
+import { abrirComprobante } from "./abrir_comprobante.js";
+import PagarPlan from "./pagar_plan.jsx";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60";
 const mensajeDe = (error, porDefecto) => error?.response?.data?.mensaje || porDefecto;
@@ -83,12 +85,6 @@ function EmpezarAOrganizar({ diasPrueba }) {
 
 function PlanOrganizador({ plan }) {
   const estado = ESTADOS_PLAN[plan.estado] ?? ESTADOS_PLAN.activo;
-  const pagar = useMutation({
-    mutationFn: crearPagoSuscripcion,
-    onSuccess: ({ url_pago }) => window.location.assign(url_pago),
-  });
-  const puedePagar = plan.precio_mensual > 0;
-
   return (
     <>
       <section aria-labelledby="plan-titulo" className="rounded-3xl border border-(--kt-border) bg-white p-6 shadow-sm sm:p-8">
@@ -102,23 +98,7 @@ function PlanOrganizador({ plan }) {
           <Dato icono={CheckCircle2} titulo="Días restantes" valor={plan.vigente ? plan.dias_restantes : "—"} />
         </dl>
 
-        <div className="mt-6 border-t border-(--kt-border) pt-5">
-          {puedePagar ? (
-            <>
-              <p className="text-sm text-(--kt-ink-soft)">
-                <strong className="text-(--kt-ink)">{formatearPesos(plan.precio_mensual)}</strong> por {plan.dias_por_pago} días.
-                Si pagás antes de que venza, los días se suman al final: no perdés ninguno.
-              </p>
-              {pagar.isError && <ErrorBanner className="mt-3" message={mensajeDe(pagar.error, "No pudimos abrir MercadoPago. Probá de nuevo.")} />}
-              <button type="button" disabled={pagar.isPending} onClick={() => pagar.mutate()}
-                className={`${BOTON} mt-4 w-full bg-(--kt-accent-comercial) text-white hover:bg-(--kt-accent-comercial-hover) sm:w-auto`}>
-                <CreditCard size={18} aria-hidden="true" /> {pagar.isPending ? "Abriendo MercadoPago…" : "Pagar con MercadoPago"}
-              </button>
-            </>
-          ) : (
-            <p className="text-sm text-(--kt-ink-soft)">El pago online todavía no está habilitado. Escribinos para renovar tu plan.</p>
-          )}
-        </div>
+        <PagarPlan plan={plan} />
       </section>
       <HistorialPagos />
     </>
@@ -139,7 +119,9 @@ function Dato({ icono: Icono, titulo, valor }) {
 
 function HistorialPagos() {
   const { usuario } = useAuth();
+  const toast = useToast();
   const pagos = useQuery({ queryKey: ["suscripcion", "mis-pagos", usuario?.usuario_id], queryFn: getMisPagos });
+  const verComprobante = (id) => abrirComprobante(id).catch((e) => toast.error(mensajeDe(e, "No pudimos abrir el comprobante.")));
 
   return (
     <section aria-labelledby="pagos-titulo" className="rounded-3xl border border-(--kt-border) bg-white p-6 shadow-sm sm:p-8">
@@ -159,8 +141,16 @@ function HistorialPagos() {
               <div>
                 <p className="font-semibold text-(--kt-ink)">{ORIGENES_PAGO[p.origen] ?? p.origen} · {ESTADOS_PAGO[p.estado] ?? p.estado}</p>
                 <p className="text-xs text-(--kt-ink-soft)">{formatearMomento(p.creado_en)}{p.dias > 0 ? ` · +${p.dias} días` : ""}{p.vencimiento_nuevo ? ` · vence ${formatearFechaAR(p.vencimiento_nuevo)}` : ""}</p>
+                {p.motivo_rechazo && <p className="text-xs text-red-700">Motivo: {p.motivo_rechazo}</p>}
               </div>
-              {p.monto != null && <span className="font-bold text-(--kt-ink)">{formatearPesos(p.monto)}</span>}
+              <div className="flex items-center gap-2">
+                {p.monto != null && <span className="font-bold text-(--kt-ink)">{formatearPesos(p.monto)}</span>}
+                {p.comprobante_formato && (
+                  <button type="button" onClick={() => verComprobante(p.id)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-(--kt-teal-700) hover:bg-(--kt-bg-soft)">
+                    <FileText size={16} aria-hidden="true" /> Comprobante
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

@@ -20,19 +20,34 @@ MercadoPago. Distribuidora, indumentaria, stock, ARCA y el sistema de módulos d
 (`gate_config.js`, `modulo_negocio`) se eliminaron: no volver a agregarlos.
 
 Decisiones de negocio ya tomadas (no inventar otras; preguntar lo que falte):
-- Suscripción **por organizador**: MercadoPago automático y también extensión manual desde el
-  panel (`/admin/suscripciones`). Prueba gratis de 14 días, una sola vez por cuenta. Cada pago suma
+- Suscripción **por organizador**. Hoy se cobra **por transferencia**: el organizador sube el
+  comprobante y el equipo lo aprueba o rechaza en `/admin/suscripciones`. MercadoPago está
+  programado pero apagado (`cobro_config.js`). También hay extensión manual desde el panel. Prueba gratis de 14 días, una sola vez por cuenta. Cada pago suma
   30 días al vencimiento (o desde hoy si ya venció). Aviso 7 días antes; sin días de gracia.
   Vencida = solo lectura (ve sus torneos, no crea ni edita, tampoco carga resultados de un torneo
   en curso); la vista pública del torneo sigue andando.
 - Al registrarse todos son `jugador`; el rol `organizador` se suma al empezar a organizar.
-- Zonas configurables por torneo (parejas por zona, cuántas clasifican; la llave cruza
-  zonas: 1ºA vs 2ºB). Formato de partido configurable (mejor de 3, super tie-break, set único).
+- Zonas configurables por categoría (3 a 5 parejas, clasifican 1 o 2; la llave cruza
+  zonas: 1ºA vs 2ºB). Formato de partido de zona: un set a 6, un set a 9, mejor de 3 o mejor
+  de 3 con super tie-break (se copia al partido al crearlo).
+- Inscripción por dos vías: el jugador con cuenta se anota online (queda pendiente hasta que
+  el organizador la confirma o rechaza con motivo) y el organizador carga parejas a mano
+  (entran confirmadas). Una inscripción viva por jugador y categoría; el cupo cuenta confirmadas.
+- Zonas: sorteo automático con cabezas de serie separadas (azar criptográfico) y ajuste a mano;
+  nunca una zona de 2 (salvo que haya solo 2 parejas). Rearmar o mover solo sin resultados.
+- Tabla: ganados → dif. de sets → dif. de games → entre ellas (empate de dos). El super
+  tie-break cuenta como un set y un game.
+- Llave: se arma con las zonas terminadas y el torneo en juego. Los 1º de zona son cabezas en
+  orden (A, B…) y reciben los pases (byes); un 2º nunca cruza en primera ronda al 1º de su zona
+  y, si se puede, queda en la otra mitad. Sin partido por el 3º: los semifinalistas lo comparten.
+  Con llave armada las zonas quedan cerradas; para corregirlas se deshace la llave (solo sin
+  resultados de llave). Corregir un partido cuyo siguiente ya se jugó y cambia el ganador: se frena.
 - El precio del mes es configurable por variable de entorno; el valor del ejemplo no es real.
 
-Plan por etapas: 1) limpieza de la base ✅ 2) suscripción por organizador ✅
-3) torneos, categorías, reglas y premios 4) inscripciones y zonas 5) llaves y partidos
-6) vista pública del torneo.
+Plan por etapas (todas hechas): 1) limpieza de la base ✅ 2) suscripción por organizador ✅
+3) torneos, categorías, reglas y premios ✅ 4) inscripciones y zonas ✅ 5) llaves y partidos ✅
+6) vista pública del torneo ✅. Idea para una etapa 7: perfil de jugador con código, historial,
+copas y estrellas; no empezarla sin las decisiones pendientes (ver la memoria del proyecto).
 
 - `client_config.js`: id de la instalación y políticas de acceso (registro público, contraseñas).
 - `permisos_config.js`: permisos del **equipo de la plataforma** (`suscripciones.ver`,
@@ -41,6 +56,10 @@ Plan por etapas: 1) limpieza de la base ✅ 2) suscripción por organizador ✅
   (`rol_permiso`) y se edita en `/admin/permisos`. `admin` y `super_admin` tienen todos siempre.
   `organizador` y `jugador` son `rolesFuera`: no usan permisos; lo de un torneo lo autoriza
   ser su dueño y tener la suscripción vigente.
+- `cobro_config.js`: medios de pago del plan (MercadoPago apagado), datos bancarios (hoy
+  `[COMPLETAR]`: mientras falte alguno no se puede transferir) y reglas del comprobante.
+- `torneo_config.js`: estados del torneo, transiciones, qué se edita en cada estado
+  (`EDICION_POR_ESTADO`), niveles, ramas, puestos de premio y límites. Lo usan API e interfaz.
 - `deployment_config.js`: direcciones públicas de Render/Vercel (hoy de EJEMPLO).
 - `frontend/src/config/`: marca, tema, navegación y textos del home.
 - Ante diferencias entre comentarios y código, comprobar rutas, servicios y tests antes de concluir.
@@ -85,7 +104,36 @@ hoy <= vencimiento); base de datos en `suscripcion_service.js`. El webhook consu
 MercadoPago y es idempotente por `mp_payment_id` (fila bloqueada en la transacción). Toda ruta que
 crea o edita algo de un organizador lleva `requireAuth, requireSuscripcionVigente`
 (`middleware/suscripcion_middleware.js`: 403 sin plan, 402 vencido; los GET no lo llevan).
-Precio: `PRECIO_SUSCRIPCION_MENSUAL` (0 = pago online deshabilitado).
+Precio: `PRECIO_SUSCRIPCION_MENSUAL`. Comprobantes de transferencia: archivo privado en Cloudinary
+(`subirArchivoPrivado`), formato validado por contenido, se ven con enlace firmado de 5 minutos;
+una sola transferencia pendiente por organizador; aprobar suma 30 días con la fila bloqueada.
+
+Torneos (`/api/torneos`, pantallas `/mis-torneos` y `/mis-torneos/:id`): tablas `torneo`,
+`torneo_categoria` y `torneo_premio`. Reglas puras en `services/torneos/torneo_reglas.js`; el
+servicio verifica el dueño (ajeno = 404) y bloquea el torneo en cada escritura. Lecturas solo con
+`requireAuth`; escrituras con `requireSuscripcionVigente`. Cada escritura devuelve el torneo
+completo y el frontend lo guarda directo en la caché (`detalle/use_cambio_torneo.js`).
+
+Juego (etapa 4): tablas `inscripcion`, `zona` y `partido` (+ formato de zona en `torneo_categoria`).
+Lógica pura en `services/torneos/zona_reglas.js` (marcadores, tamaños de zonas, sorteo, fixture
+por fechas y tabla) e `inscripcion_reglas.js`; servicios `inscripcion_service.js`,
+`zona_service.js` y `publico_service.js`. Cuándo se puede cada cosa: `PERMITIDO` de
+`torneo_config.js`. Rutas: `/api/torneos/:id/inscripciones|categorias/:id/zonas|partidos/:id/resultado`
+(organizador), `/api/inscripciones` (jugador) y `/api/publico/torneos` (sin cuenta, nunca borradores
+ni teléfonos). Pantallas: pestañas Inscripciones y Zonas del detalle, `/torneos`, `/torneos/:id` y
+`/mis-inscripciones`. Probar con `curl` desde Git Bash rompe la ñ (no manda UTF-8): usar Node o el navegador.
+
+Llave (etapa 5): `partido` con fase "llave", `ronda` y `orden` (posición; define a qué partido
+avanza el ganador) y parejas vacías hasta que se definen; `formato_llave` en la categoría.
+Lógica pura en `services/torneos/llave_reglas.js` (siembra, pases, avance, podio) y base en
+`llave_service.js`. El resultado de cualquier partido va por `PUT /partidos/:id/resultado`, que
+responde las zonas o la llave según la fase (`fase` en la respuesta). Pestaña Llave en el detalle.
+
+Vista pública (etapa 6): `GET /api/publico/torneos/:id/categorias/:categoriaId` devuelve zonas
+(tabla, fixture, resultados) y llave con podio, solo con nombres de parejas, para torneos en
+inscripción, en juego o finalizados. Cache-Control de 30 s y botón "Actualizar": sin consultas
+automáticas (Neon cobra mientras está despierta). En `/torneos/:id`: `ResultadosPublicos` y
+`BotonCompartir` (menú del sistema en celular; en la compu copia el link).
 
 ## Comandos reales (desde la raíz)
 
@@ -100,7 +148,7 @@ No hay package.json raíz ni workspaces; cada paquete instala sus dependencias.
 | Lint del frontend | `npm --prefix frontend run lint` |
 | Build del frontend | `npm --prefix frontend run build` |
 | Reglas unitarias | `npm --prefix servidor test` |
-| Integración (PostgreSQL local) | `npm --prefix servidor run test:integration` |
+| Integración (PostgreSQL local: suscripción y torneos) | `npm --prefix servidor run test:integration` |
 | Navegador | `npm --prefix frontend run test:e2e` |
 | Revisar los `.env` (solo nombres, sin valores) | `npm --prefix servidor run env:verificar` (lo corre el usuario; lee sus `.env`) |
 
@@ -127,7 +175,7 @@ actualizar el script o ejecutarlo explícitamente con `node --test`.
 - Base local de desarrollo: PostgreSQL 17 en `localhost`, base `mipadel` (la de DistribuCG es
   `Distribuidora`: no usarla). El `.env` local deja `BD_URL` vacía y usa `DB_*`.
 - `servidor/tests/ux_rules.test.mjs` prueba reglas sin conexión a la base.
-- `suscripcion.integration.mjs` solo corre contra `localhost` (si `BD_URL` está cargada, se saltea),
+- `suscripcion`, `torneo`, `juego` y `llave` `.integration.mjs` solo corren contra `localhost` (si `BD_URL` está cargada, se saltea),
   crea un schema `mipadel_it_<aleatorio>` y borra solo ese schema al terminar.
 - Playwright levanta solo Vite en `127.0.0.1:4178` y simula la API; no necesita el backend.
 - No enviar correos, procesar pagos externos ni subir archivos reales al ejecutar pruebas.

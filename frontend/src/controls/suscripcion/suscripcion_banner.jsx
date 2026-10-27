@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { AlertTriangle, CreditCard, X } from "lucide-react";
 import { useAuth } from "../../auth/auth_context.jsx";
 import { useMiSuscripcion } from "../../hooks/use_mi_suscripcion.js";
@@ -11,14 +11,19 @@ function cerradoHoy() {
   try { return localStorage.getItem(CLAVE) === hoy(); } catch { return false; }
 }
 
+// Estas páginas muestran su propio aviso del plan: no se repite arriba.
+const CON_AVISO_PROPIO = ["/mi-suscripcion", "/mis-torneos"];
+
 /** Aviso al organizador cuando su plan está por vencer o vencido. */
 export default function SuscripcionBanner() {
   const { usuario } = useAuth();
+  const { pathname } = useLocation();
   const esOrganizador = (usuario?.roles ?? []).includes("organizador");
   const { data: plan } = useMiSuscripcion({ enabled: esOrganizador });
   const [cerrado, setCerrado] = useState(cerradoHoy);
 
-  if (!esOrganizador || cerrado || !["por_vencer", "vencido"].includes(plan?.estado)) return null;
+  if (!esOrganizador || cerrado || CON_AVISO_PROPIO.some((ruta) => pathname.startsWith(ruta))) return null;
+  if (!["por_vencer", "vencido"].includes(plan?.estado)) return null;
 
   const vencido = plan.estado === "vencido";
   function cerrar() {
