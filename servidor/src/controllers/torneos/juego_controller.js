@@ -1,6 +1,7 @@
 import {
   listarInscripciones, cargarPareja, editarPareja, confirmarInscripcion, rechazarInscripcion, darDeBaja,
   anotarseOnline, misInscripciones, cancelarMia,
+  subirComprobanteInscripcion, enlaceComprobanteInscripcion, aprobarPagoInscripcion, rechazarPagoInscripcion,
 } from "../../services/torneos/inscripcion_service.js";
 import { verZonas, generarZonas, moverPareja, cargarResultado, borrarResultado, programarPartido } from "../../services/torneos/zona_service.js";
 import { verLlave, armarLlaveCategoria, deshacerLlave } from "../../services/torneos/llave_service.js";
@@ -25,6 +26,20 @@ export const rechazarController = conIds(async (req, res, { torneoId, inscripcio
 
 export const bajaController = conIds(async (req, res, { torneoId, inscripcionId }) =>
   res.json({ ok: true, mensaje: "Pareja dada de baja.", data: await darDeBaja(torneoId, inscripcionId, req.user) }), "No pudimos dar de baja la pareja.");
+
+// ── Pago de la inscripción ──────────────────────────────────────────────────
+export const aprobarPagoController = conIds(async (req, res, { torneoId, inscripcionId }) =>
+  res.json({ ok: true, mensaje: "Pago aprobado: la inscripción quedó confirmada.", data: await aprobarPagoInscripcion(torneoId, inscripcionId, req.user) }), "No pudimos aprobar el pago.");
+
+export const rechazarPagoController = conIds(async (req, res, { torneoId, inscripcionId }) =>
+  res.json({ ok: true, mensaje: "Comprobante rechazado. La pareja ve el motivo y puede mandar otro.", data: await rechazarPagoInscripcion(torneoId, inscripcionId, req.user, req.body) }), "No pudimos rechazar el comprobante.");
+
+// La pareja o el organizador: el mismo servicio decide quién puede verlo.
+export const comprobanteInscripcionController = conIds(async (req, res, { inscripcionId }) =>
+  res.json({ ok: true, data: await enlaceComprobanteInscripcion(req.user, inscripcionId) }), "No pudimos abrir el comprobante.");
+
+export const subirComprobanteController = conIds(async (req, res, { inscripcionId }) =>
+  res.json({ ok: true, mensaje: "¡Comprobante enviado! La organización lo revisa y confirma tu inscripción.", data: await subirComprobanteInscripcion(req.user, inscripcionId, req.file) }), "No pudimos enviar el comprobante.");
 
 // ── Organizador: zonas y resultados ─────────────────────────────────────────
 export const verZonasController = conIds(async (req, res, { torneoId, categoriaId }) =>
@@ -64,7 +79,8 @@ export async function anotarseController(req, res) {
     const mensaje = inscripcion.estado === "esperando"
       ? `¡Listo! Le enviamos la invitación a ${inscripcion.jugador2_nombre}: cuando la acepte, la organización confirma la inscripción.`
       : "¡Listo! Tu inscripción quedó pendiente: el organizador la va a confirmar.";
-    return res.status(201).json({ ok: true, mensaje });
+    // El id deja que la pantalla lleve a la pareja directo a pagar la inscripción.
+    return res.status(201).json({ ok: true, mensaje, data: { id: inscripcion.id, estado: inscripcion.estado } });
   } catch (e) { return responderError(res, e, "No pudimos anotarte."); }
 }
 

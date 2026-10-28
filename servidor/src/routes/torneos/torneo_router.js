@@ -6,6 +6,7 @@ import {
   crearCategoriaController, actualizarCategoriaController, eliminarCategoriaController, premiosController,
 } from "../../controllers/torneos/torneo_controller.js";
 import {
+  aprobarPagoController, rechazarPagoController, comprobanteInscripcionController,
   listarInscripcionesController, cargarParejaController, editarParejaController, confirmarController, rechazarController, bajaController,
   verZonasController, generarZonasController, moverParejaController, resultadoController, borrarResultadoController, programarController,
   verLlaveController, armarLlaveController, deshacerLlaveController,
@@ -19,6 +20,7 @@ torneoRouter.use(requireAuth);
 torneoRouter.get("/", listarController);
 torneoRouter.get("/:torneoId", obtenerController);
 torneoRouter.get("/:torneoId/inscripciones", listarInscripcionesController);
+torneoRouter.get("/:torneoId/inscripciones/:inscripcionId/comprobante", comprobanteInscripcionController);
 torneoRouter.get("/:torneoId/categorias/:categoriaId/zonas", verZonasController);
 torneoRouter.get("/:torneoId/categorias/:categoriaId/llave", verLlaveController);
 
@@ -39,6 +41,8 @@ torneoRouter.patch("/:torneoId/inscripciones/:inscripcionId", escribir, editarPa
 torneoRouter.post("/:torneoId/inscripciones/:inscripcionId/confirmar", escribir, confirmarController);
 torneoRouter.post("/:torneoId/inscripciones/:inscripcionId/rechazar", escribir, rechazarController);
 torneoRouter.post("/:torneoId/inscripciones/:inscripcionId/baja", escribir, bajaController);
+torneoRouter.post("/:torneoId/inscripciones/:inscripcionId/pago/aprobar", escribir, aprobarPagoController);
+torneoRouter.post("/:torneoId/inscripciones/:inscripcionId/pago/rechazar", escribir, rechazarPagoController);
 torneoRouter.post("/:torneoId/categorias/:categoriaId/zonas/generar", escribir, generarZonasController);
 torneoRouter.post("/:torneoId/categorias/:categoriaId/zonas/mover", escribir, moverParejaController);
 torneoRouter.post("/:torneoId/categorias/:categoriaId/llave/armar", escribir, armarLlaveController);

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, MessageCircle, Pencil, Plus, Star, UserMinus, X } from "lucide-react";
+import { BadgeDollarSign, Check, FileText, MessageCircle, Pencil, Plus, Star, UserMinus, X } from "lucide-react";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
@@ -11,12 +11,15 @@ import InputField from "../../../controls/ui/input_field.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
-import { ESTADOS_INSCRIPCION, PERMITIDO } from "../../../../../torneo_config.js";
-import { getInscripciones, cargarPareja, editarPareja, resolverInscripcion } from "../api/torneos_api.js";
+import { ESTADOS_INSCRIPCION, ESTADOS_PAGO_INSCRIPCION, PERMITIDO } from "../../../../../torneo_config.js";
+import { getInscripciones, cargarPareja, editarPareja, resolverInscripcion, getEnlaceComprobanteInscripcion } from "../api/torneos_api.js";
+import { abrirEnPestania } from "../../../utils/abrir_en_pestania.js";
+import { formatearPesos } from "../../suscripcion/estado_plan.js";
 import { mensajeDe } from "./use_cambio_torneo.js";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const COLORES = { esperando: "bg-sky-50 text-sky-900 ring-sky-200", pendiente: "bg-amber-50 text-amber-900 ring-amber-200", confirmada: "bg-emerald-50 text-emerald-800 ring-emerald-200", rechazada: "bg-red-50 text-red-800 ring-red-200", cancelada: "bg-slate-100 text-slate-600 ring-slate-200" };
+const COLORES_PAGO = { en_revision: "bg-amber-50 text-amber-900 ring-amber-200", aprobado: "bg-emerald-50 text-emerald-800 ring-emerald-200", rechazado: "bg-red-50 text-red-800 ring-red-200" };
 // Primero lo que pide una acción.
 const ORDEN = { pendiente: 0, esperando: 1, confirmada: 2, rechazada: 3, cancelada: 4 };
 const claveInscripciones = (torneoId) => ["torneos", Number(torneoId), "inscripciones"];
@@ -50,7 +53,12 @@ export default function InscripcionesSeccion({ torneo, editable }) {
   const [modal, setModal] = useState(null); // { tipo: "pareja", inscripcion? } | { tipo: "rechazar" | "baja", inscripcion }
   const lista = useQuery({ queryKey: claveInscripciones(torneo.id), queryFn: () => getInscripciones(torneo.id) });
   const confirmar = useAccionInscripcion(torneo.id, (i) => resolverInscripcion(torneo.id, i.id, "confirmar"));
+  const aprobarPago = useAccionInscripcion(torneo.id, (i) => resolverInscripcion(torneo.id, i.id, "pago/aprobar"));
+  const toast = useToast();
+  const verComprobante = (i) => abrirEnPestania(() => getEnlaceComprobanteInscripcion(i.id, torneo.id))
+    .catch((e) => toast.error(mensajeDe(e, "No pudimos abrir el comprobante.")));
   const nombreCategoria = new Map(torneo.categorias.map((c) => [c.id, c.nombre]));
+  const montoCategoria = new Map(torneo.categorias.map((c) => [c.id, c.monto_inscripcion]));
   const puedeSumar = editable && PERMITIDO.cargarParejas.includes(torneo.estado);
 
   if (lista.isPending) return <AdminSpinner />;
@@ -104,9 +112,31 @@ export default function InscripcionesSeccion({ torneo, editable }) {
               )}
               {i.nota && <p className="mt-1 text-sm text-(--kt-ink)">“{i.nota}”</p>}
               {i.motivo_rechazo && <p className="mt-1 text-sm text-red-700">Rechazada: {i.motivo_rechazo}</p>}
+              {(montoCategoria.get(i.categoria_id) || i.pago_estado) && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-(--kt-bg-soft) px-3 py-2 text-sm">
+                  <BadgeDollarSign size={16} aria-hidden="true" className="shrink-0 text-(--kt-teal-700)" />
+                  <span className="text-(--kt-ink)">{montoCategoria.get(i.categoria_id) ? formatearPesos(montoCategoria.get(i.categoria_id)) : "Pago"}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ring-1 ${COLORES_PAGO[i.pago_estado] ?? "bg-white text-slate-600 ring-slate-200"}`}>
+                    {ESTADOS_PAGO_INSCRIPCION[i.pago_estado] ?? (i.estado === "confirmada" ? "Confirmada sin comprobante" : "Sin comprobante")}
+                  </span>
+                  {i.pago_comprobante_formato && (
+                    <button type="button" onClick={() => verComprobante(i)} className="inline-flex min-h-11 items-center gap-1 px-1 text-sm font-semibold text-(--kt-teal-700) hover:underline"
+                      aria-label={`Ver comprobante de ${i.jugador1_nombre} / ${i.jugador2_nombre}`}>
+                      <FileText size={15} aria-hidden="true" /> Ver comprobante
+                    </button>
+                  )}
+                  {i.pago_estado === "rechazado" && i.pago_motivo_rechazo && <p className="w-full text-xs text-red-700">Motivo: {i.pago_motivo_rechazo}</p>}
+                </div>
+              )}
               {editable && activa && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {i.estado === "pendiente" && PERMITIDO.cargarParejas.includes(torneo.estado) && (
+                  {i.pago_estado === "en_revision" && i.estado === "pendiente" && PERMITIDO.cargarParejas.includes(torneo.estado) && (
+                    <button type="button" disabled={aprobarPago.isPending} onClick={() => aprobarPago.mutate(i)} className={`${BOTON} border-emerald-700 bg-emerald-700 text-white`}><Check size={15} aria-hidden="true" /> Aprobar pago y confirmar</button>
+                  )}
+                  {i.pago_estado === "en_revision" && (
+                    <button type="button" onClick={() => setModal({ tipo: "rechazar_pago", inscripcion: i })} className={`${BOTON} border-red-200 bg-white text-red-800`}><X size={15} aria-hidden="true" /> Rechazar comprobante</button>
+                  )}
+                  {i.estado === "pendiente" && i.pago_estado !== "en_revision" && PERMITIDO.cargarParejas.includes(torneo.estado) && (
                     <button type="button" disabled={confirmar.isPending} onClick={() => confirmar.mutate(i)} className={`${BOTON} border-emerald-200 bg-emerald-50 text-emerald-800`}><Check size={15} aria-hidden="true" /> Confirmar</button>
                   )}
                   {["pendiente", "esperando"].includes(i.estado) && <button type="button" onClick={() => setModal({ tipo: "rechazar", inscripcion: i })} className={`${BOTON} border-red-200 bg-red-50 text-red-800`}><X size={15} aria-hidden="true" /> Rechazar</button>}
@@ -121,6 +151,7 @@ export default function InscripcionesSeccion({ torneo, editable }) {
 
       {modal?.tipo === "pareja" && <ParejaModal torneo={torneo} inscripcion={modal.inscripcion} onClose={() => setModal(null)} />}
       {modal?.tipo === "rechazar" && <RechazoModal torneo={torneo} inscripcion={modal.inscripcion} onClose={() => setModal(null)} />}
+      {modal?.tipo === "rechazar_pago" && <RechazoModal torneo={torneo} inscripcion={modal.inscripcion} deComprobante onClose={() => setModal(null)} />}
       <BajaDialogo torneo={torneo} inscripcion={modal?.tipo === "baja" ? modal.inscripcion : null} onClose={() => setModal(null)} />
     </div>
   );
@@ -164,17 +195,21 @@ function ParejaModal({ torneo, inscripcion, onClose }) {
 
 const esquemaRechazo = z.object({ motivo: z.string().trim().min(5, "Contale el motivo (mínimo 5 caracteres).").max(300, "Hasta 300 caracteres.") });
 
-function RechazoModal({ torneo, inscripcion, onClose }) {
+/** Rechaza la inscripción o, con `deComprobante`, solo el comprobante (la pareja puede mandar otro). */
+function RechazoModal({ torneo, inscripcion, deComprobante = false, onClose }) {
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(esquemaRechazo), defaultValues: { motivo: "" } });
-  const rechazar = useAccionInscripcion(torneo.id, ({ motivo }) => resolverInscripcion(torneo.id, inscripcion.id, "rechazar", { motivo }), { onExito: onClose });
+  const accion = deComprobante ? "pago/rechazar" : "rechazar";
+  const rechazar = useAccionInscripcion(torneo.id, ({ motivo }) => resolverInscripcion(torneo.id, inscripcion.id, accion, { motivo }), { onExito: onClose });
   return (
-    <Modal title={`Rechazar · ${inscripcion.jugador1_nombre} / ${inscripcion.jugador2_nombre}`} onClose={onClose} busy={rechazar.isPending}>
+    <Modal title={`${deComprobante ? "Rechazar comprobante" : "Rechazar"} · ${inscripcion.jugador1_nombre} / ${inscripcion.jugador2_nombre}`} onClose={onClose} busy={rechazar.isPending}>
       <form noValidate onSubmit={handleSubmit((d) => rechazar.mutate(d))} className="space-y-4">
-        <p className="text-sm text-(--kt-ink-soft)">La pareja ve este motivo en "Mis inscripciones".</p>
-        <InputField label="Motivo" name="motivo" placeholder="Ej: no se recibió el pago de la inscripción" maxLength={300} register={register} error={errors.motivo?.message} />
+        <p className="text-sm text-(--kt-ink-soft)">
+          {deComprobante ? "La inscripción sigue pendiente: la pareja ve el motivo en \"Mis inscripciones\" y puede mandar otro comprobante." : "La pareja ve este motivo en \"Mis inscripciones\"."}
+        </p>
+        <InputField label="Motivo" name="motivo" placeholder={deComprobante ? "Ej: el monto no coincide" : "Ej: no se recibió el pago de la inscripción"} maxLength={300} register={register} error={errors.motivo?.message} />
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button type="button" onClick={onClose} disabled={rechazar.isPending} className={`${BOTON} border-slate-300 bg-white text-slate-700`}>Cancelar</button>
-          <button type="submit" disabled={rechazar.isPending} className={`${BOTON} border-red-700 bg-red-700 text-white`}>{rechazar.isPending ? "Rechazando…" : "Rechazar inscripción"}</button>
+          <button type="submit" disabled={rechazar.isPending} className={`${BOTON} border-red-700 bg-red-700 text-white`}>{rechazar.isPending ? "Rechazando…" : deComprobante ? "Rechazar comprobante" : "Rechazar inscripción"}</button>
         </div>
       </form>
     </Modal>

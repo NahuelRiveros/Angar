@@ -21,7 +21,7 @@ export async function diagnosticarSuperAdmin({ config, Persona, Usuario }) {
   const persona = porDni ?? porEmail;
   if (!persona) return {
     ok: false, codigo: "CUENTA_NO_CREADA",
-    mensaje: "No existe una persona con el email o DNI configurados en esta base. Revisá los logs del seed y DB_SCHEMA del servicio.",
+    mensaje: "No existe una persona con el email o DNI configurados en esta base. Revisá los logs del seed y BD_ESQUEMA del servicio.",
   };
   if (persona.email !== email) return {
     ok: false, codigo: "EMAIL_DIFERENTE", emailGuardado: persona.email,

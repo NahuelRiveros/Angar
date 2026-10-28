@@ -13,6 +13,8 @@ import { crearCategoria, actualizarCategoria, eliminarCategoria } from "../api/t
 import { useCambioTorneo, mensajeDe } from "./use_cambio_torneo.js";
 import PremiosModal from "./premios_modal.jsx";
 import { CalculoLlave, ResumenLlave, SelectorCupo } from "./calculo_llave.jsx";
+import { esMontoValido, montoParaEnviar, MENSAJE_MONTO } from "../monto.js";
+import { formatearPesos } from "../../suscripcion/estado_plan.js";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const OPCIONES_NIVEL = NIVELES.map((n) => ({ value: String(n), label: nombreNivel(n) }));
@@ -28,6 +30,7 @@ const esquema = z.object({
   rama: z.string(),
   nombre_personalizado: z.string().trim().max(60, "Hasta 60 caracteres."),
   cupo_opcion: z.string(),
+  monto_inscripcion: z.string().trim().refine(esMontoValido, MENSAJE_MONTO),
   cupo_otro: z.string().trim(),
   parejas_por_zona: z.string(),
   clasifican_por_zona: z.string(),
@@ -49,6 +52,7 @@ const cupoDe = (d) => (d.cupo_opcion === "otro" ? d.cupo_otro : d.cupo_opcion);
 const aCuerpo = (d) => ({
   ...(d.modo === "propio" ? { nombre_personalizado: d.nombre_personalizado } : { nivel: Number(d.nivel), rama: d.rama }),
   cupo_parejas: cupoDe(d) === "" ? null : Number(cupoDe(d)),
+  monto_inscripcion: montoParaEnviar(d.monto_inscripcion),
   parejas_por_zona: Number(d.parejas_por_zona), clasifican_por_zona: Number(d.clasifican_por_zona), formato_zona: d.formato_zona, formato_llave: d.formato_llave,
 });
 const formatoDe = (c) => {
@@ -61,9 +65,11 @@ const cupoInicial = (c) => {
   const enLista = cuposConZonasIguales(c.parejas_por_zona ?? ZONAS.predeterminado.parejas_por_zona).includes(c.cupo_parejas);
   return enLista ? { cupo_opcion: String(c.cupo_parejas), cupo_otro: "" } : { cupo_opcion: "otro", cupo_otro: String(c.cupo_parejas) };
 };
-const valoresDe = (c) => c
-  ? { modo: c.nombre_personalizado ? "propio" : "lista", nivel: c.nivel ? String(c.nivel) : "", rama: c.rama ?? "", nombre_personalizado: c.nombre_personalizado ?? "", ...cupoInicial(c), ...formatoDe(c) }
-  : { modo: "lista", nivel: "", rama: "", nombre_personalizado: "", ...cupoInicial(null), ...formatoDe({}) };
+const textoMonto = (monto) => (monto == null ? "" : String(monto));
+// Una categoría nueva arranca con el monto general del torneo.
+const valoresDe = (c, torneo) => c
+  ? { modo: c.nombre_personalizado ? "propio" : "lista", nivel: c.nivel ? String(c.nivel) : "", rama: c.rama ?? "", nombre_personalizado: c.nombre_personalizado ?? "", monto_inscripcion: textoMonto(c.monto_inscripcion), ...cupoInicial(c), ...formatoDe(c) }
+  : { modo: "lista", nivel: "", rama: "", nombre_personalizado: "", monto_inscripcion: textoMonto(torneo.monto_inscripcion), ...cupoInicial(null), ...formatoDe({}) };
 
 export default function CategoriasSeccion({ torneo, editarCategorias, editarPremios }) {
   const [formulario, setFormulario] = useState(null); // { categoria } — null cerrado, categoria null = nueva
@@ -99,6 +105,7 @@ export default function CategoriasSeccion({ torneo, editarCategorias, editarPrem
             </div>
             <p className="mt-1 text-xs text-(--kt-ink-soft)">Zonas de {c.parejas_por_zona}, clasifican {c.clasifican_por_zona} · {FORMATOS_PARTIDO[c.formato_zona]?.etiqueta}</p>
             <p className="text-xs text-(--kt-ink-soft)">Llave: {FORMATOS_PARTIDO[c.formato_llave]?.etiqueta}</p>
+            <p className="text-xs font-semibold text-(--kt-ink)">{c.monto_inscripcion ? `Inscripción: ${formatearPesos(c.monto_inscripcion)} por pareja` : "Sin cobro por MiPadel"}</p>
             {c.cupo_parejas && <ResumenLlave cantidad={c.cupo_parejas} parejasPorZona={c.parejas_por_zona} clasifican={c.clasifican_por_zona} className="mt-1" />}
             {c.premios.length > 0 ? (
               <ul className="mt-2 space-y-1 text-sm">
@@ -129,7 +136,7 @@ export default function CategoriasSeccion({ torneo, editarCategorias, editarPrem
 }
 
 function CategoriaModal({ torneo, categoria, onClose }) {
-  const { register, control, handleSubmit, setValue, formState: { errors } } = useForm({ resolver: zodResolver(esquema), defaultValues: valoresDe(categoria) });
+  const { register, control, handleSubmit, setValue, formState: { errors } } = useForm({ resolver: zodResolver(esquema), defaultValues: valoresDe(categoria, torneo) });
   const guardar = useCambioTorneo(torneo.id,
     (datos) => (categoria ? actualizarCategoria(torneo.id, categoria.id, aCuerpo(datos)) : crearCategoria(torneo.id, aCuerpo(datos))),
     { onExito: onClose });
@@ -158,6 +165,8 @@ function CategoriaModal({ torneo, categoria, onClose }) {
         ) : (
           <InputField label="Nombre de la categoría" name="nombre_personalizado" placeholder="Ej: Suma 13, +45, Libre" maxLength={60} register={register} error={errors.nombre_personalizado?.message} />
         )}
+        <InputField label="Inscripción por pareja (opcional)" name="monto_inscripcion" inputMode="decimal" placeholder="Sin cobro por MiPadel" register={register}
+          error={errors.monto_inscripcion?.message} helperText="Las parejas transfieren a la cuenta de Datos y mandan el comprobante." />
         <fieldset className="space-y-3 rounded-2xl bg-(--kt-bg-soft) p-3">
           <legend className="px-1 text-sm font-semibold text-(--kt-ink)">Zonas y llave</legend>
           <div className="grid gap-3 sm:grid-cols-2">

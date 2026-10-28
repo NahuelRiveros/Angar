@@ -67,7 +67,7 @@ export async function editarPareja(torneoId, inscripcionId, datos) {
   return r.data;
 }
 
-/** accion: "confirmar" | "rechazar" | "baja". */
+/** accion: "confirmar" | "rechazar" | "baja" | "pago/aprobar" | "pago/rechazar". */
 export async function resolverInscripcion(torneoId, inscripcionId, accion, cuerpo) {
   const r = await http.post(`/torneos/${torneoId}/inscripciones/${inscripcionId}/${accion}`, cuerpo);
   return r.data;
@@ -125,6 +125,21 @@ export async function anotarme(datos) {
 
 export async function getMisInscripciones() {
   const r = await http.get("/inscripciones/mias");
+  return r.data.data;
+}
+
+/** La pareja manda el comprobante del pago de la inscripción (foto o PDF). */
+export async function subirComprobanteInscripcion(id, archivo) {
+  const datos = new FormData();
+  datos.append("comprobante", archivo);
+  const r = await http.post(`/inscripciones/${id}/comprobante`, datos);
+  return r.data;
+}
+
+/** Enlace firmado (vence a los pocos minutos). Con torneoId lo pide el organizador; sin él, la pareja. */
+export async function getEnlaceComprobanteInscripcion(inscripcionId, torneoId = null) {
+  const ruta = torneoId ? `/torneos/${torneoId}/inscripciones/${inscripcionId}/comprobante` : `/inscripciones/${inscripcionId}/comprobante`;
+  const r = await http.get(ruta);
   return r.data.data;
 }
 

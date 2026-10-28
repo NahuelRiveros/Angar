@@ -5,7 +5,8 @@ import { randomBytes } from "node:crypto";
 
 const SCHEMA = `mipadel_it_${randomBytes(4).toString("hex")}`;
 process.env.NODE_ENV = "test";
-process.env.DB_SCHEMA = SCHEMA;
+process.env.BD_ESQUEMA = SCHEMA;
+process.env.AVISOS_POR_CORREO = "no"; // las pruebas no mandan correos
 
 const { env } = await import("../src/configuracion_servidor/env.js");
 // Nunca contra una base remota: esta prueba crea y borra tablas.

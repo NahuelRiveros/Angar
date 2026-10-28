@@ -1,5 +1,6 @@
 // Validación de inscripciones sin base de datos (se prueban en ux_rules.test.mjs).
 import { normalizarCodigoJugador } from "../common/codigo_jugador.js";
+import { PERMITIDO } from "../../../../torneo_config.js";
 
 const texto = (v) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ") : v);
 
@@ -36,6 +37,19 @@ export function validarInscripcionOnline(body) {
   const companiero = nombreJugador(b.jugador2_nombre, "Tu compañero");
   if (companiero.error) return companiero;
   return { datos: { categoria_id: Number(b.categoria_id), jugador2_nombre: companiero.valor, ...extra.datos } };
+}
+
+/**
+ * ¿La pareja puede mandar el comprobante de la inscripción? Devuelve el motivo en español si no,
+ * o null si puede. Se puede reemplazar uno rechazado; uno en revisión o aprobado, no.
+ */
+export function motivoParaNoSubirComprobante({ torneo, categoria, inscripcion }) {
+  if (!PERMITIDO.pagarInscripcion.includes(torneo.estado)) return "El pago de la inscripción se manda con la inscripción abierta.";
+  if (!categoria.monto_inscripcion) return "Esta categoría no cobra la inscripción por MiPadel: consultá a la organización.";
+  if (!["esperando", "pendiente"].includes(inscripcion.estado)) return "Solo se paga una inscripción pendiente.";
+  if (inscripcion.pago_estado === "en_revision") return "Ya mandaste un comprobante: la organización lo está revisando.";
+  if (inscripcion.pago_estado === "aprobado") return "El pago de esta inscripción ya está aprobado.";
+  return null;
 }
 
 /** Pareja cargada (o editada) por el organizador. Al editar no se cambia la categoría. */

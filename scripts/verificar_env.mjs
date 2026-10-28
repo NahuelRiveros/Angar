@@ -15,6 +15,8 @@ const ANTERIORES = {
   NEON_DATABASE_URL: "BD_URL",
   NEON_DATABASE_URL_MIGRACION: "BD_URL",
   SOFTWARE_PRECIO: "PRECIO_SUSCRIPCION_MENSUAL",
+  DB_SCHEMA: "BD_ESQUEMA",
+  DB_SSL: "BD_SSL",
 };
 
 // Restos de los .env.example que no pueden llegar a un entorno real.
@@ -80,12 +82,12 @@ const problemas =
         cumple: (v) => !v.BD_URL || /^postgres(ql)?:\/\/[^@\s]+@[^\s]+$/.test(v.BD_URL),
       },
       {
-        mensaje: "DB_SCHEMA inválido: solo minúsculas, números y _ (ej. mipadel_test)",
-        cumple: (v) => !v.DB_SCHEMA || /^[a-z][a-z0-9_]*$/.test(v.DB_SCHEMA),
+        mensaje: "BD_ESQUEMA inválido: solo minúsculas, números y _ (ej. mipadel_test)",
+        cumple: (v) => !v.BD_ESQUEMA || /^[a-z][a-z0-9_]*$/.test(v.BD_ESQUEMA),
       },
       {
-        mensaje: "Con BD_URL (Supabase) hace falta DB_SSL=true",
-        cumple: (v) => !v.BD_URL || v.DB_SSL?.toLowerCase() === "true",
+        mensaje: "Con BD_URL (Supabase) hace falta BD_SSL=true",
+        cumple: (v) => !v.BD_URL || v.BD_SSL?.toLowerCase() === "true",
       },
     ],
   }) +

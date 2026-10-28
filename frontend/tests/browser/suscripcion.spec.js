@@ -241,6 +241,44 @@ const TRANSFERENCIAS = {
   ],
 };
 
+test("inicio del panel: el admin ve organizadores por estado y revisa los comprobantes sin salir", async ({ page }, info) => {
+  const pedidos = await entrarComo(page, ["admin"], {
+    "GET /suscripcion/admin": LISTA,
+    "GET /suscripcion/admin/transferencias": TRANSFERENCIAS,
+    "POST /suscripcion/admin/transferencias/31/aprobar": { ok: true, mensaje: "Transferencia aprobada: el plan vence el 2026-11-25.", data: {} },
+  });
+  await page.goto("/panel");
+  await expect(page.getByRole("link", { name: "Transferencias para revisar: 2" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Pagando al día: 1" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Vencidos: 1" })).toBeVisible();
+  const comprobantes = page.getByRole("region", { name: "Comprobantes de transferencia" });
+  await expect(comprobantes.getByText("“Desde Galicia”")).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("panel_inicio.png"), fullPage: true });
+
+  await comprobantes.getByRole("listitem").filter({ hasText: "Beto Pérez" }).getByRole("button", { name: "Aprobar" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Aprobar" }).click();
+  await expect(page.getByText("Transferencia aprobada")).toBeVisible();
+  expect(pedidos.filter((x) => x.clave.startsWith("POST")).map((x) => x.clave)).toEqual(["POST /suscripcion/admin/transferencias/31/aprobar"]);
+
+  await page.getByRole("link", { name: "Vencidos: 1" }).click();
+  await expect(page).toHaveURL(/\/admin\/suscripciones\?estado=vencido$/);
+  await expect.poll(() => pedidos.some((x) => x.clave === "GET /suscripcion/admin" && x.query.estado === "vencido")).toBeTruthy();
+});
+
+test("inicio del panel: si no carga el resumen se puede reintentar", async ({ page }) => {
+  let fallar = true;
+  await entrarComo(page, ["admin"], {
+    "GET /suscripcion/admin": (route) => (fallar ? route.fulfill({ status: 500, json: { ok: false, mensaje: "No pudimos cargar el resumen." } }) : route.fulfill({ json: LISTA })),
+    "GET /suscripcion/admin/transferencias": TRANSFERENCIAS,
+  });
+  await page.goto("/panel");
+  await expect(page.getByText("No pudimos cargar el resumen.").first()).toBeVisible({ timeout: 15000 });
+  fallar = false;
+  await page.getByRole("button", { name: "Reintentar" }).first().click();
+  await expect(page.getByRole("link", { name: "Pagando al día: 1" })).toBeVisible();
+});
+
 test("panel: el admin abre el comprobante, aprueba una transferencia y rechaza otra con motivo", async ({ page, context }, info) => {
   const pedidos = await entrarComo(page, ["admin"], {
     "GET /suscripcion/admin": LISTA,

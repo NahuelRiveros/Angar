@@ -21,6 +21,13 @@ export const Torneo = defineModel("Torneo", {
   // Cómo comunicarse con la organización (WhatsApp, teléfono o email), en texto.
   contacto:     { type: DataTypes.STRING(120), allowNull: true },
   reglamento:   { type: DataTypes.TEXT, allowNull: true },
+  // Cobro de la inscripción: monto general por pareja (cada categoría lo copia y puede cambiarlo)
+  // y la cuenta donde transferir. Se muestran en la página pública del torneo.
+  monto_inscripcion: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+  cobro_titular: { type: DataTypes.STRING(80), allowNull: true },
+  cobro_banco:   { type: DataTypes.STRING(60), allowNull: true },
+  cobro_cbu:     { type: DataTypes.STRING(22), allowNull: true },
+  cobro_alias:   { type: DataTypes.STRING(20), allowNull: true },
   estado:       { type: DataTypes.STRING(20), allowNull: false, defaultValue: "borrador" },
   creado_en:      { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
   actualizado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },

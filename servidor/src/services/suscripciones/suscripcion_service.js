@@ -3,6 +3,7 @@ import { sequelize } from "../../database/sequelize.js";
 import { env } from "../../configuracion_servidor/env.js";
 import { Suscripcion, PagoSuscripcion, Rol, UsuarioRol, Usuario } from "../../models/index.js";
 import { normalizarPaginacion, armarPaginacion } from "../common/pagination.js";
+import { avisarSinEsperar, contactoDeUsuario } from "../common/avisos_service.js";
 import { crearPreferencia, verificarPago } from "./mercadopago_service.js";
 import { subirArchivoPrivado, eliminarArchivoPrivado, enlaceArchivoPrivado } from "../common/upload_service.js";
 import { cobroConfig, transferenciaLista } from "../../../../cobro_config.js";
@@ -59,7 +60,7 @@ export async function vigenciaDeUsuario(usuarioId) {
  * cuenta: si ya tenía plan (aunque esté vencido) se devuelve el que tiene.
  */
 export async function empezarAOrganizar(usuarioId) {
-  return sequelize.transaction(async (t) => {
+  const resultado = await sequelize.transaction(async (t) => {
     const rol = await Rol.findOne({ where: { codigo: "organizador" }, transaction: t });
     if (!rol) throw new Error("Falta configurar el rol organizador");
     await UsuarioRol.findOrCreate({ where: { usuario_id: usuarioId, rol_id: rol.id }, transaction: t });
@@ -72,6 +73,14 @@ export async function empezarAOrganizar(usuarioId) {
     });
     return { creada, suscripcion: formatear(suscripcion, hoy) };
   });
+  // Solo la primera vez: al equipo le interesa cada organizador nuevo.
+  if (resultado.creada) {
+    avisarSinEsperar("nuevo_organizador", async () => {
+      const contacto = await contactoDeUsuario(usuarioId);
+      return contacto && { para: env.SUPERADMIN_EMAIL, datos: contacto };
+    });
+  }
+  return resultado;
 }
 
 export async function historialPagos(usuarioId, limite = 24) {
@@ -176,7 +185,7 @@ export async function avisarTransferencia(usuarioId, { archivo, nota }, { subir 
     throw error("No pudimos guardar el comprobante. Probá de nuevo en unos minutos.", 503, "COMPROBANTE_NO_GUARDADO");
   }
   try {
-    return await sequelize.transaction(async (t) => {
+    const pago = await sequelize.transaction(async (t) => {
       // Bloquear el plan serializa dos avisos simultáneos del mismo organizador.
       await Suscripcion.findOne({ where: { usuario_id: usuarioId }, transaction: t, lock: t.LOCK.UPDATE });
       if (await PagoSuscripcion.count({ where: { usuario_id: usuarioId, ...PENDIENTE }, transaction: t })) throw error(YA_PENDIENTE, 409, "TRANSFERENCIA_PENDIENTE");
@@ -185,6 +194,11 @@ export async function avisarTransferencia(usuarioId, { archivo, nota }, { subir 
         comprobante_id: subido.public_id, comprobante_formato: datos.formato,
       }, { transaction: t });
     });
+    avisarSinEsperar("transferencia_plan", async () => {
+      const contacto = await contactoDeUsuario(usuarioId);
+      return contacto && { para: env.SUPERADMIN_EMAIL, datos: contacto };
+    });
+    return pago;
   } catch (e) {
     // Sin registro en la base, el archivo quedaría huérfano en Cloudinary.
     await borrar(subido.public_id).catch(() => {});

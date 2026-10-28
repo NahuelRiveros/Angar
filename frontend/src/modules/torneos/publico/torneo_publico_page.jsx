@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +18,8 @@ import { EstadoTorneo } from "../torneo_ui.jsx";
 import BotonCompartir from "./boton_compartir.jsx";
 import ResultadosPublicos from "./resultados_publicos.jsx";
 import ParticipantesPublicos from "./participantes_publicos.jsx";
+import DatosDeCobro from "./datos_cobro.jsx";
+import { formatearPesos } from "../../suscripcion/estado_plan.js";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60";
 const mensajeDe = (error, porDefecto) => error?.response?.data?.mensaje || porDefecto;
@@ -80,6 +82,7 @@ export default function TorneoPublicoPage() {
                   {c.cupo_parejas ? (c.lugares_libres ? `${c.lugares_libres} lugar${c.lugares_libres === 1 ? "" : "es"}` : "Cupo completo") : `${c.confirmadas} pareja${c.confirmadas === 1 ? "" : "s"}`}
                 </span>
               </div>
+              {c.monto_inscripcion && <p className="mt-1 text-sm font-semibold text-(--kt-ink)">Inscripción: {formatearPesos(c.monto_inscripcion)} por pareja</p>}
               {c.premios.length > 0 && (
                 <ul className="mt-2 space-y-1 text-sm">
                   {c.premios.map((p, i) => (
@@ -91,6 +94,9 @@ export default function TorneoPublicoPage() {
             </li>
           ))}
         </ul>
+        <DatosDeCobro torneo={t}>
+          <p className="text-xs text-(--kt-ink-soft)">Después de anotarte, mandá el comprobante desde "Mis inscripciones": la organización lo revisa y confirma tu lugar.</p>
+        </DatosDeCobro>
       </section>
 
       {t.reglamento && (
@@ -108,22 +114,29 @@ function Anotarme({ torneo }) {
   const location = useLocation();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const conLugar = torneo.categorias.filter((c) => c.lugares_libres !== 0);
+  const categoriaDe = (id) => torneo.categorias.find((c) => c.id === Number(id));
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(esquema),
     defaultValues: { categoria_id: conLugar.length === 1 ? String(conLugar[0].id) : "", modo: "nombre", jugador2_nombre: "", codigo_companiero: "", telefono: "", nota: "" },
   });
-  const modo = useWatch({ control, name: "modo" });
+  const [modo, categoriaElegida] = useWatch({ control, name: ["modo", "categoria_id"] });
+  const monto = categoriaDe(categoriaElegida)?.monto_inscripcion;
   const anotar = useMutation({
     // Se manda solo una de las dos formas de indicar al compañero.
     mutationFn: ({ modo: forma, jugador2_nombre: nombre, codigo_companiero: codigo, ...d }) => anotarme({
       ...d, torneo_id: torneo.id, categoria_id: Number(d.categoria_id),
       ...(forma === "codigo" ? { codigo_companiero: codigo } : { jugador2_nombre: nombre }),
     }),
-    onSuccess: async (r) => {
-      toast.success(r.mensaje);
+    onSuccess: async (r, datos) => {
+      const aPagar = Boolean(categoriaDe(datos.categoria_id)?.monto_inscripcion && r.data?.id);
+      // Con invitación por código manda el aviso del servidor (dice que falta que el compañero acepte).
+      toast.success(aPagar && r.data.estado === "pendiente" ? "¡Te anotaste! Ahora transferí y mandá el comprobante para confirmar tu lugar." : r.mensaje);
       reset();
       await queryClient.invalidateQueries({ queryKey: ["mis-inscripciones"] });
+      // Si la categoría cobra, directo a la cuenta para transferir y el botón del comprobante.
+      if (aPagar) navigate(`/mis-inscripciones?pagar=${r.data.id}&nueva=1`);
     },
   });
 
@@ -161,6 +174,11 @@ function Anotarme({ torneo }) {
           )}
           <InputField label="Tu teléfono (opcional)" name="telefono" type="tel" inputMode="tel" placeholder="Para que la organización te avise horarios" maxLength={40} register={register} error={errors.telefono?.message} />
           <InputField label="Nota para la organización (opcional)" name="nota" maxLength={300} register={register} error={errors.nota?.message} />
+          {monto > 0 && (
+            <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              Esta categoría cobra <strong>{formatearPesos(monto)}</strong> por pareja. Al anotarte te llevamos a los datos para transferir y a mandar el comprobante.
+            </p>
+          )}
           {anotar.isError && <ErrorBanner message={mensajeDe(anotar.error, "No pudimos anotarte. Probá de nuevo.")} />}
           <button type="submit" disabled={anotar.isPending} className={`${BOTON} w-full bg-(--kt-accent-comercial) text-white hover:bg-(--kt-accent-comercial-hover) sm:w-auto`}>
             {anotar.isPending ? "Anotando…" : "Anotarme"}

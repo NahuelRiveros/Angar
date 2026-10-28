@@ -11,9 +11,36 @@ const TEXTOS = {
   localidad: [120, "La localidad"],
   contacto: [120, "El contacto"],
   reglamento: [10000, "El reglamento"],
+  cobro_titular: [80, "El titular de la cuenta"],
+  cobro_banco: [60, "El banco o la billetera"],
 };
 
 const texto = (valor) => (typeof valor === "string" ? valor.trim() : valor);
+
+/** Monto por pareja en pesos (hasta 2 decimales); vacío = sin cobro por la app. */
+export function validarMonto(valor) {
+  if (valor == null || valor === "") return { valor: null };
+  const monto = Number(valor);
+  if (!Number.isFinite(monto) || monto <= 0 || monto > LIMITES.montoMaximo || Math.round(monto * 100) !== monto * 100) {
+    return { error: `El monto tiene que ser un número mayor a 0 y de hasta ${LIMITES.montoMaximo.toLocaleString("es-AR")} pesos, o quedar vacío.` };
+  }
+  return { valor: monto };
+}
+
+/** CBU/CVU: 22 números (se aceptan espacios o guiones al escribirlo). Alias: 6 a 20 letras, números, punto o guion. */
+function validarCuenta(b, datos) {
+  if ("cobro_cbu" in b) {
+    const cbu = typeof b.cobro_cbu === "string" ? b.cobro_cbu.replace(/[\s-]/g, "") : b.cobro_cbu;
+    if (cbu && !/^\d{22}$/.test(cbu)) return "El CBU o CVU tiene que tener 22 números.";
+    datos.cobro_cbu = cbu || null;
+  }
+  if ("cobro_alias" in b) {
+    const alias = texto(b.cobro_alias);
+    if (alias && (typeof alias !== "string" || !/^[A-Za-z0-9.-]{6,20}$/.test(alias))) return "El alias tiene que tener entre 6 y 20 letras, números, puntos o guiones.";
+    datos.cobro_alias = alias || null;
+  }
+  return null;
+}
 
 /**
  * Datos del torneo. Parcial: valida y devuelve solo los campos que vinieron
@@ -40,6 +67,13 @@ export function validarDatosTorneo(body, { crear = false } = {}) {
     if (!esFechaValida(b[campo])) return { error: "Las fechas tienen que ser válidas (AAAA-MM-DD)." };
     datos[campo] = b[campo];
   }
+  if ("monto_inscripcion" in b) {
+    const monto = validarMonto(b.monto_inscripcion);
+    if (monto.error) return monto;
+    datos.monto_inscripcion = monto.valor;
+  }
+  const cuenta = validarCuenta(b, datos);
+  if (cuenta) return { error: cuenta };
   return { datos };
 }
 
@@ -82,6 +116,9 @@ export function validarCategoria(body) {
     }
     datos.cupo_parejas = cupo;
   }
+  const monto = validarMonto(b.monto_inscripcion);
+  if (monto.error) return monto;
+  datos.monto_inscripcion = monto.valor;
   const formato = validarFormatoZona(b);
   if (formato.error) return formato;
   return { datos: { ...datos, ...formato.datos } };

@@ -28,9 +28,12 @@ function exigirEdicion(torneo, parte) {
   }
 }
 
+// DECIMAL llega como texto desde PostgreSQL: el monto viaja como número.
+const comoMonto = (valor) => (valor === null || valor === undefined ? null : Number(valor));
+
 const formatearCategoria = (c) => ({
   id: c.id, nivel: c.nivel, rama: c.rama, nombre_personalizado: c.nombre_personalizado,
-  nombre: nombreCategoria(c), cupo_parejas: c.cupo_parejas, orden: c.orden,
+  nombre: nombreCategoria(c), cupo_parejas: c.cupo_parejas, orden: c.orden, monto_inscripcion: comoMonto(c.monto_inscripcion),
   parejas_por_zona: c.parejas_por_zona, clasifican_por_zona: c.clasifican_por_zona, formato_zona: c.formato_zona, formato_llave: c.formato_llave,
   premios: (c.premios ?? []).map(({ id, puesto, etiqueta, descripcion, orden }) => ({ id, puesto, etiqueta, descripcion, orden })),
 });
@@ -39,6 +42,7 @@ function formatearTorneo(torneo, categorias) {
   const t = torneo.get({ plain: true });
   return {
     ...t,
+    monto_inscripcion: comoMonto(t.monto_inscripcion),
     edicion: EDICION_POR_ESTADO[t.estado],
     transiciones: TRANSICIONES[t.estado] ?? [],
     categorias: categorias.map(formatearCategoria),

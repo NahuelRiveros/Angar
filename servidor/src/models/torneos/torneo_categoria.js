@@ -18,6 +18,8 @@ export const TorneoCategoria = defineModel("TorneoCategoria", {
   nombre_personalizado: { type: DataTypes.STRING(60), allowNull: true },
   // Tope de parejas inscriptas; vacío = sin tope.
   cupo_parejas: { type: DataTypes.SMALLINT, allowNull: true },
+  // Monto por pareja en pesos; null = la categoría no cobra por MiPadel.
+  monto_inscripcion: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
   orden: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
   // Formato de zonas y llave (valores posibles en ZONAS y FORMATOS_PARTIDO de torneo_config.js).
   parejas_por_zona:    { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 3 },

@@ -226,11 +226,11 @@ test("categorías: nivel y rama de la lista o nombre propio, cupo opcional y sin
   const { nombreCategoria } = await import("../../torneo_config.js");
   const cuarta = validarCategoria({ nivel: "4", rama: "caballeros", cupo_parejas: "16" }).datos;
   const ZONA_POR_DEFECTO = { parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6", formato_llave: "mejor_de_3_stb" };
-  assert.deepEqual(cuarta, { nivel: 4, rama: "caballeros", nombre_personalizado: null, cupo_parejas: 16, ...ZONA_POR_DEFECTO });
+  assert.deepEqual(cuarta, { nivel: 4, rama: "caballeros", nombre_personalizado: null, cupo_parejas: 16, monto_inscripcion: null, ...ZONA_POR_DEFECTO });
   assert.equal(nombreCategoria(cuarta), "4ta Caballeros");
   assert.equal(nombreCategoria({ nivel: 7, rama: "mixto" }), "7ma Mixto");
   const suma = validarCategoria({ nombre_personalizado: " Suma 13 ", nivel: 4, rama: "damas" }).datos;
-  assert.deepEqual(suma, { nivel: null, rama: null, nombre_personalizado: "Suma 13", cupo_parejas: null, ...ZONA_POR_DEFECTO }, "con nombre propio se ignora la lista");
+  assert.deepEqual(suma, { nivel: null, rama: null, nombre_personalizado: "Suma 13", cupo_parejas: null, monto_inscripcion: null, ...ZONA_POR_DEFECTO }, "con nombre propio se ignora la lista");
   const larga = validarCategoria({ nivel: 2, rama: "mixto", parejas_por_zona: "4", clasifican_por_zona: "1", formato_zona: "mejor_de_3_stb" }).datos;
   assert.deepEqual([larga.parejas_por_zona, larga.clasifican_por_zona, larga.formato_zona], [4, 1, "mejor_de_3_stb"]);
   assert.match(validarCategoria({ nivel: 2, rama: "mixto", parejas_por_zona: 6 }).error, /zonas pueden ser/);
@@ -435,6 +435,43 @@ test("lista pública: filtros con allowlist y resumen de la tarjeta", async () =
   assert.ok(r.descripcion.length <= 161 && r.descripcion.endsWith("…"));
   const mezcla = resumirTorneo({ id: 5, descripcion: null }, [cat(1), cat(3, { cupo_parejas: null, formato_zona: "mejor_de_3" })], confirmadas, undefined);
   assert.deepEqual([mezcla.formato, mezcla.lugares_libres, mezcla.premio_campeon, mezcla.descripcion], [null, null, null, null], "formatos distintos o una sin cupo: no se inventa un total");
+});
+
+test("cobro de la inscripción: monto, CBU/CVU y alias del torneo; cuándo la pareja puede mandar el comprobante", async () => {
+  const { validarDatosTorneo, validarCategoria, validarMonto } = await import("../src/services/torneos/torneo_reglas.js");
+  const { motivoParaNoSubirComprobante } = await import("../src/services/torneos/inscripcion_reglas.js");
+  assert.deepEqual(validarDatosTorneo({ monto_inscripcion: "15000", cobro_titular: " Club Norte ", cobro_banco: "Banco EJEMPLO", cobro_cbu: "0000 0031 0000 0000 0000 01", cobro_alias: "mipadel.ejemplo" }).datos,
+    { monto_inscripcion: 15000, cobro_titular: "Club Norte", cobro_banco: "Banco EJEMPLO", cobro_cbu: "0000003100000000000001", cobro_alias: "mipadel.ejemplo" });
+  assert.deepEqual(validarDatosTorneo({ monto_inscripcion: "", cobro_cbu: "", cobro_alias: "" }).datos, { monto_inscripcion: null, cobro_cbu: null, cobro_alias: null }, "vacío = sin cobro");
+  assert.match(validarDatosTorneo({ cobro_cbu: "123" }).error, /22 números/);
+  assert.match(validarDatosTorneo({ cobro_alias: "con espacio" }).error, /alias/);
+  assert.match(validarDatosTorneo({ monto_inscripcion: "-5" }).error, /monto/);
+  assert.match(validarMonto("10.555").error, /monto/, "hasta 2 decimales");
+  assert.equal(validarMonto("12500.50").valor, 12500.5);
+  assert.equal(validarCategoria({ nivel: "6", rama: "mixto", monto_inscripcion: "20000" }).datos.monto_inscripcion, 20000);
+
+  const base = { torneo: { estado: "inscripcion" }, categoria: { monto_inscripcion: "20000.00" }, inscripcion: { estado: "pendiente", pago_estado: null } };
+  assert.equal(motivoParaNoSubirComprobante(base), null);
+  assert.equal(motivoParaNoSubirComprobante({ ...base, inscripcion: { estado: "esperando", pago_estado: "rechazado" } }), null, "se reemplaza uno rechazado, aunque el compañero no haya aceptado");
+  assert.match(motivoParaNoSubirComprobante({ ...base, categoria: { monto_inscripcion: null } }), /no cobra/);
+  assert.match(motivoParaNoSubirComprobante({ ...base, torneo: { estado: "en_juego" } }), /inscripción abierta/);
+  assert.match(motivoParaNoSubirComprobante({ ...base, inscripcion: { estado: "pendiente", pago_estado: "en_revision" } }), /revisando/);
+  assert.match(motivoParaNoSubirComprobante({ ...base, inscripcion: { estado: "confirmada", pago_estado: null } }), /pendiente/);
+});
+
+test("avisos por correo: textos con enlace, datos escapados y sin escribir a dominios de prueba", async () => {
+  const { armarAviso, destinoValido } = await import("../src/services/common/avisos_reglas.js");
+  const nueva = armarAviso("nueva_inscripcion", { torneo: "Copa <Verano>", torneoId: 4, categoria: "6ta Mixto", pareja: "Ana / Beto", estado: "pendiente" }, "https://mipadelcup.vercel.app/");
+  assert.equal(nueva.subject, "MiPadel · Nueva inscripción en Copa <Verano>");
+  assert.match(nueva.text, /Ana \/ Beto se anotó en 6ta Mixto\.\nQuedó pendiente/);
+  assert.match(nueva.text, /https:\/\/mipadelcup\.vercel\.app\/mis-torneos\/4$/);
+  const conEtiquetas = armarAviso("nueva_inscripcion", { torneo: "X", torneoId: 1, categoria: "C", pareja: "<script>x</script> / Beto", estado: "pendiente" }, "");
+  assert.ok(conEtiquetas.html.includes("&lt;script&gt;") && !conEtiquetas.html.includes("<script>"), "el HTML no lleva etiquetas que escribió un usuario");
+  assert.match(armarAviso("nueva_inscripcion", { torneo: "X", torneoId: 1, categoria: "C", pareja: "P", estado: "esperando" }, "").text, /Falta que el compañero acepte/);
+  assert.match(armarAviso("nuevo_organizador", { nombre: "Eva Pérez", email: "eva@correo.com" }, "http://localhost:5173").text, /Eva Pérez \(eva@correo\.com\) activó su cuenta de organizador/);
+  assert.throws(() => armarAviso("inventado", {}, ""), /desconocido/);
+  assert.ok(destinoValido("organizador@gmail.com"));
+  for (const prueba of ["organizacion.demo@example.test", "x@example.com", "a@b.test", "", null, "sin-arroba"]) assert.equal(destinoValido(prueba), false, String(prueba));
 });
 
 test("programación del partido: día, hora y cancha opcionales y validados", async () => {

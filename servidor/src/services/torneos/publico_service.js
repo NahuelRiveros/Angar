@@ -10,7 +10,8 @@ import { ESTADOS_PUBLICOS, normalizarFiltros, resumirTorneo } from "./publico_re
 
 // Lo que se ve sin cuenta. Nunca borradores, ni datos de contacto de las parejas.
 const VISIBLES = ESTADOS_PUBLICOS;
-const CAMPOS = ["id", "nombre", "descripcion", "sede", "direccion", "localidad", "fecha_inicio", "fecha_fin", "contacto", "reglamento", "estado"];
+// La cuenta para transferir la inscripción es pública (decisión del negocio: se ve sin anotarse).
+const CAMPOS = ["id", "nombre", "descripcion", "sede", "direccion", "localidad", "fecha_inicio", "fecha_fin", "contacto", "reglamento", "estado", "cobro_titular", "cobro_banco", "cobro_cbu", "cobro_alias"];
 
 /**
  * Torneos visibles con lo que cuenta la tarjeta (categorías, formato, cupos, premio).
@@ -89,6 +90,7 @@ export async function verTorneoPublico(torneoId) {
       const anotadas = confirmadas.get(c.id) ?? 0;
       return {
         id: c.id, nombre: nombreCategoria(c), cupo_parejas: c.cupo_parejas, confirmadas: anotadas,
+        monto_inscripcion: c.monto_inscripcion === null ? null : Number(c.monto_inscripcion),
         lugares_libres: c.cupo_parejas ? Math.max(0, c.cupo_parejas - anotadas) : null,
         premios: c.premios.map(({ puesto, etiqueta, descripcion }) => ({ puesto, etiqueta, descripcion })),
       };

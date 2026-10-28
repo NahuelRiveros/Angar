@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { test, expect } from "@playwright/test";
 import { EDICION_POR_ESTADO, TRANSICIONES } from "../../../torneo_config.js";
 
@@ -121,23 +122,45 @@ test("un jugador se anota con su compañero en una categoría con lugar", async 
   expect(pedidos.find((p) => p.clave === "POST /inscripciones").body).toEqual({ torneo_id: 5, categoria_id: 51, jugador2_nombre: "Pedro Gómez", telefono: "370 400-0000", nota: "" });
 });
 
-test("mis inscripciones: estado, motivo de rechazo y bajarse de una pendiente", async ({ page }, info) => {
+test("mis inscripciones: pestañas Activas, Jugadas y Bajas; lo que pide acción va primero y bajarse la pasa a Bajas", async ({ page }, info) => {
+  const torneo = (id, nombre, estado, fecha_inicio = "2026-12-05") => ({ id, nombre, estado, sede: "Club Norte", fecha_inicio });
   let lista = [
-    { id: 1, estado: "pendiente", jugador1_nombre: "Eva Prueba", jugador2_nombre: "Pedro Gómez", categoria: "4ta Caballeros", zona_id: null, motivo_rechazo: null, torneo: { id: 5, nombre: "Abierto de Verano", estado: "inscripcion", sede: "Club Norte", fecha_inicio: "2026-12-05" } },
-    { id: 2, estado: "rechazada", jugador1_nombre: "Eva Prueba", jugador2_nombre: "Luis Díaz", categoria: "Suma 13", zona_id: null, motivo_rechazo: "No pagó la inscripción", torneo: { id: 6, nombre: "Copa Otoño", estado: "inscripcion", sede: null, fecha_inicio: null } },
+    { id: 1, rol: "anoto", estado: "confirmada", jugador1_nombre: "Eva Prueba", jugador2_nombre: "Pedro Gómez", categoria: "4ta Caballeros", zona_id: null, motivo_rechazo: null, monto_inscripcion: null, torneo: torneo(5, "Abierto de Verano", "inscripcion", "2026-11-01") },
+    { id: 2, rol: "anoto", estado: "rechazada", jugador1_nombre: "Eva Prueba", jugador2_nombre: "Luis Díaz", categoria: "Suma 13", zona_id: null, motivo_rechazo: "No pagó la inscripción", torneo: torneo(6, "Copa Otoño", "inscripcion") },
+    { id: 3, rol: "anoto", estado: "pendiente", jugador1_nombre: "Eva Prueba", jugador2_nombre: "Juan Paz", categoria: "6ta Mixto", zona_id: null, motivo_rechazo: null, monto_inscripcion: 20000, pago_estado: null, torneo: { ...torneo(7, "Copa Invierno", "inscripcion", "2026-12-20"), ...COBRO } },
+    { id: 4, rol: "anoto", estado: "confirmada", jugador1_nombre: "Eva Prueba", jugador2_nombre: "Ana Ruiz", categoria: "5ta Mixto", zona_id: 3, motivo_rechazo: null, torneo: torneo(8, "Copa Primavera", "finalizado", "2026-09-10") },
   ];
   const pedidos = await api(page, { roles: ["jugador"], rutas: {
     "GET /inscripciones/mias": (route) => route.fulfill({ json: { ok: true, data: lista } }),
     "POST /inscripciones/1/cancelar": (route) => { lista = lista.map((i) => (i.id === 1 ? { ...i, estado: "cancelada" } : i)); return route.fulfill({ json: { ok: true, mensaje: "Te bajaste del torneo." } }); },
   } });
   await page.goto("/mis-inscripciones");
-  await expect(page.getByText("Motivo: No pagó la inscripción")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Bajarme del torneo" })).toHaveCount(1);
+  await expect(page.getByRole("tab", { name: "Activas (2)" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Jugadas (1)" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Bajas (1)" })).toBeVisible();
+  await expect(page.getByText("Motivo: No pagó la inscripción")).toHaveCount(0);
+  // Lo que pide acción va primero aunque el torneo sea más tarde.
+  const tarjetas = page.getByRole("listitem").filter({ has: page.getByRole("link", { name: /^Copa|^Abierto/ }) });
+  await expect(tarjetas.first()).toContainText("Copa Invierno");
+  await expect(tarjetas.first()).toContainText("Mandá el comprobante para confirmar tu lugar.");
+  await expect(page.getByText("Confirmada: ya tenés tu lugar.")).toBeVisible();
+  await expect(page.getByText("Tenés 1 cosa para hacer: están primero.")).toBeVisible();
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("mis_inscripciones.png"), fullPage: true });
-  await page.getByRole("button", { name: "Bajarme del torneo" }).click();
+
+  await page.getByRole("listitem").filter({ hasText: "Abierto de Verano" }).getByRole("button", { name: "Bajarme del torneo" }).click();
   await page.getByRole("button", { name: "Bajarme", exact: true }).click();
-  await expect(page.getByText("Dada de baja")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Activas (1)" })).toBeVisible();
+  await expect(page.getByText("Abierto de Verano")).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Bajas (2)" }).click();
+  await expect(page).toHaveURL(/\/mis-inscripciones\?ver=bajas$/);
+  await expect(page.getByText("Motivo: No pagó la inscripción")).toBeVisible();
+  await expect(page.getByText("Te diste de baja.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Bajarme del torneo" })).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Jugadas (1)" }).click();
+  await expect(page.getByRole("link", { name: /Ver resultados y podio/ })).toHaveAttribute("href", "/torneos/8");
   expect(pedidos.some((p) => p.clave === "POST /inscripciones/1/cancelar")).toBe(true);
 });
 
@@ -145,6 +168,189 @@ const detalle = (estado) => ({
   id: 9, nombre: "Copa Club", estado, sede: "Club Sur", fecha_inicio: "2026-12-05", fecha_fin: null, descripcion: null, direccion: null, localidad: null, contacto: null, reglamento: null,
   edicion: EDICION_POR_ESTADO[estado], transiciones: TRANSICIONES[estado],
   categorias: [{ id: 91, nombre: "6ta Damas", nivel: 6, rama: "damas", nombre_personalizado: null, cupo_parejas: null, parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6", premios: [] }],
+});
+
+// Cobro de la inscripción: datos de EJEMPLO, no son una cuenta real.
+const COBRO = { cobro_titular: "Club Norte EJEMPLO", cobro_banco: "Banco EJEMPLO", cobro_cbu: "0000003100000000000001", cobro_alias: "club.norte.ejemplo" };
+const PDF_FALSO = { name: "comprobante.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 comprobante de prueba") };
+
+test("visitante: la ficha muestra el monto por pareja y la cuenta para transferir, con CBU y alias para copiar", async ({ page, context }, info) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const ficha = { ...FICHA, ...COBRO, categorias: FICHA.categorias.map((c, i) => ({ ...c, monto_inscripcion: i === 0 ? 20000 : null })) };
+  await api(page, { rutas: { "GET /publico/torneos/5": { ok: true, data: ficha } } });
+  await page.goto("/torneos/5");
+  await expect(page.getByText("Inscripción: $ 20.000 por pareja")).toBeVisible();
+  await expect(page.getByText("club.norte.ejemplo")).toBeVisible();
+  await page.getByRole("button", { name: "Copiar Alias" }).click();
+  await expect(page.getByText("Alias copiado")).toBeVisible();
+  if (info.project.name === "desktop") expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("club.norte.ejemplo");
+  await noOverflow(page);
+});
+
+test("jugador: al anotarse en una categoría que cobra lo lleva directo a transferir y mandar el comprobante", async ({ page }, info) => {
+  const ficha = { ...FICHA, ...COBRO, categorias: FICHA.categorias.map((c, i) => ({ ...c, monto_inscripcion: i === 0 ? 20000 : null })) };
+  let mias = [];
+  const pedidos = await api(page, { roles: ["jugador"], rutas: {
+    "GET /publico/torneos/5": { ok: true, data: ficha },
+    "POST /inscripciones": (route) => {
+      mias = [{ id: 7, rol: "anoto", estado: "pendiente", jugador1_nombre: "Eva Prueba", jugador2_nombre: "Pedro Gómez", categoria: "4ta Caballeros", zona_id: null, motivo_rechazo: null,
+        monto_inscripcion: 20000, pago_estado: null, pago_motivo_rechazo: null, pago_comprobante_formato: null, torneo: { id: 5, nombre: "Abierto de Verano", estado: "inscripcion", sede: "Club Norte", fecha_inicio: "2026-12-05", ...COBRO } }];
+      return route.fulfill({ status: 201, json: { ok: true, mensaje: "¡Listo! Tu inscripción quedó pendiente: el organizador la va a confirmar.", data: { id: 7, estado: "pendiente" } } });
+    },
+    "GET /inscripciones/mias": (route) => route.fulfill({ json: { ok: true, data: mias } }),
+    "POST /inscripciones/7/comprobante": { ok: true, mensaje: "¡Comprobante enviado! La organización lo revisa y confirma tu inscripción." },
+  } });
+  await page.goto("/torneos/5");
+  await expect(page.getByText("Esta categoría cobra $ 20.000 por pareja. Al anotarte te llevamos a los datos para transferir y a mandar el comprobante.")).toBeVisible();
+  await page.getByLabel("Nombre y apellido de tu compañero").fill("Pedro Gómez");
+  await page.getByRole("button", { name: "Anotarme" }).click();
+  await expect(page).toHaveURL(/\/mis-inscripciones\?pagar=7&nueva=1$/);
+  await expect(page.getByText("¡Te anotaste!")).toBeVisible();
+  const mandar = page.getByRole("button", { name: "Mandar comprobante" });
+  await expect(mandar).toBeInViewport();
+  await expect(page.getByText(COBRO.cobro_alias)).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("anotado_a_pagar.png") });
+  await page.getByLabel("Comprobante de la transferencia").setInputFiles(PDF_FALSO);
+  await expect(page.getByText("¡Comprobante enviado!")).toBeVisible();
+  expect(pedidos.filter((x) => x.clave === "POST /inscripciones/7/comprobante")).toHaveLength(1);
+});
+
+test("campanita: avisa invitaciones y comprobantes pendientes; el aviso lleva al pago y baja al mandarlo", async ({ page }, info) => {
+  const torneo = { id: 5, nombre: "Abierto de Verano", estado: "inscripcion", sede: "Club Norte", fecha_inicio: "2026-12-05", ...COBRO };
+  const base = { zona_id: null, motivo_rechazo: null, pago_motivo_rechazo: null, pago_comprobante_formato: null, torneo };
+  let mias = [
+    { ...base, id: 7, rol: "anoto", estado: "pendiente", jugador1_nombre: "Eva Prueba", jugador2_nombre: "Pedro Gómez", categoria: "4ta Caballeros", monto_inscripcion: 20000, pago_estado: null },
+    { ...base, id: 8, rol: "invitado", estado: "esperando", jugador1_nombre: "Ana Prueba", jugador2_nombre: "Eva Prueba", categoria: "5ta Mixto", monto_inscripcion: null, pago_estado: null },
+    { ...base, id: 9, rol: "anoto", estado: "confirmada", jugador1_nombre: "Eva Prueba", jugador2_nombre: "Luz Paz", categoria: "6ta Damas", monto_inscripcion: 20000, pago_estado: "aprobado" },
+  ];
+  await api(page, { roles: ["jugador"], rutas: {
+    "GET /inscripciones/mias": (route) => route.fulfill({ json: { ok: true, data: mias } }),
+    "POST /inscripciones/7/comprobante": (route) => {
+      mias = mias.map((i) => (i.id === 7 ? { ...i, pago_estado: "en_revision", pago_comprobante_formato: "pdf" } : i));
+      return route.fulfill({ json: { ok: true, mensaje: "¡Comprobante enviado! La organización lo revisa y confirma tu inscripción." } });
+    },
+  } });
+  await page.goto("/torneos");
+  const campana = page.getByRole("button", { name: "Avisos: 2 pendientes" });
+  await campana.click();
+  await expect(page.getByRole("link", { name: /Ana Prueba te invitó a jugar en pareja/ })).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("campanita.png") });
+  await page.getByRole("link", { name: /Falta mandar el comprobante de la inscripción/ }).click();
+  await expect(page).toHaveURL(/\/mis-inscripciones\?pagar=7$/);
+  await expect(page.getByText("Tenés 2 cosas para hacer: están primero.")).toBeVisible();
+  await expect(page.getByText("¡Te anotaste!")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Mandar comprobante" })).toBeInViewport();
+  await page.getByLabel("Comprobante de la transferencia").setInputFiles(PDF_FALSO);
+  await expect(page.getByText("¡Comprobante enviado!")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Avisos: 1 pendiente" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Avisos: 1 pendiente" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("link", { name: "Ver mis inscripciones" })).toHaveCount(0);
+});
+
+test("campanita: un visitante sin sesión no la ve", async ({ page }) => {
+  await api(page, { rutas: {} });
+  await page.goto("/torneos");
+  await expect(page.getByRole("heading", { name: "Torneos" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Avisos/ })).toHaveCount(0);
+});
+
+test("campanita: sin pendientes lo dice", async ({ page }) => {
+  await api(page, { roles: ["jugador"], rutas: { "GET /inscripciones/mias": { ok: true, data: [] } } });
+  await page.goto("/torneos");
+  await page.getByRole("button", { name: "Avisos: nada pendiente" }).click();
+  await expect(page.getByText("No tenés nada pendiente.")).toBeVisible();
+});
+
+test("jugador: en una categoría sin cobro se queda en la ficha, como antes", async ({ page }) => {
+  await api(page, { roles: ["jugador"], rutas: {
+    "GET /publico/torneos/5": { ok: true, data: FICHA },
+    "POST /inscripciones": { ok: true, mensaje: "¡Listo! Tu inscripción quedó pendiente: el organizador la va a confirmar.", data: { id: 8, estado: "pendiente" } },
+  } });
+  await page.goto("/torneos/5");
+  await page.getByLabel("Nombre y apellido de tu compañero").fill("Pedro Gómez");
+  await page.getByRole("button", { name: "Anotarme" }).click();
+  await expect(page.getByText("Tu inscripción quedó pendiente")).toBeVisible();
+  await expect(page).toHaveURL(/\/torneos\/5$/);
+});
+
+test("jugador: ve la cuenta, manda el comprobante; si se lo rechazan ve el motivo y manda otro", async ({ page }, info) => {
+  let inscripcion = { id: 7, rol: "anoto", estado: "pendiente", jugador1_nombre: "Eva Prueba", jugador2_nombre: "Pedro Gómez", categoria: "4ta Caballeros", zona_id: null, motivo_rechazo: null,
+    monto_inscripcion: 20000, pago_estado: "rechazado", pago_motivo_rechazo: "No se ve el monto", pago_comprobante_formato: "jpg",
+    torneo: { id: 5, nombre: "Abierto de Verano", estado: "inscripcion", sede: "Club Norte", fecha_inicio: "2026-12-05", ...COBRO } };
+  const pedidos = await api(page, { roles: ["jugador"], rutas: {
+    "GET /inscripciones/mias": (route) => route.fulfill({ json: { ok: true, data: [inscripcion] } }),
+    "POST /inscripciones/7/comprobante": (route) => {
+      inscripcion = { ...inscripcion, pago_estado: "en_revision", pago_motivo_rechazo: null, pago_comprobante_formato: "pdf" };
+      return route.fulfill({ json: { ok: true, mensaje: "¡Comprobante enviado! La organización lo revisa y confirma tu inscripción." } });
+    },
+  } });
+  await page.goto("/mis-inscripciones");
+  await expect(page.getByText("Inscripción: $ 20.000 por pareja")).toBeVisible();
+  await expect(page.getByText("Motivo: No se ve el monto. Mandá otro comprobante.")).toBeVisible();
+  await expect(page.getByText("0000003100000000000001")).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("pago_inscripcion.png"), fullPage: true });
+
+  await page.getByLabel("Comprobante de la transferencia").setInputFiles(PDF_FALSO);
+  await expect(page.getByText("¡Comprobante enviado!")).toBeVisible();
+  await expect(page.getByText("Comprobante en revisión")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Mandar/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Ver mi comprobante" })).toBeVisible();
+  expect(pedidos.filter((x) => x.clave === "POST /inscripciones/7/comprobante")).toHaveLength(1);
+});
+
+test("organizador: carga la cuenta en Datos, ve el comprobante y aprueba uno (queda confirmada) o rechaza otro con motivo", async ({ page, context }) => {
+  const torneo = detalle("inscripcion");
+  torneo.categorias[0].monto_inscripcion = 20000;
+  let inscripciones = [
+    { id: 1, categoria_id: 91, jugador1_nombre: "Ana Gómez", jugador2_nombre: "Bea Ruiz", telefono: null, nota: null, origen: "online", estado: "pendiente", motivo_rechazo: null, cabeza_de_serie: false, zona_id: null, pago_estado: "en_revision", pago_comprobante_formato: "pdf", pago_motivo_rechazo: null },
+    { id: 2, categoria_id: 91, jugador1_nombre: "Caro López", jugador2_nombre: "Dani Paz", telefono: null, nota: null, origen: "online", estado: "pendiente", motivo_rechazo: null, cabeza_de_serie: false, zona_id: null, pago_estado: "en_revision", pago_comprobante_formato: "jpg", pago_motivo_rechazo: null },
+  ];
+  const cambiar = (id, extra) => { inscripciones = inscripciones.map((i) => (i.id === id ? { ...i, ...extra } : i)); };
+  const pedidos = await api(page, { roles: ["organizador"], rutas: {
+    "GET /torneos/9": { ok: true, data: torneo },
+    "PATCH /torneos/9": (route, body) => route.fulfill({ json: { ok: true, mensaje: "Cambios guardados.", data: { ...torneo, ...body } } }),
+    "GET /torneos/9/inscripciones": (route) => route.fulfill({ json: { ok: true, data: inscripciones } }),
+    "GET /torneos/9/inscripciones/1/comprobante": { ok: true, data: { url: "https://res.cloudinary.test/firmado/insc1.pdf", formato: "pdf" } },
+    "POST /torneos/9/inscripciones/1/pago/aprobar": (route) => { cambiar(1, { estado: "confirmada", pago_estado: "aprobado" }); return route.fulfill({ json: { ok: true, mensaje: "Pago aprobado: la inscripción quedó confirmada." } }); },
+    "POST /torneos/9/inscripciones/2/pago/rechazar": (route, body) => { cambiar(2, { pago_estado: "rechazado", pago_motivo_rechazo: body.motivo }); return route.fulfill({ json: { ok: true, mensaje: "Comprobante rechazado." } }); },
+  } });
+  await context.route("https://res.cloudinary.test/**", (route) => route.fulfill({ contentType: "text/plain", body: "comprobante" }));
+  await page.goto("/mis-torneos/9");
+
+  await page.getByLabel("CBU o CVU").fill("123");
+  await page.getByRole("button", { name: "Guardar datos" }).click();
+  await expect(page.getByText("El CBU o CVU tiene 22 números.")).toBeVisible();
+  await page.getByLabel("Monto por pareja").fill("20000");
+  await page.getByLabel("Titular de la cuenta").fill(COBRO.cobro_titular);
+  await page.getByLabel("CBU o CVU").fill(COBRO.cobro_cbu);
+  await page.getByLabel("Alias").fill(COBRO.cobro_alias);
+  await page.getByRole("button", { name: "Guardar datos" }).click();
+  await expect(page.getByText("Cambios guardados.")).toBeVisible();
+  expect(pedidos.find((x) => x.clave === "PATCH /torneos/9").body).toMatchObject({ monto_inscripcion: "20000", cobro_titular: COBRO.cobro_titular, cobro_cbu: COBRO.cobro_cbu, cobro_alias: COBRO.cobro_alias });
+
+  await page.getByRole("tab", { name: "Inscripciones" }).click();
+  const ana = page.getByRole("listitem").filter({ hasText: "Ana Gómez" });
+  await expect(ana.getByText("Comprobante en revisión")).toBeVisible();
+  const pestania = context.waitForEvent("page");
+  await ana.getByRole("button", { name: "Ver comprobante de Ana Gómez / Bea Ruiz" }).click();
+  await expect(await pestania).toHaveURL("https://res.cloudinary.test/firmado/insc1.pdf");
+  await expect(ana.getByRole("button", { name: "Confirmar", exact: true })).toHaveCount(0);
+  await ana.getByRole("button", { name: "Aprobar pago y confirmar" }).click();
+  await expect(page.getByText("Pago aprobado: la inscripción quedó confirmada.")).toBeVisible();
+  await expect(ana.getByText("Pago aprobado")).toBeVisible();
+
+  await page.getByRole("listitem").filter({ hasText: "Caro López" }).getByRole("button", { name: "Rechazar comprobante" }).click();
+  const modal = page.getByRole("dialog", { name: /Rechazar comprobante · Caro López/ });
+  await modal.getByLabel("Motivo").fill("El monto no coincide");
+  await modal.getByRole("button", { name: "Rechazar comprobante" }).click();
+  await expect(page.getByText("Motivo: El monto no coincide")).toBeVisible();
+  expect(pedidos.find((x) => x.clave === "POST /torneos/9/inscripciones/2/pago/rechazar").body).toEqual({ motivo: "El monto no coincide" });
 });
 
 test("organizador: confirma, rechaza con motivo y carga una pareja a mano", async ({ page }, info) => {

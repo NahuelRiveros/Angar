@@ -1,7 +1,6 @@
 import { Router } from "express";
-import multer from "multer";
 import { requireAuth, requirePermiso } from "../../middleware/auth_middleware.js";
-import { cobroConfig } from "../../../../cobro_config.js";
+import { recibirComprobante } from "../../middleware/comprobante_middleware.js";
 import {
   miSuscripcionController, empezarController, misPagosController, crearPagoController, webhookController,
   listarController, pagosDeUsuarioController, extenderController, fijarController,
@@ -10,18 +9,6 @@ import {
 } from "../../controllers/suscripciones/suscripcion_controller.js";
 
 export const suscripcionRouter = Router();
-
-// En memoria y con tope: el formato real lo valida el servicio por el contenido del archivo.
-const recibirComprobante = (req, res, next) => multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: cobroConfig.comprobante.maxBytes, files: 1, fields: 5 },
-}).single("comprobante")(req, res, (err) => {
-  if (!err) return next();
-  const mensaje = err.code === "LIMIT_FILE_SIZE"
-    ? `El comprobante puede pesar hasta ${Math.round(cobroConfig.comprobante.maxBytes / 1024 / 1024)} MB.`
-    : "No pudimos leer el archivo. Probá con otro.";
-  return res.status(400).json({ ok: false, codigo: "COMPROBANTE_INVALIDO", mensaje });
-});
 
 // Público: aviso de MercadoPago (el estado del pago se consulta a MercadoPago).
 suscripcionRouter.post("/webhook", webhookController);

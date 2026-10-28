@@ -52,6 +52,8 @@ export const LIMITES = {
   premiosPorCategoria: 10,
   cupoMinimo: 2,
   cupoMaximo: 256,
+  // Monto de inscripción por pareja, en pesos.
+  montoMaximo: 10000000,
 };
 
 // ── Zonas, inscripciones y partidos ─────────────────────────────────────────
@@ -130,6 +132,13 @@ export function cuposConZonasIguales(parejasPorZona, maximoZonas = 16) {
   return Array.from({ length: maximoZonas - 1 }, (_, i) => parejasPorZona * (i + 2)).filter((n) => n <= LIMITES.cupoMaximo);
 }
 
+// Pago de la inscripción con comprobante (null = todavía no mandó ninguno).
+export const ESTADOS_PAGO_INSCRIPCION = {
+  en_revision: "Comprobante en revisión",
+  aprobado: "Pago aprobado",
+  rechazado: "Comprobante rechazado",
+};
+
 export const ESTADOS_INSCRIPCION = {
   esperando: "Esperando al compañero",
   pendiente: "Pendiente",
@@ -146,6 +155,8 @@ export const PERMITIDO = {
   cargarResultados: ["en_juego"],
   // Día, hora y cancha: se pueden publicar antes de empezar a jugar.
   programarPartidos: ["inscripcion", "en_juego"],
+  // La pareja paga la inscripción mientras está abierta.
+  pagarInscripcion: ["inscripcion"],
   armarLlave: ["en_juego"],
 };
 

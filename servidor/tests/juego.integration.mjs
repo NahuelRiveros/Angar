@@ -5,7 +5,8 @@ import { randomBytes } from "node:crypto";
 
 const SCHEMA = `mipadel_it_${randomBytes(4).toString("hex")}`;
 process.env.NODE_ENV = "test";
-process.env.DB_SCHEMA = SCHEMA;
+process.env.BD_ESQUEMA = SCHEMA;
+process.env.AVISOS_POR_CORREO = "no"; // las pruebas no mandan correos
 
 const { env } = await import("../src/configuracion_servidor/env.js");
 // Nunca contra una base remota: esta prueba crea y borra tablas.
@@ -162,4 +163,50 @@ test("borrar un torneo en borrador se lleva sus parejas, zonas y partidos", { sk
   await torneos.cambiarEstado(otro.id, org, "borrador");
   await torneos.eliminarTorneo(otro.id, org);
   assert.deepEqual(await Promise.all([Inscripcion.count({ where: { torneo_id: otro.id } }), Zona.count({ where: { categoria_id: cat.id } }), Partido.count({ where: { categoria_id: cat.id } })]), [0, 0, 0]);
+});
+
+test("pago de la inscripción: la pareja manda el comprobante, el organizador lo rechaza o lo aprueba y queda confirmada", { skip: sin }, async () => {
+  const pdf = (texto) => ({ buffer: Buffer.from(`%PDF-1.4 ${texto} ${"x".repeat(20)}`) });
+  const nube = { subidos: [], borrados: [] };
+  const subir = async (_buffer, { public_id }) => { nube.subidos.push(public_id); return { public_id }; };
+  const borrar = async (id) => { nube.borrados.push(id); };
+
+  const pago = await torneos.crearTorneo(org, { nombre: "Con cobro", sede: "Club Sur", fecha_inicio: "2026-12-19", monto_inscripcion: "20000", cobro_titular: "Club Sur EJEMPLO", cobro_alias: "club.sur.ejemplo" });
+  const conMonto = (await torneos.crearCategoria(pago.id, org, { nivel: 6, rama: "mixto", monto_inscripcion: 20000, cupo_parejas: 4 })).categorias[0];
+  const sinMonto = (await torneos.crearCategoria(pago.id, org, { nivel: 7, rama: "mixto" })).categorias[1];
+  await torneos.cambiarEstado(pago.id, org, "inscripcion");
+
+  const [ana, beto, caro] = jugadores;
+  const insc1 = await insc.anotarseOnline(ana, pago.id, { categoria_id: conMonto.id, jugador2_nombre: "Compa Uno" });
+  const insc2 = await insc.anotarseOnline(beto, pago.id, { categoria_id: sinMonto.id, jugador2_nombre: "Compa Dos" });
+
+  const ficha = await publico.verTorneoPublico(pago.id);
+  assert.deepEqual([ficha.cobro_alias, ficha.categorias.find((c) => c.id === conMonto.id).monto_inscripcion], ["club.sur.ejemplo", 20000], "la cuenta y el monto son públicos");
+
+  await assert.rejects(insc.subirComprobanteInscripcion(beto, insc2.id, pdf("b"), { subir, borrar }), /no cobra/);
+  await assert.rejects(insc.subirComprobanteInscripcion(caro, insc1.id, pdf("c"), { subir, borrar }), /No encontramos esa inscripción/, "solo la pareja");
+  await assert.rejects(insc.subirComprobanteInscripcion(ana, insc1.id, { buffer: Buffer.from("no es un comprobante válido") }, { subir, borrar }), /foto|PDF/);
+
+  await insc.subirComprobanteInscripcion(ana, insc1.id, pdf("a1"), { subir, borrar });
+  await assert.rejects(insc.subirComprobanteInscripcion(ana, insc1.id, pdf("a2"), { subir, borrar }), /revisando/, "uno en revisión a la vez");
+  const lista = await insc.listarInscripciones(pago.id, org);
+  const enLista = lista.find((i) => i.id === insc1.id).get({ plain: true });
+  assert.equal(enLista.pago_estado, "en_revision");
+  assert.equal(enLista.pago_comprobante_id, undefined, "el id del archivo no sale de la API");
+
+  const enlace = await insc.enlaceComprobanteInscripcion(org, insc1.id, { enlazar: (id, formato) => `https://firmado.test/${id}.${formato}` });
+  assert.equal(enlace.formato, "pdf");
+  await assert.rejects(insc.enlaceComprobanteInscripcion(caro, insc1.id), /No encontramos ese comprobante/);
+
+  await insc.rechazarPagoInscripcion(pago.id, insc1.id, org, { motivo: "No se ve el monto" });
+  const mias = await insc.misInscripciones(ana);
+  assert.deepEqual((({ pago_estado, pago_motivo_rechazo, estado, monto_inscripcion }) => ({ pago_estado, pago_motivo_rechazo, estado, monto_inscripcion }))(mias.find((i) => i.id === insc1.id)),
+    { pago_estado: "rechazado", pago_motivo_rechazo: "No se ve el monto", estado: "pendiente", monto_inscripcion: 20000 });
+
+  await insc.subirComprobanteInscripcion(ana, insc1.id, pdf("a3"), { subir, borrar });
+  assert.equal(nube.borrados.length, 1, "el comprobante rechazado que se reemplaza se borra");
+  const aprobada = await insc.aprobarPagoInscripcion(pago.id, insc1.id, org);
+  assert.deepEqual([aprobada.estado, aprobada.pago_estado], ["confirmada", "aprobado"]);
+  await assert.rejects(insc.aprobarPagoInscripcion(pago.id, insc1.id, org), /no tiene un comprobante para revisar/);
+  await assert.rejects(insc.aprobarPagoInscripcion(pago.id, insc1.id, jugadores[1]), /No encontramos ese torneo/, "solo el dueño aprueba");
 });

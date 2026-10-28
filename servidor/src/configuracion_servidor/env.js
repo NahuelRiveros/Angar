@@ -6,7 +6,7 @@ import { deploymentConfig } from "../../../deployment_config.js";
 export const limpiarValor = (valor) =>
   typeof valor === "string" ? valor.trim().replace(/^(["'])(.*)\1$/, "$2").trim() : valor;
 
-// Se limpia process.env (no solo `env`) porque sequelize.js lee DB_SCHEMA directo.
+// Se limpia process.env (no solo `env`) porque sequelize.js lee BD_ESQUEMA directo.
 for (const [clave, valor] of Object.entries(process.env)) process.env[clave] = limpiarValor(valor);
 
 const esProduccion = process.env.NODE_ENV === "production";
@@ -42,7 +42,8 @@ export const env = {
   DB_NAME:      process.env.DB_NAME      || "mipadel",
   DB_USER:      process.env.DB_USER      || "postgres",
   DB_PASS:      process.env.DB_PASS      || "",          // ← NUNCA hardcodear
-  DB_SSL:       String(process.env.DB_SSL || "").toLowerCase() === "true",
+  // DB_SSL es el nombre anterior: se sigue leyendo para no romper un Render ya configurado.
+  DB_SSL:       String(process.env.BD_SSL || process.env.DB_SSL || "").toLowerCase() === "true",
 
   // ── Seguridad ──────────────────────────────────────────────────
   // En producción es OBLIGATORIO. En dev usa el valor del .env local.
@@ -110,4 +111,8 @@ export const env = {
   SUPERADMIN_DNI:       process.env.SUPERADMIN_DNI       || "",
   SUPERADMIN_EMAIL:     process.env.SUPERADMIN_EMAIL     || "",
   SUPERADMIN_PASSWORD:  process.env.SUPERADMIN_PASSWORD  || "",
+
+  // ── Avisos por correo (nuevo organizador, inscripciones, comprobantes) ──
+  // Van a SUPERADMIN_EMAIL y al organizador de cada torneo. "no" los apaga (los tests y la demo lo hacen).
+  AVISOS_POR_CORREO: String(process.env.AVISOS_POR_CORREO || "si").toLowerCase() !== "no",
 };

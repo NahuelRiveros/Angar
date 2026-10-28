@@ -125,7 +125,7 @@ test("verificar_env avisa nombres viejos y valores de ejemplo sin mostrar valore
   try {
     mkdirSync(join(raiz, "servidor"));
     mkdirSync(join(raiz, "frontend"));
-    writeFileSync(join(raiz, "servidor/.env.example"), "BD_URL=\nDB_SSL=true\nDB_SCHEMA=mipadel_test\n");
+    writeFileSync(join(raiz, "servidor/.env.example"), "BD_URL=\nBD_SSL=true\nBD_ESQUEMA=mipadel_test\n");
     writeFileSync(join(raiz, "frontend/.env.example"), "VITE_API_URL=http://localhost:3001/api\n");
     writeFileSync(join(raiz, "servidor/.env"), "NEON_DATABASE_URL=postgres://SECRETO_NO_MOSTRAR\nBD_URL=postgresql://u:[COMPLETAR]@host/db\nDB_SSL=true\n");
     writeFileSync(join(raiz, "frontend/.env"), "VITE_API_URL=https://api.onrender.com/api\n");
@@ -135,10 +135,11 @@ test("verificar_env avisa nombres viejos y valores de ejemplo sin mostrar valore
     assert.equal(r.status, 1);
     assert.match(r.stdout, /NEON_DATABASE_URL → renombrar a BD_URL/);
     assert.match(r.stdout, /BD_URL → todavía tiene un valor de ejemplo/);
+    assert.match(r.stdout, /DB_SSL → renombrar a BD_SSL/);
     assert.match(r.stdout, /✅ VITE_API_URL/);
     assert.doesNotMatch(r.stdout, /SECRETO_NO_MOSTRAR|onrender\.com/);
 
-    writeFileSync(join(raiz, "servidor/.env"), "BD_URL=postgresql://u:clave@host/db\nDB_SSL=true\nDB_SCHEMA=mipadel_test\n");
+    writeFileSync(join(raiz, "servidor/.env"), "BD_URL=postgresql://u:clave@host/db\nBD_SSL=true\nBD_ESQUEMA=mipadel_test\n");
     const ok = spawnSync(process.execPath, [script, raiz], { encoding: "utf8" });
     assert.equal(ok.status, 0, ok.stdout);
     assert.match(ok.stdout, /Todo en orden/);

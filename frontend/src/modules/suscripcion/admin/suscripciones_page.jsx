@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,8 +37,13 @@ const esquemaFijar = z.object({
 
 const FILTRO_PENDIENTES = { estado: "pendiente", page: 1 };
 
+// Las tarjetas del inicio del panel llegan con ?vista=transferencias o ?estado=por_vencer…
+const ESTADOS_DE_FILTRO = ["prueba", "activo", "por_vencer", "vencido"];
+
 export default function SuscripcionesPage() {
-  const [vista, setVista] = useState("organizadores");
+  const [params] = useSearchParams();
+  const [vista, setVista] = useState(params.get("vista") === "transferencias" ? "transferencias" : "organizadores");
+  const estadoInicial = ESTADOS_DE_FILTRO.includes(params.get("estado")) ? params.get("estado") : "";
   // Misma consulta que la primera página de la pestaña: el número sale gratis de la caché.
   const pendientes = useQuery({ queryKey: claveTransferencias(FILTRO_PENDIENTES), queryFn: () => getTransferencias(FILTRO_PENDIENTES) });
   const cantidad = pendientes.data?.pendientes ?? 0;
@@ -57,15 +63,15 @@ export default function SuscripcionesPage() {
           </button>
         ))}
       </div>
-      <div role="tabpanel">{vista === "organizadores" ? <OrganizadoresPanel /> : <TransferenciasPanel />}</div>
+      <div role="tabpanel">{vista === "organizadores" ? <OrganizadoresPanel estadoInicial={estadoInicial} /> : <TransferenciasPanel />}</div>
     </div>
   );
 }
 
-function OrganizadoresPanel() {
+function OrganizadoresPanel({ estadoInicial }) {
   const { usuario } = useAuth();
   const puedeGestionar = tienePermiso(usuario, "suscripciones.gestionar");
-  const [filtros, setFiltros] = useState({ busqueda: "", estado: "", page: 1, limit: 20 });
+  const [filtros, setFiltros] = useState({ busqueda: "", estado: estadoInicial, page: 1, limit: 20 });
   const [accion, setAccion] = useState(null); // { tipo: "extender" | "fijar" | "pagos", fila }
 
   const lista = useQuery({

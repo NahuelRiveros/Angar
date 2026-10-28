@@ -3,11 +3,16 @@ import { sequelize } from "../../database/sequelize.js";
 import { Torneo, TorneoCategoria, Inscripcion, Persona } from "../../models/index.js";
 import { PERMITIDO, ESTADOS_TORNEO, nombreCategoria } from "../../../../torneo_config.js";
 import { torneoPropio, error } from "./torneo_service.js";
-import { validarInscripcionOnline, validarParejaOrganizador } from "./inscripcion_reglas.js";
-import { validarRechazo } from "../suscripciones/suscripcion_reglas.js";
+import { validarInscripcionOnline, validarParejaOrganizador, motivoParaNoSubirComprobante } from "./inscripcion_reglas.js";
+import { validarRechazo, validarAvisoTransferencia } from "../suscripciones/suscripcion_reglas.js";
+import { subirArchivoPrivado, eliminarArchivoPrivado, enlaceArchivoPrivado } from "../common/upload_service.js";
+import { cobroConfig } from "../../../../cobro_config.js";
+import { avisarSinEsperar, contactoDeUsuario } from "../common/avisos_service.js";
 import { usuarioPorCodigo } from "../jugadores/jugador_service.js";
 
-const ATRIBUTOS = ["id", "categoria_id", "usuario2_id", "jugador1_nombre", "jugador2_nombre", "telefono", "nota", "origen", "estado", "motivo_rechazo", "cabeza_de_serie", "zona_id", "creado_en"];
+// Del pago se manda el estado y si hay comprobante (para el botón "Ver"), nunca el id del archivo.
+const PAGO = ["pago_estado", "pago_comprobante_formato", "pago_subido_en", "pago_motivo_rechazo"];
+const ATRIBUTOS = ["id", "categoria_id", "usuario2_id", "jugador1_nombre", "jugador2_nombre", "telefono", "nota", "origen", "estado", "motivo_rechazo", "cabeza_de_serie", "zona_id", "creado_en", ...PAGO];
 // Vivas: ocupan al jugador en la categoría (incluye la invitación sin responder).
 const ACTIVAS = ["esperando", "pendiente", "confirmada"];
 
@@ -48,8 +53,9 @@ export async function anotarseOnline(usuario, torneoId, body) {
   if (invalido) throw error(invalido, 400, "DATOS_INVALIDOS");
   const persona = await Persona.findByPk(usuario.persona_id, { attributes: ["nombre", "apellido"] });
   const jugador1 = `${persona?.nombre ?? ""} ${persona?.apellido ?? ""}`.trim().slice(0, 80);
+  let inscripcion;
   try {
-    return await sequelize.transaction(async (t) => {
+    inscripcion = await sequelize.transaction(async (t) => {
       const torneo = await Torneo.findByPk(torneoId, { transaction: t });
       if (!torneo || torneo.estado === "borrador") throw error("No encontramos ese torneo.", 404, "TORNEO_INEXISTENTE");
       exigir(torneo, "anotarseOnline", "La inscripción no está abierta");
@@ -75,23 +81,44 @@ export async function anotarseOnline(usuario, torneoId, body) {
     if (e instanceof UniqueConstraintError) throw error("Ya estás anotado en esa categoría.", 409, "YA_ANOTADO");
     throw e;
   }
+  avisarAlOrganizador("nueva_inscripcion", inscripcion);
+  return inscripcion;
+}
+
+/** Aviso al organizador del torneo sobre una inscripción (nueva o con comprobante). */
+function avisarAlOrganizador(tipo, inscripcion) {
+  avisarSinEsperar(tipo, async () => {
+    const [torneo, categoria] = await Promise.all([
+      Torneo.findByPk(inscripcion.torneo_id, { attributes: ["id", "nombre", "organizador_id"] }),
+      TorneoCategoria.findByPk(inscripcion.categoria_id, { attributes: ["nivel", "rama", "nombre_personalizado"] }),
+    ]);
+    const organizador = torneo && await contactoDeUsuario(torneo.organizador_id);
+    if (!organizador) return null;
+    return {
+      para: organizador.email,
+      datos: { torneo: torneo.nombre, torneoId: torneo.id, categoria: nombreCategoria(categoria), pareja: `${inscripcion.jugador1_nombre} / ${inscripcion.jugador2_nombre}`, estado: inscripcion.estado },
+    };
+  });
 }
 
 /** Las que anoté yo y las invitaciones que me hicieron (rol "invitado"). */
 export async function misInscripciones(usuario) {
   const filas = await Inscripcion.findAll({
     where: { [Op.or]: [{ usuario_id: usuario.usuario_id }, { usuario2_id: usuario.usuario_id }] },
-    attributes: ["id", "torneo_id", "usuario_id", "jugador1_nombre", "jugador2_nombre", "estado", "motivo_rechazo", "zona_id", "creado_en"],
+    attributes: ["id", "torneo_id", "usuario_id", "jugador1_nombre", "jugador2_nombre", "estado", "motivo_rechazo", "zona_id", "creado_en", ...PAGO],
     include: [
-      { model: Torneo, as: "torneo", attributes: ["id", "nombre", "estado", "fecha_inicio", "sede"] },
-      { model: TorneoCategoria, as: "categoria", attributes: ["nivel", "rama", "nombre_personalizado"] },
+      { model: Torneo, as: "torneo", attributes: ["id", "nombre", "estado", "fecha_inicio", "sede", "cobro_titular", "cobro_banco", "cobro_cbu", "cobro_alias"] },
+      { model: TorneoCategoria, as: "categoria", attributes: ["nivel", "rama", "nombre_personalizado", "monto_inscripcion"] },
     ],
     order: [["creado_en", "DESC"], ["id", "DESC"]],
     limit: 50,
   });
   return filas.map((f) => {
     const { categoria, usuario_id: anoto, ...resto } = f.get({ plain: true });
-    return { ...resto, categoria: nombreCategoria(categoria), rol: anoto === usuario.usuario_id ? "anoto" : "invitado" };
+    return {
+      ...resto, categoria: nombreCategoria(categoria), rol: anoto === usuario.usuario_id ? "anoto" : "invitado",
+      monto_inscripcion: categoria.monto_inscripcion === null ? null : Number(categoria.monto_inscripcion),
+    };
   });
 }
 
@@ -193,6 +220,104 @@ export async function rechazarInscripcion(torneoId, inscripcionId, usuario, body
     const inscripcion = await inscripcionDelTorneo(torneo, inscripcionId, t);
     if (!["pendiente", "esperando"].includes(inscripcion.estado)) throw error("Solo se rechazan inscripciones pendientes.", 409, "INSCRIPCION_NO_PENDIENTE");
     await inscripcion.update({ estado: "rechazada", motivo_rechazo: datos.motivo, actualizado_en: new Date() }, { transaction: t });
+    return inscripcion;
+  });
+}
+
+// ── Pago de la inscripción con comprobante ─────────────────────────────────
+
+const esSuperAdmin = (usuario) => (usuario?.roles ?? []).includes("super_admin");
+const COMPROBANTE_INEXISTENTE = () => error("No encontramos ese comprobante.", 404, "COMPROBANTE_INEXISTENTE");
+
+/** La inscripción (bloqueada si hay transacción) de la que el usuario es parte, con su torneo y categoría. */
+async function inscripcionParaPagar(usuario, inscripcionId, t) {
+  const inscripcion = await Inscripcion.findOne({
+    where: { id: inscripcionId, [Op.or]: [{ usuario_id: usuario.usuario_id }, { usuario2_id: usuario.usuario_id }] },
+    ...(t ? { transaction: t, lock: t.LOCK.UPDATE } : {}),
+  });
+  if (!inscripcion) throw error("No encontramos esa inscripción.", 404, "INSCRIPCION_INEXISTENTE");
+  const [torneo, categoria] = await Promise.all([
+    Torneo.findByPk(inscripcion.torneo_id, { attributes: ["id", "estado"], transaction: t }),
+    TorneoCategoria.findByPk(inscripcion.categoria_id, { attributes: ["id", "monto_inscripcion"], transaction: t }),
+  ]);
+  return { inscripcion, torneo, categoria };
+}
+
+/**
+ * Cualquiera de los dos de la pareja manda el comprobante: queda "en revisión" hasta que la
+ * organización lo apruebe (y confirma) o lo rechace con motivo (y se puede mandar otro).
+ */
+export async function subirComprobanteInscripcion(usuario, inscripcionId, archivo, { subir = subirArchivoPrivado, borrar = eliminarArchivoPrivado } = {}) {
+  const { datos, error: invalido } = validarAvisoTransferencia({ archivo, nota: null }, cobroConfig.comprobante);
+  if (invalido) throw error(invalido, 400, "COMPROBANTE_INVALIDO");
+  const motivo = motivoParaNoSubirComprobante(await inscripcionParaPagar(usuario, inscripcionId));
+  if (motivo) throw error(motivo, 409, "PAGO_NO_PERMITIDO");
+
+  let subido;
+  try {
+    subido = await subir(archivo.buffer, { folder: "mipadel/inscripciones", public_id: `inscripcion_${inscripcionId}_${Date.now()}` });
+  } catch (e) {
+    console.error("No se pudo guardar el comprobante de inscripción:", e.message);
+    throw error("No pudimos guardar el comprobante. Probá de nuevo en unos minutos.", 503, "COMPROBANTE_NO_GUARDADO");
+  }
+  let anterior = null;
+  try {
+    const inscripcion = await sequelize.transaction(async (t) => {
+      // Se vuelve a mirar con la fila bloqueada: dos envíos al mismo tiempo no dejan dos comprobantes.
+      const actual = await inscripcionParaPagar(usuario, inscripcionId, t);
+      const otra = motivoParaNoSubirComprobante(actual);
+      if (otra) throw error(otra, 409, "PAGO_NO_PERMITIDO");
+      anterior = actual.inscripcion.pago_comprobante_id;
+      return actual.inscripcion.update({
+        pago_estado: "en_revision", pago_comprobante_id: subido.public_id, pago_comprobante_formato: datos.formato,
+        pago_subido_en: new Date(), pago_motivo_rechazo: null, actualizado_en: new Date(),
+      }, { transaction: t });
+    });
+    // El comprobante rechazado que se reemplaza ya no hace falta.
+    if (anterior) await borrar(anterior).catch(() => {});
+    avisarAlOrganizador("comprobante_inscripcion", inscripcion);
+    return inscripcion;
+  } catch (e) {
+    // Sin registro en la base, el archivo quedaría huérfano en Cloudinary.
+    await borrar(subido.public_id).catch(() => {});
+    throw e;
+  }
+}
+
+/** Enlace que vence a los 5 minutos: para la pareja, el organizador del torneo o el super admin. */
+export async function enlaceComprobanteInscripcion(usuario, inscripcionId, { enlazar = enlaceArchivoPrivado } = {}) {
+  const inscripcion = await Inscripcion.findByPk(inscripcionId, { attributes: ["torneo_id", "usuario_id", "usuario2_id", "pago_comprobante_id", "pago_comprobante_formato"] });
+  const torneo = inscripcion && await Torneo.findByPk(inscripcion.torneo_id, { attributes: ["organizador_id"] });
+  const autorizado = torneo && ([inscripcion.usuario_id, inscripcion.usuario2_id, torneo.organizador_id].includes(usuario.usuario_id) || esSuperAdmin(usuario));
+  // Mismo 404 exista o no: no revela comprobantes ajenos.
+  if (!autorizado || !inscripcion.pago_comprobante_id) throw COMPROBANTE_INEXISTENTE();
+  return { url: enlazar(inscripcion.pago_comprobante_id, inscripcion.pago_comprobante_formato), formato: inscripcion.pago_comprobante_formato };
+}
+
+/** Aprobar el comprobante confirma la inscripción (con el cupo controlado, como al confirmar a mano). */
+export async function aprobarPagoInscripcion(torneoId, inscripcionId, usuario) {
+  return sequelize.transaction(async (t) => {
+    const torneo = await torneoPropio(torneoId, usuario, t);
+    exigir(torneo, "cargarParejas", "Ya no se pueden confirmar parejas");
+    const inscripcion = await inscripcionDelTorneo(torneo, inscripcionId, t);
+    if (inscripcion.pago_estado !== "en_revision") throw error("Esta inscripción no tiene un comprobante para revisar.", 409, "SIN_COMPROBANTE");
+    if (inscripcion.estado === "esperando") throw error("Todavía falta que el compañero acepte la invitación: después aprobás el pago y queda confirmada.", 409, "ESPERANDO_COMPANIERO");
+    if (inscripcion.estado !== "pendiente") throw error("Solo se aprueba el pago de una inscripción pendiente.", 409, "INSCRIPCION_NO_PENDIENTE");
+    await exigirCupo(await categoriaBloqueada(torneo.id, inscripcion.categoria_id, t), t);
+    await inscripcion.update({ estado: "confirmada", pago_estado: "aprobado", pago_motivo_rechazo: null, actualizado_en: new Date() }, { transaction: t });
+    return inscripcion;
+  });
+}
+
+/** Rechazar el comprobante no rechaza la inscripción: la pareja ve el motivo y manda otro. */
+export async function rechazarPagoInscripcion(torneoId, inscripcionId, usuario, body) {
+  const { datos, error: invalido } = validarRechazo(body);
+  if (invalido) throw error(invalido, 400, "DATOS_INVALIDOS");
+  return sequelize.transaction(async (t) => {
+    const torneo = await torneoPropio(torneoId, usuario, t);
+    const inscripcion = await inscripcionDelTorneo(torneo, inscripcionId, t);
+    if (inscripcion.pago_estado !== "en_revision") throw error("Esta inscripción no tiene un comprobante para revisar.", 409, "SIN_COMPROBANTE");
+    await inscripcion.update({ pago_estado: "rechazado", pago_motivo_rechazo: datos.motivo, actualizado_en: new Date() }, { transaction: t });
     return inscripcion;
   });
 }

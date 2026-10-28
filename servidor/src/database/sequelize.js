@@ -3,9 +3,10 @@ import { env } from "../configuracion_servidor/env.js";
 
 // mipadel en producción, mipadel_test para pruebas. Solo minúsculas: el
 // search_path de abajo va sin comillas y Postgres pasaría mayúsculas a minúsculas.
-export const DB_SCHEMA = process.env.DB_SCHEMA || "mipadel_test";
+// BD_ESQUEMA; DB_SCHEMA es el nombre anterior (se sigue leyendo para no romper un Render ya configurado).
+export const DB_SCHEMA = process.env.BD_ESQUEMA || process.env.DB_SCHEMA || "mipadel_test";
 if (!/^[a-z][a-z0-9_]*$/.test(DB_SCHEMA)) {
-  throw new Error(`DB_SCHEMA inválido ("${DB_SCHEMA}"): usar solo minúsculas, números y _ (ej. mipadel)`);
+  throw new Error(`BD_ESQUEMA inválido ("${DB_SCHEMA}"): usar solo minúsculas, números y _ (ej. mipadel)`);
 }
 
 // Neon pooler no soporta search_path como parámetro de startup.

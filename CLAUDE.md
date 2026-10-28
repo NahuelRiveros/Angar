@@ -148,6 +148,29 @@ Modelos de reglamento editables: `detalle/reglamentos_modelo.js` (el de zonas y 
 responde las zonas o la llave según la fase (`fase` en la respuesta). Día, hora y cancha (opcionales) van por
 `PUT /partidos/:id/programacion` (`PERMITIDO.programarPartidos`: inscripción o en juego); rearmar zonas los borra. Pestaña Llave en el detalle.
 
+Cobro de la inscripción (por torneo): `torneo.monto_inscripcion` (general) y `cobro_titular|banco|cbu|alias`
+(públicos en la ficha), `torneo_categoria.monto_inscripcion` (por pareja; null = no cobra por MiPadel) e
+`inscripcion.pago_*` (estado null | en_revision | aprobado | rechazado, comprobante privado en Cloudinary).
+La pareja manda el comprobante (`POST /api/inscripciones/:id/comprobante`, reglas en `motivoParaNoSubirComprobante`);
+el organizador lo ve con enlace firmado y lo aprueba (confirma con el cupo controlado) o lo rechaza con motivo
+(`/api/torneos/:id/inscripciones/:id/pago/aprobar|rechazar`). Confirmar sin comprobante (efectivo) sigue andando.
+
+Avisos por correo (`services/common/avisos_service.js`, textos en `avisos_reglas.js`): a `SUPERADMIN_EMAIL`
+cuando alguien activa por primera vez su cuenta de organizador y cuando manda el comprobante del plan; al organizador
+del torneo con cada inscripción online nueva y cada comprobante de inscripción. Se mandan en segundo plano después de
+guardar (un error del correo nunca rompe la acción), nunca a dominios de prueba (`@example.test`…) y se apagan con
+`AVISOS_POR_CORREO=no` (los tests de integración y la demo lo hacen solos).
+Al anotarse en una categoría que cobra, la ficha pública lleva a `/mis-inscripciones?pagar=<id>&nueva=1` (pago destacado).
+Campanita de la barra (`modules/torneos/campana_avisos.jsx`, en `navbar_config.extras`): invitaciones sin responder y
+comprobantes por mandar o rechazados (`avisos_inscripciones.js`, mismas reglas que el servidor), con la misma consulta
+de Mis inscripciones (`use_mis_inscripciones.js`, 5 min en caché, sin polling).
+Mis inscripciones: pestañas Activas / Jugadas / Bajas (`?ver=`), lo que pide acción primero y un "próximo paso"
+por tarjeta (`secciones_inscripciones.js`).
+
+Demo: `servidor/scripts/demo_torneos.mjs` crea con los servicios dos torneos de la cuenta "Organización Demo"
+(`@example.test`, contraseña al azar): uno finalizado y otro en juego (mixto en llave, caballeros en zonas, Suma 9
+con zonas terminadas). Solo toca torneos de esa cuenta con la marca `DEMO:` en la descripción.
+
 Lista pública `/torneos`: `GET /api/publico/torneos?q&estado&rama&nivel` (filtros con allowlist en
 `publico_reglas.js`; rama/nivel = alguna categoría que lo juegue) trae por torneo categorías, formato, parejas,
 lugares libres y premio del campeón en dos consultas por página; los filtros viven en la URL (`tarjeta_torneo.jsx`).
@@ -186,6 +209,7 @@ No hay package.json raíz ni workspaces; cada paquete instala sus dependencias.
 | Integración (PostgreSQL local: suscripción y torneos) | `npm --prefix servidor run test:integration` |
 | Navegador | `npm --prefix frontend run test:e2e` |
 | Revisar los `.env` (solo nombres, sin valores) | `npm --prefix servidor run env:verificar` (lo corre el usuario; lee sus `.env`) |
+| Torneos demo (también en producción, pide `--confirmo`) | `npm --prefix servidor run demo -- --ver` · `--crear --confirmo` · `--borrar --confirmo` |
 
 Un solo test: `node --test --test-name-pattern="permisos" servidor/tests/ux_rules.test.mjs`;
 en Playwright, `npm --prefix frontend run test:e2e -- --project=desktop -g "texto del test"`
@@ -205,6 +229,10 @@ actualizar el script o ejecutarlo explícitamente con `node --test`.
   Verificar un destino de desarrollo aislado antes de iniciarlo.
 - Un cambio de esquema/modelos requiere una petición que lo incluya o una decisión explícita.
 - La conexión está en `database/sequelize.js`; la URL sale de `BD_URL`.
+- Variables de entorno: `.env.example` simple (una línea de comentario con qué es, de dónde sale y
+  [RENDER]/[PC], y la variable), en orden alfabético como el panel de Render. Esquema y SSL: `BD_ESQUEMA`
+  y `BD_SSL` (`DB_SCHEMA`/`DB_SSL` se leen como respaldo). Al agregar una variable: sumarla al
+  `.env.example` con ese formato y `env:verificar` la controla.
   Esquemas: `mipadel` en producción y `mipadel_test` (predeterminado) para pruebas; solo minúsculas.
   Nunca apuntar a `gc_dist`/`gc_dist_test` (son de DistribuCG).
 - Base local de desarrollo: PostgreSQL 17 en `localhost`, base `mipadel` (la de DistribuCG es

@@ -22,6 +22,13 @@ export const Inscripcion = defineModel("Inscripcion", {
   // esperando | pendiente | confirmada | rechazada | cancelada (ver ESTADOS_INSCRIPCION)
   estado: { type: DataTypes.STRING(20), allowNull: false },
   motivo_rechazo: { type: DataTypes.STRING(300), allowNull: true },
+  // Pago con comprobante: null (no mandó), en_revision, aprobado o rechazado (con motivo).
+  // El archivo es privado en Cloudinary; se ve con un enlace firmado que vence.
+  pago_estado: { type: DataTypes.STRING(20), allowNull: true },
+  pago_comprobante_id: { type: DataTypes.STRING(200), allowNull: true },
+  pago_comprobante_formato: { type: DataTypes.STRING(10), allowNull: true },
+  pago_subido_en: { type: DataTypes.DATE, allowNull: true },
+  pago_motivo_rechazo: { type: DataTypes.STRING(300), allowNull: true },
   cabeza_de_serie: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   // Número al azar que recibe al entrar en una zona: último desempate de la tabla y de los mejores
   // terceros. Se guarda para que la tabla dé siempre lo mismo; nunca se muestra.

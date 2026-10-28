@@ -139,7 +139,7 @@ test("el organizador crea un torneo, carga categorías y premios, y abre la insc
 
   const premiosEnviados = pedidos.find((p) => p.ruta.endsWith("/premios")).body;
   expect(premiosEnviados).toEqual({ premios: [{ puesto: "campeon", etiqueta: "", descripcion: "$200.000 + trofeo" }, { puesto: "otro", etiqueta: "Fair play", descripcion: "Paletas" }] });
-  expect(pedidos.find((p) => p.metodo === "POST" && p.ruta === "/torneos/100/categorias").body).toEqual({ nivel: 4, rama: "caballeros", cupo_parejas: 15, parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6", formato_llave: "mejor_de_3_stb" });
+  expect(pedidos.find((p) => p.metodo === "POST" && p.ruta === "/torneos/100/categorias").body).toEqual({ nivel: 4, rama: "caballeros", cupo_parejas: 15, monto_inscripcion: "", parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6", formato_llave: "mejor_de_3_stb" });
 });
 
 const TORNEO_EN_JUEGO = {
