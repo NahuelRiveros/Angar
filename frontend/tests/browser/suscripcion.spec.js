@@ -266,6 +266,30 @@ test("inicio del panel: el admin ve organizadores por estado y revisa los compro
   await expect.poll(() => pedidos.some((x) => x.clave === "GET /suscripcion/admin" && x.query.estado === "vencido")).toBeTruthy();
 });
 
+test("inicio del panel: el super admin ve cuántos usuarios hay y los últimos (solo nombre y fecha); un admin no", async ({ page, browser }, info) => {
+  const REGISTRADOS = { ok: true, page: 1, limit: 10, total: 12, totalPages: 2, resumen: { total: 12, ultimos_7: 3, ultimos_30: 8 },
+    data: [{ id: 40, nombre: "Lucía", apellido: "Gómez", creado_en: "2026-10-28T15:00:00Z" }, { id: 39, nombre: "Pedro", apellido: "Sosa", creado_en: "2026-10-27T13:00:00Z" }] };
+  const pedidos = await entrarComo(page, ["super_admin"], { "GET /suscripcion/admin": LISTA, "GET /suscripcion/admin/transferencias": TRANSFERENCIAS, "GET /admin/registrados": REGISTRADOS });
+  await page.goto("/panel");
+  const usuarios = page.getByRole("region", { name: "Usuarios" });
+  await expect(usuarios.getByLabel("Usuarios registrados: 12")).toBeVisible();
+  await expect(usuarios.getByLabel("Nuevos en 7 días: 3")).toBeVisible();
+  await expect(usuarios.getByText("Lucía Gómez")).toBeVisible();
+  await expect(usuarios.getByText("28/10/2026")).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("panel_registrados.png"), fullPage: true });
+  await usuarios.getByRole("button", { name: "Siguiente" }).click();
+  await expect.poll(() => pedidos.some((x) => x.clave === "GET /admin/registrados" && x.query.page === "2")).toBeTruthy();
+
+  const otra = await browser.newPage();
+  const pedidosAdmin = await entrarComo(otra, ["admin"], { "GET /suscripcion/admin": LISTA, "GET /suscripcion/admin/transferencias": TRANSFERENCIAS });
+  await otra.goto("/panel");
+  await expect(otra.getByRole("region", { name: "Organizadores y pagos" })).toBeVisible();
+  await expect(otra.getByRole("region", { name: "Usuarios" })).toHaveCount(0);
+  expect(pedidosAdmin.some((x) => x.clave === "GET /admin/registrados")).toBe(false);
+  await otra.close();
+});
+
 test("inicio del panel: si no carga el resumen se puede reintentar", async ({ page }) => {
   let fallar = true;
   await entrarComo(page, ["admin"], {

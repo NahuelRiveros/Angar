@@ -167,6 +167,9 @@ de Mis inscripciones (`use_mis_inscripciones.js`, 5 min en caché, sin polling).
 Mis inscripciones: pestañas Activas / Jugadas / Bajas (`?ver=`), lo que pide acción primero y un "próximo paso"
 por tarjeta (`secciones_inscripciones.js`).
 
+Usuarios registrados (inicio del panel, solo `super_admin` con `requireRole`): `GET /api/admin/registrados`
+(`registrados_service.js`): totales (todos, 7 y 30 días) y los últimos con nombre y fecha, sin contacto ni cuentas de prueba.
+
 Demo: `servidor/scripts/demo_torneos.mjs` crea con los servicios dos torneos de la cuenta "Organización Demo"
 (`@example.test`, contraseña al azar): uno finalizado y otro en juego (mixto en llave, caballeros en zonas, Suma 9
 con zonas terminadas). Solo toca torneos de esa cuenta con la marca `DEMO:` en la descripción.

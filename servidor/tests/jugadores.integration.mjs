@@ -139,3 +139,15 @@ test("historial: torneos, títulos y mejor puesto para los dos jugadores registr
   assert.deepEqual([conInvitado.jugador2.codigo, conInvitado.jugador2.resumen], [null, null], "el que no tiene cuenta muestra solo el nombre");
   assert.ok(!JSON.stringify(participantes).includes("3704111111"), "sin teléfonos");
 });
+
+test("usuarios registrados para el super admin: totales y solo nombre y fecha, sin cuentas de prueba", { skip: sin }, async () => {
+  const { resumenRegistrados } = await import("../src/services/usuarios/registrados_service.js");
+  const antes = await resumenRegistrados();
+  // Un dominio común en un esquema temporal: no se manda ningún correo al registrarse.
+  const r = await registrarCliente({ nombre: "Nueva", apellido: "Cuenta", email: `nueva.${randomBytes(3).toString("hex")}@correo.com.ar`, password: "Clave1234" });
+  assert.equal(r.ok, true, r.mensaje);
+  const despues = await resumenRegistrados({ page: 1, limit: 5 });
+  assert.deepEqual([despues.resumen.total - antes.resumen.total, despues.resumen.ultimos_7 - antes.resumen.ultimos_7], [1, 1], "las cuentas @example.test no cuentan; la nueva sí");
+  assert.deepEqual(Object.keys(despues.data[0]).sort(), ["apellido", "creado_en", "id", "nombre"], "nada de email, teléfono ni DNI");
+  assert.equal(despues.data[0].nombre, "Nueva", "los más nuevos primero");
+});

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/auth_context.jsx";
 import { tienePermiso } from "../../../../permisos_config.js";
 import ResumenSuscripciones from "../suscripcion/admin/resumen_suscripciones.jsx";
+import RegistradosResumen from "../usuarios/admin/registrados_resumen.jsx";
 import { usePanelGrupos } from "../../controls/layout/panel/use_panel_grupos.js";
 
 /** Inicio del panel: un acceso a cada pantalla que el rol permite. */
@@ -17,6 +18,8 @@ export default function PanelInicioPage() {
       </div>
 
       {tienePermiso(usuario, "suscripciones.ver") && <ResumenSuscripciones />}
+      {/* Cantidad y nombres de los usuarios: solo el super admin (el servidor también lo exige). */}
+      {usuario?.roles?.includes("super_admin") && <RegistradosResumen />}
 
       <section aria-labelledby="panel-accesos" className="space-y-4">
         <h2 id="panel-accesos" className="text-lg font-bold text-(--kt-ink)">Accesos</h2>
