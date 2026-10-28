@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { GitBranch, Medal, Trophy, Undo2 } from "lucide-react";
+import { CalendarClock, GitBranch, Medal, Trophy, Undo2 } from "lucide-react";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
 import { FORMATOS_PARTIDO, PERMITIDO } from "../../../../../torneo_config.js";
-import { getLlave, cambiarLlave, guardarResultado, borrarResultado } from "../api/torneos_api.js";
+import { getLlave, cambiarLlave, guardarResultado, borrarResultado, programarPartido } from "../api/torneos_api.js";
+import { HorarioPartido } from "../torneo_ui.jsx";
+import ProgramacionModal from "./programacion_modal.jsx";
 import { mensajeDe } from "./use_cambio_torneo.js";
 import ResultadoModal from "./resultado_modal.jsx";
 
@@ -49,12 +51,15 @@ export default function LlaveSeccion({ torneo, editable }) {
 function LlaveDeCategoria({ torneo, categoriaId, editable }) {
   const [confirmarDeshacer, setConfirmarDeshacer] = useState(false);
   const [partidoAbierto, setPartidoAbierto] = useState(null);
+  const [aProgramar, setAProgramar] = useState(null);
   const llave = useQuery({ queryKey: claveLlave(torneo.id, categoriaId), queryFn: () => getLlave(torneo.id, categoriaId) });
   const armar = useCambioLlave(torneo.id, categoriaId, () => cambiarLlave(torneo.id, categoriaId, "armar"));
   const deshacer = useCambioLlave(torneo.id, categoriaId, () => cambiarLlave(torneo.id, categoriaId, "deshacer"), { onExito: () => setConfirmarDeshacer(false) });
   const cerrarPartido = { onExito: () => setPartidoAbierto(null), errorEnPantalla: true };
   const guardar = useCambioLlave(torneo.id, categoriaId, ({ partidoId, sets }) => guardarResultado(torneo.id, partidoId, sets), cerrarPartido);
   const borrar = useCambioLlave(torneo.id, categoriaId, (partidoId) => borrarResultado(torneo.id, partidoId), cerrarPartido);
+  const programar = useCambioLlave(torneo.id, categoriaId, ({ partidoId, ...datos }) => programarPartido(torneo.id, partidoId, datos),
+    { onExito: () => setAProgramar(null), errorEnPantalla: true });
 
   if (llave.isPending) return <AdminSpinner />;
   if (llave.isError) {
@@ -70,6 +75,7 @@ function LlaveDeCategoria({ torneo, categoriaId, editable }) {
   const enJuego = PERMITIDO.armarLlave.includes(torneo.estado);
   const puedeArmar = editable && enJuego && d.zonas_completas && !d.con_resultados;
   const puedeCargar = editable && PERMITIDO.cargarResultados.includes(torneo.estado);
+  const puedeProgramar = editable && PERMITIDO.programarPartidos.includes(torneo.estado);
 
   return (
     <div className="space-y-4">
@@ -122,6 +128,13 @@ function LlaveDeCategoria({ torneo, categoriaId, editable }) {
                           {p.sets && <span className="shrink-0 font-mono">{p.sets.map((s) => s[i]).join(" ")}</span>}
                         </p>
                       ))}
+                      <HorarioPartido partido={p} className="mt-1" />
+                      {puedeProgramar && (
+                        <button type="button" onClick={() => { programar.reset(); setAProgramar(p); }} className={`${BOTON} mt-2 w-full border-slate-300 bg-white text-slate-700`}
+                          aria-label={`Horario de ${p.pareja1?.nombre ?? "a definir"} contra ${p.pareja2?.nombre ?? "a definir"}`}>
+                          <CalendarClock size={15} aria-hidden="true" /> Horario
+                        </button>
+                      )}
                       {puedeCargar && definido && (
                         <button type="button" onClick={() => setPartidoAbierto(p)} className={`${BOTON} mt-2 w-full border-slate-300 bg-white text-slate-700`}
                           aria-label={`${p.sets ? "Corregir" : "Cargar"} resultado de ${p.pareja1.nombre} contra ${p.pareja2.nombre}`}>
@@ -140,6 +153,7 @@ function LlaveDeCategoria({ torneo, categoriaId, editable }) {
       <ConfirmDialog open={confirmarDeshacer} loading={deshacer.isPending} variant="warning" confirmLabel="Deshacer llave"
         title="¿Deshacer la llave?" message="Se borran los cruces (todavía no tienen resultados) y se reabren las zonas para corregirlas. Después la volvés a armar."
         onClose={() => setConfirmarDeshacer(false)} onConfirm={() => deshacer.mutate()} />
+      {aProgramar && <ProgramacionModal partido={aProgramar} guardar={programar} onClose={() => setAProgramar(null)} />}
       {partidoAbierto && <ResultadoModal partido={partidoAbierto} guardar={guardar} borrar={borrar} onClose={() => { guardar.reset(); setPartidoAbierto(null); }} />}
     </div>
   );

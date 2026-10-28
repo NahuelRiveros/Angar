@@ -1,4 +1,4 @@
-import { QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import { sequelize } from "../../database/sequelize.js";
 import { Torneo, TorneoCategoria, TorneoPremio } from "../../models/index.js";
 import { normalizarPaginacion, armarPaginacion } from "../common/pagination.js";
@@ -6,21 +6,65 @@ import { PERMITIDO, nombreCategoria } from "../../../../torneo_config.js";
 import { error } from "./torneo_service.js";
 import { detalleZonas } from "./zona_service.js";
 import { detalleLlave } from "./llave_service.js";
+import { ESTADOS_PUBLICOS, normalizarFiltros, resumirTorneo } from "./publico_reglas.js";
 
 // Lo que se ve sin cuenta. Nunca borradores, ni datos de contacto de las parejas.
-const VISIBLES = ["inscripcion", "en_juego", "finalizado"];
+const VISIBLES = ESTADOS_PUBLICOS;
 const CAMPOS = ["id", "nombre", "descripcion", "sede", "direccion", "localidad", "fecha_inicio", "fecha_fin", "contacto", "reglamento", "estado"];
 
-export async function listarTorneosPublicos({ page, limit } = {}) {
+/**
+ * Torneos visibles con lo que cuenta la tarjeta (categorías, formato, cupos, premio).
+ * Filtros: q (nombre, sede o localidad), estado, rama y nivel (alguna categoría que lo juegue).
+ * Dos consultas por página, no una por torneo.
+ */
+export async function listarTorneosPublicos({ page, limit, ...query } = {}) {
   const pag = normalizarPaginacion({ page, limit, maxLimit: 30, defaultLimit: 12 });
+  const filtros = normalizarFiltros(query);
+  const where = { estado: filtros.estado ?? VISIBLES };
+  if (filtros.busqueda) {
+    where[Op.or] = ["nombre", "sede", "localidad"].map((campo) => ({ [campo]: { [Op.iLike]: `%${filtros.busqueda}%` } }));
+  }
+  const replacements = {};
+  if (filtros.rama || filtros.nivel) {
+    const condiciones = [];
+    if (filtros.rama) { condiciones.push("rama = :rama"); replacements.rama = filtros.rama; }
+    if (filtros.nivel) { condiciones.push("nivel = :nivel"); replacements.nivel = filtros.nivel; }
+    where.id = { [Op.in]: sequelize.literal(`(SELECT torneo_id FROM torneo_categoria WHERE ${condiciones.join(" AND ")})`) };
+  }
   const { rows, count } = await Torneo.findAndCountAll({
-    where: { estado: VISIBLES },
-    attributes: ["id", "nombre", "sede", "localidad", "fecha_inicio", "fecha_fin", "estado"],
+    where, replacements,
+    attributes: ["id", "nombre", "descripcion", "sede", "localidad", "fecha_inicio", "fecha_fin", "estado"],
     // Primero los que se pueden anotar, después en juego y al final los terminados.
     order: [[sequelize.literal(`CASE "Torneo"."estado" WHEN 'inscripcion' THEN 0 WHEN 'en_juego' THEN 1 ELSE 2 END`), "ASC"], ["fecha_inicio", "ASC NULLS LAST"], ["id", "DESC"]],
     limit: pag.limit, offset: pag.offset,
   });
-  return { data: rows.map((r) => r.get({ plain: true })), ...armarPaginacion({ page: pag.page, limit: pag.limit, total: count }) };
+  const torneos = rows.map((r) => r.get({ plain: true }));
+  const resumenes = torneos.length ? await resumenesDeTorneos(torneos) : [];
+  return { data: resumenes, ...armarPaginacion({ page: pag.page, limit: pag.limit, total: count }) };
+}
+
+/** Categorías, confirmadas y premio del campeón de varios torneos de una vez. */
+async function resumenesDeTorneos(torneos) {
+  const ids = torneos.map((t) => t.id);
+  const [categorias, conteos, premios] = await Promise.all([
+    TorneoCategoria.findAll({
+      where: { torneo_id: ids },
+      attributes: ["id", "torneo_id", "nivel", "rama", "nombre_personalizado", "cupo_parejas", "parejas_por_zona", "clasifican_por_zona", "formato_zona"],
+      order: [["orden", "ASC"], ["id", "ASC"]],
+    }),
+    sequelize.query(
+      `SELECT categoria_id, COUNT(*)::int AS confirmadas FROM inscripcion WHERE torneo_id IN (:ids) AND estado = 'confirmada' GROUP BY categoria_id`,
+      { replacements: { ids }, type: QueryTypes.SELECT },
+    ),
+    sequelize.query(
+      `SELECT DISTINCT ON (c.torneo_id) c.torneo_id, p.descripcion FROM torneo_premio p JOIN torneo_categoria c ON c.id = p.categoria_id
+       WHERE c.torneo_id IN (:ids) AND p.puesto = 'campeon' ORDER BY c.torneo_id, c.orden, c.id, p.orden`,
+      { replacements: { ids }, type: QueryTypes.SELECT },
+    ),
+  ]);
+  const confirmadas = new Map(conteos.map((c) => [c.categoria_id, c.confirmadas]));
+  const premioDe = new Map(premios.map((p) => [p.torneo_id, p.descripcion]));
+  return torneos.map((t) => resumirTorneo(t, categorias.filter((c) => c.torneo_id === t.id), confirmadas, premioDe.get(t.id)));
 }
 
 export async function verTorneoPublico(torneoId) {
@@ -65,6 +109,7 @@ export async function verCategoriaPublica(torneoId, categoriaId) {
     categoria_id: categoria.id,
     nombre: nombreCategoria(categoria),
     formato: zonas.formato,
+    mejores: zonas.mejores,
     zonas: zonas.zonas,
     llave: { armada: llave.armada, formato_llave: llave.formato_llave, rondas: llave.rondas, podio: llave.podio },
   };

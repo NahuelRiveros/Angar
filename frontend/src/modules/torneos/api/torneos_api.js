@@ -89,6 +89,12 @@ export async function moverPareja(torneoId, categoriaId, inscripcionId, zonaId) 
   return r.data;
 }
 
+/** Día, hora y cancha; strings vacíos borran el dato. */
+export async function programarPartido(torneoId, partidoId, { fecha, hora, cancha }) {
+  const r = await http.put(`/torneos/${torneoId}/partidos/${partidoId}/programacion`, { fecha, hora, cancha });
+  return r.data;
+}
+
 export async function guardarResultado(torneoId, partidoId, sets) {
   const r = await http.put(`/torneos/${torneoId}/partidos/${partidoId}/resultado`, { sets });
   return r.data;
@@ -100,8 +106,10 @@ export async function borrarResultado(torneoId, partidoId) {
 }
 
 // ── Público y jugador ───────────────────────────────────────────────────────
-export async function getTorneosPublicos({ page = 1 } = {}) {
-  const r = await http.get("/publico/torneos", { params: { page }, publicAccess: true });
+/** Filtros opcionales: q, estado, rama y nivel; los vacíos no se mandan. */
+export async function getTorneosPublicos({ page = 1, ...filtros } = {}) {
+  const params = Object.fromEntries(Object.entries({ page, ...filtros }).filter(([, v]) => v !== "" && v != null));
+  const r = await http.get("/publico/torneos", { params, publicAccess: true });
   return r.data;
 }
 

@@ -4,11 +4,13 @@ import { sequelize } from "../../database/sequelize.js";
 import { TorneoCategoria, Inscripcion, Zona, Partido } from "../../models/index.js";
 import { PERMITIDO, ESTADOS_TORNEO } from "../../../../torneo_config.js";
 import { torneoPropio, error } from "./torneo_service.js";
-import { armarZonas, fixtureTodosContraTodos, tablaDeZona, validarResultado } from "./zona_reglas.js";
-import { tieneLlave, detalleLlave, cargarResultadoDeLlave, borrarResultadoDeLlave } from "./llave_service.js";
+import { armarZonas, fixtureTodosContraTodos, validarResultado, validarProgramacion } from "./zona_reglas.js";
+import { tieneLlave, detalleLlave, cargarResultadoDeLlave, borrarResultadoDeLlave, clasificacionDe } from "./llave_service.js";
 
 // Azar del sorteo: criptográfico (nadie puede anticiparlo). Los tests pasan uno fijo.
 const azarSeguro = () => randomInt(0, 2 ** 32) / 2 ** 32;
+// Número de desempate final de una pareja (ver inscripcion.sorteo).
+const numeroDeSorteo = (azar) => Math.floor(azar() * 2 ** 31);
 
 function exigir(torneo, accion, mensaje) {
   if (!PERMITIDO[accion].includes(torneo.estado)) {
@@ -34,25 +36,21 @@ async function crearPartidosDeZona(categoria, zonaId, parejas, t) {
 
 /** Zonas con sus parejas, partidos y tabla, más las confirmadas que todavía no tienen zona. */
 export async function detalleZonas(categoria, t) {
-  const [zonas, inscripciones, partidos] = await Promise.all([
-    Zona.findAll({ where: { categoria_id: categoria.id }, order: [["orden", "ASC"]], transaction: t }),
-    Inscripcion.findAll({ where: { categoria_id: categoria.id, estado: "confirmada" }, attributes: ["id", "jugador1_nombre", "jugador2_nombre", "cabeza_de_serie", "zona_id"], order: [["id", "ASC"]], transaction: t }),
-    Partido.findAll({ where: { categoria_id: categoria.id, fase: "zona" }, order: [["zona_id", "ASC"], ["orden", "ASC"]], transaction: t }),
-  ]);
+  const { deZonas, inscripciones, clasificacion } = await clasificacionDe(categoria, t);
   const pareja = (i) => ({ id: i.id, nombre: `${i.jugador1_nombre} / ${i.jugador2_nombre}`, cabeza_de_serie: i.cabeza_de_serie });
   const porId = new Map(inscripciones.map((i) => [i.id, pareja(i)]));
   return {
     categoria_id: categoria.id,
     formato: { parejas_por_zona: categoria.parejas_por_zona, clasifican_por_zona: categoria.clasifican_por_zona, formato_zona: categoria.formato_zona },
+    // Cuántos lugares de la llave se completan con los mejores del puesto siguiente (0 si es justa).
+    mejores: { puesto: clasificacion.puestoMejores, cupo: clasificacion.cupoMejores, definidos: clasificacion.completas },
     sin_zona: inscripciones.filter((i) => !i.zona_id).map(pareja),
-    zonas: zonas.map((z) => {
-      const ids = inscripciones.filter((i) => i.zona_id === z.id).map((i) => i.id);
-      const deZona = partidos.filter((p) => p.zona_id === z.id).map((p) => p.get({ plain: true }));
-      const tabla = tablaDeZona(ids, deZona, categoria.clasifican_por_zona);
+    zonas: deZonas.map(({ zona: z, partidos: deZona }, i) => {
+      const tabla = clasificacion.tablas[i];
       return {
         id: z.id, nombre: z.nombre,
-        parejas: ids.map((id) => porId.get(id)),
-        partidos: deZona.map((p) => ({ id: p.id, orden: p.orden, formato: p.formato, pareja1: porId.get(p.pareja1_id), pareja2: porId.get(p.pareja2_id), sets: p.sets, ganador_id: p.ganador_id })),
+        parejas: deZonas[i].parejas.map((id) => porId.get(id)),
+        partidos: deZona.map((p) => ({ id: p.id, orden: p.orden, formato: p.formato, pareja1: porId.get(p.pareja1_id), pareja2: porId.get(p.pareja2_id), sets: p.sets, ganador_id: p.ganador_id, fecha: p.fecha, hora: p.hora, cancha: p.cancha })),
         completa: tabla.completa,
         tabla: tabla.filas.map((f) => ({ ...f, pareja: porId.get(f.inscripcion_id) })),
       };
@@ -84,7 +82,7 @@ export async function generarZonas(torneoId, categoriaId, usuario, { azar = azar
 
     for (const [orden, armada] of armarZonas(parejas.map((p) => p.get({ plain: true })), categoria.parejas_por_zona, azar).entries()) {
       const zona = await Zona.create({ categoria_id: categoria.id, nombre: armada.nombre, orden }, { transaction: t });
-      await Inscripcion.update({ zona_id: zona.id }, { where: { id: armada.parejas }, transaction: t });
+      for (const id of armada.parejas) await Inscripcion.update({ zona_id: zona.id, sorteo: numeroDeSorteo(azar) }, { where: { id }, transaction: t });
       await crearPartidosDeZona(categoria, zona.id, armada.parejas, t);
     }
     return detalleZonas(categoria, t);
@@ -107,7 +105,7 @@ export async function moverPareja(torneoId, categoriaId, usuario, { inscripcion_
     if (inscripcion.zona_id && await Inscripcion.count({ where: { zona_id: inscripcion.zona_id }, transaction: t }) <= 2) {
       throw error("La zona de origen quedaría con una sola pareja.", 409, "ZONA_CHICA");
     }
-    await inscripcion.update({ zona_id: destino.id, actualizado_en: new Date() }, { transaction: t });
+    await inscripcion.update({ zona_id: destino.id, sorteo: inscripcion.sorteo ?? numeroDeSorteo(azarSeguro), actualizado_en: new Date() }, { transaction: t });
     for (const zonaTocada of tocadas) {
       await Partido.destroy({ where: { zona_id: zonaTocada }, transaction: t });
       const ids = (await Inscripcion.findAll({ where: { zona_id: zonaTocada, estado: "confirmada" }, attributes: ["id"], order: [["id", "ASC"]], transaction: t })).map((i) => i.id);
@@ -144,6 +142,19 @@ export async function cargarResultado(torneoId, partidoId, usuario, sets) {
     if (invalido) throw error(invalido, 400, "RESULTADO_INVALIDO");
     await partido.update({ sets: datos.sets, ganador_id: datos.ganador === 1 ? partido.pareja1_id : partido.pareja2_id, actualizado_en: new Date() }, { transaction: t });
     return { fase: "zona", ...await detalleZonas(categoria, t) };
+  });
+}
+
+/** Día, hora y cancha de un partido de zona o de llave. Devuelve la fase como el resultado. */
+export async function programarPartido(torneoId, partidoId, usuario, body) {
+  return sequelize.transaction(async (t) => {
+    const torneo = await torneoPropio(torneoId, usuario, t);
+    exigir(torneo, "programarPartidos", "El día y la cancha se cargan con el torneo en inscripción o en juego");
+    const { partido, categoria } = await partidoDelTorneo(torneo, partidoId, t);
+    const { datos, error: invalido } = validarProgramacion(body);
+    if (invalido) throw error(invalido, 400, "PROGRAMACION_INVALIDA");
+    await partido.update({ ...datos, actualizado_en: new Date() }, { transaction: t });
+    return partido.fase === "llave" ? { fase: "llave", ...await detalleLlave(categoria, t) } : { fase: "zona", ...await detalleZonas(categoria, t) };
   });
 }
 

@@ -418,6 +418,131 @@ test("llave: con 6 clasificados los 1º de A y B pasan sin jugar y nadie cruza a
   assert.equal(partidos.filter((p) => p.ronda === 3).length, 1, "una final");
 });
 
+test("lista pública: filtros con allowlist y resumen de la tarjeta", async () => {
+  const { normalizarFiltros, resumirTorneo } = await import("../src/services/torneos/publico_reglas.js");
+  assert.deepEqual(normalizarFiltros({ q: "  Copa  ", estado: "en_juego", rama: "mixto", nivel: "5" }), { busqueda: "Copa", estado: "en_juego", rama: "mixto", nivel: 5 });
+  assert.deepEqual(normalizarFiltros({ estado: "borrador", rama: "otra", nivel: "9", q: "" }), { busqueda: null, estado: null, rama: null, nivel: null }, "lo desconocido se ignora: nunca muestra borradores");
+  assert.equal(normalizarFiltros({ q: "50%_off" }).busqueda, "50\\%\\_off", "escapa los comodines del ILIKE");
+  assert.equal(normalizarFiltros({ q: ["a"] }).busqueda, null);
+
+  const cat = (id, extra) => ({ id, nivel: 5, rama: "mixto", nombre_personalizado: null, cupo_parejas: 12, parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6", ...extra });
+  const confirmadas = new Map([[1, 9], [2, 12]]);
+  const r = resumirTorneo({ id: 4, descripcion: "x ".repeat(200) }, [cat(1), cat(2, { nivel: null, rama: null, nombre_personalizado: "Suma 13" })], confirmadas, "Paletas");
+  assert.deepEqual(r.categorias, [{ nombre: "5ta Mixto", rama: "mixto" }, { nombre: "Suma 13", rama: null }]);
+  assert.deepEqual(r.ramas, ["mixto"]);
+  assert.deepEqual(r.formato, { parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6" });
+  assert.deepEqual([r.parejas, r.lugares_libres, r.premio_campeon], [21, 3, "Paletas"]);
+  assert.ok(r.descripcion.length <= 161 && r.descripcion.endsWith("…"));
+  const mezcla = resumirTorneo({ id: 5, descripcion: null }, [cat(1), cat(3, { cupo_parejas: null, formato_zona: "mejor_de_3" })], confirmadas, undefined);
+  assert.deepEqual([mezcla.formato, mezcla.lugares_libres, mezcla.premio_campeon, mezcla.descripcion], [null, null, null, null], "formatos distintos o una sin cupo: no se inventa un total");
+});
+
+test("programación del partido: día, hora y cancha opcionales y validados", async () => {
+  const { validarProgramacion } = await import("../src/services/torneos/zona_reglas.js");
+  assert.deepEqual(validarProgramacion({ fecha: "2026-12-05", hora: "18:30", cancha: " Cancha 2 " }).datos, { fecha: "2026-12-05", hora: "18:30", cancha: "Cancha 2" });
+  assert.deepEqual(validarProgramacion({}).datos, { fecha: null, hora: null, cancha: null }, "vacío borra la programación");
+  assert.deepEqual(validarProgramacion({ fecha: "", hora: "", cancha: "" }).datos, { fecha: null, hora: null, cancha: null });
+  assert.match(validarProgramacion({ fecha: "2026-02-30" }).error, /fecha válida/);
+  assert.match(validarProgramacion({ hora: "24:00" }).error, /HH:MM/);
+  assert.match(validarProgramacion({ hora: "9:30" }).error, /HH:MM/);
+  assert.match(validarProgramacion({ cancha: "x".repeat(41) }).error, /40 caracteres/);
+  assert.match(validarProgramacion({ cancha: 3 }).error, /texto/);
+});
+
+test("desempate: games a favor y después el sorteo guardado; los mejores terceros por promedio", async () => {
+  const { tablaDeZona, mejoresDelPuesto, clasificacionDeCategoria } = await import("../src/services/torneos/zona_reglas.js");
+  const p = (pareja1_id, pareja2_id, sets) => ({ pareja1_id, pareja2_id, sets, formato: "un_set_6", ganador_id: sets[0][0] > sets[0][1] ? pareja1_id : pareja2_id });
+  // Triangular perfecto: cada una gana 6-4 y pierde 4-6. Todo igual, games a favor iguales: decide el sorteo.
+  const triangular = [p(1, 2, [[6, 4]]), p(2, 3, [[6, 4]]), p(3, 1, [[6, 4]])];
+  const porSorteo = tablaDeZona([1, 2, 3], triangular, 2, new Map([[1, 50], [2, 10], [3, 30]]));
+  assert.deepEqual(porSorteo.filas.map((f) => [f.inscripcion_id, f.desempate]), [[2, "sorteo"], [3, "sorteo"], [1, "sorteo"]]);
+  assert.deepEqual(tablaDeZona([1, 2, 3], triangular, 2, new Map([[1, 50], [2, 10], [3, 30]])).filas.map((f) => f.inscripcion_id), [2, 3, 1], "la tabla da siempre lo mismo");
+
+  // Triangular con la misma diferencia de games (0) pero distintos games a favor: 1 y 3 hicieron 10, 2 hizo 9.
+  // Entre 1 y 3 sigue el empate y decide el sorteo; 2 queda tercera por games a favor. (La tabla no valida marcadores.)
+  const conGames = tablaDeZona([1, 2, 3], [p(1, 2, [[6, 3]]), p(2, 3, [[6, 3]]), p(3, 1, [[7, 4]])], 1, new Map([[1, 5], [3, 1]]));
+  assert.deepEqual(conGames.filas.map((f) => [f.inscripcion_id, f.games_favor, f.desempate]), [[3, 10, "sorteo"], [1, 10, "sorteo"], [2, 9, "games_favor"]]);
+
+  // Dos zonas de 3 (6 + 2 terceros, cuadro de 8 → con 2 zonas y clasifican 2 no faltan): probamos el ranking directo.
+  const tercero = (id, pg, sf, sc, gf, gc, pj = 2) => ({ inscripcion_id: id, pg, pj, sets_favor: sf, sets_contra: sc, games_favor: gf, games_contra: gc });
+  const tablas = [
+    { filas: [tercero(11, 2, 2, 0, 12, 4), tercero(12, 1, 1, 1, 9, 9), tercero(13, 0, 0, 2, 4, 12)] },
+    { filas: [tercero(21, 2, 2, 0, 12, 4), tercero(22, 1, 1, 1, 9, 9), tercero(23, 0, 0, 2, 6, 12)] },
+    { filas: [tercero(31, 3, 3, 0, 18, 6, 3), tercero(32, 2, 2, 1, 15, 10, 3), tercero(33, 1, 1, 2, 9, 15, 3), tercero(34, 0, 0, 3, 3, 18, 3)] },
+  ];
+  // El tercero de la zona de 4 ganó 1 de 3 (promedio 0,33): supera a los de zonas de 3 que no ganaron.
+  assert.deepEqual(mejoresDelPuesto(tablas, 3).map((m) => [m.id, m.zona]), [[33, 2], [23, 1], [13, 0]]);
+  assert.equal(mejoresDelPuesto(tablas, 3)[1].desempate, null, "23 y 13 se separan por dif. de games, no hace falta desempate");
+
+  // Categoría completa: 3 zonas de 3, clasifican 2 → 6 directos + 2 mejores terceros.
+  const zona = (a, b, c, resultados) => ({ parejas: [a, b, c], partidos: [p(a, b, resultados[0]), p(a, c, resultados[1]), p(b, c, resultados[2])] });
+  const categoria = clasificacionDeCategoria([
+    zona(1, 2, 3, [[[6, 1]], [[6, 2]], [[6, 3]]]), zona(4, 5, 6, [[[6, 1]], [[6, 2]], [[6, 0]]]), zona(7, 8, 9, [[[6, 1]], [[6, 4]], [[6, 4]]]),
+  ], 2);
+  assert.equal(categoria.cupoMejores, 2);
+  assert.deepEqual(categoria.mejores.map((m) => m.id), [9, 3], "los terceros que perdieron por menos");
+  assert.ok(categoria.tablas[2].filas.find((f) => f.inscripcion_id === 9).mejor);
+  assert.equal(categoria.tablas[1].filas.find((f) => f.inscripcion_id === 6).clasificado, false);
+  const incompleta = clasificacionDeCategoria([zona(1, 2, 3, [[[6, 1]], [[6, 2]], [[6, 3]]]), { parejas: [4, 5, 6], partidos: [] }, zona(7, 8, 9, [[[6, 1]], [[6, 4]], [[6, 4]]])], 2);
+  assert.deepEqual([incompleta.cupoMejores, incompleta.mejores], [2, []], "los mejores terceros se definen con todas las zonas terminadas");
+});
+
+test("llave con mejores terceros: entran en las últimas semillas y nadie cruza a su zona en primera ronda", async () => {
+  const { armarLlave, partidosDeLlave } = await import("../src/services/torneos/llave_reglas.js");
+  // 7 zonas: 14 directos + 2 mejores terceros = octavos completos.
+  const zonas = Array.from({ length: 7 }, (_, z) => ({ nombre: String(z), clasificados: [(z + 1) * 100 + 1, (z + 1) * 100 + 2] }));
+  const mejores = [{ id: 303, zona: 2 }, { id: 603, zona: 5 }];
+  const llave = armarLlave(zonas, mejores);
+  assert.equal(llave.tamanio, 16);
+  assert.equal(llave.slots.filter((x) => x === null).length, 0, "sin pases");
+  const zonaDe = (id) => Math.floor(id / 100);
+  for (const partido of partidosDeLlave(llave).filter((x) => x.ronda === 1)) {
+    assert.notEqual(zonaDe(partido.pareja1), zonaDe(partido.pareja2), `${partido.pareja1} vs ${partido.pareja2}`);
+  }
+  // Los terceros enfrentan a los dos mejores primeros (semillas 15 y 16 contra 2 y 1).
+  const rivalDe = (id) => { const i = llave.slots.indexOf(id); return llave.slots[i ^ 1]; };
+  assert.deepEqual([rivalDe(303), rivalDe(603)].sort(), [101, 201]);
+});
+
+test("cálculo de la llave: lo que ve el organizador coincide con el sorteo y la llave reales", async () => {
+  const { planDeLlave, zonasIguales, cuposConZonasIguales, llaveJusta } = await import("../../torneo_config.js");
+  const { armarZonas } = await import("../src/services/torneos/zona_reglas.js");
+  const { armarLlave, partidosDeLlave } = await import("../src/services/torneos/llave_reglas.js");
+  assert.deepEqual(planDeLlave(20, 3, 2), { zonas: [4, 4, 3, 3, 3, 3], clasificados: 12, llave: { tamanio: 16, mejores: 4, pases: 0, puestoMejores: 3, primeraRonda: "Octavos de final" } });
+  assert.deepEqual(planDeLlave(21, 3, 2).llave, { tamanio: 16, mejores: 2, pases: 0, puestoMejores: 3, primeraRonda: "Octavos de final" }, "21: los 2 mejores terceros completan los octavos");
+  assert.ok(llaveJusta(planDeLlave(24, 3, 2)), "24 parejas llenan los octavos justos");
+  assert.deepEqual(planDeLlave(15, 3, 2).llave, { tamanio: 16, mejores: 5, pases: 1, puestoMejores: 3, primeraRonda: "Octavos de final" }, "si no alcanzan los terceros, queda un pase");
+  assert.equal(planDeLlave(9, 3, 1).llave.puestoMejores, 2, "clasifica 1: completan los mejores segundos");
+  assert.equal(planDeLlave(27, 3, 2).llave.primeraRonda, "16avos de final");
+  assert.equal(planDeLlave(5, 3, 1).llave, null, "una sola zona y clasifica 1: no hay llave");
+  assert.equal(planDeLlave(1, 3, 2), null);
+  assert.equal(zonasIguales(planDeLlave(20, 3, 2)), false, "20 en zonas de 3: quedan 2 de 4");
+  assert.deepEqual(cuposConZonasIguales(3, 5), [6, 9, 12, 15]);
+  for (const ppz of [3, 4, 5]) {
+    for (const n of cuposConZonasIguales(ppz)) assert.ok(zonasIguales(planDeLlave(n, ppz, 2)), `${n} en zonas de ${ppz}`);
+  }
+  for (let n = 2; n <= 60; n += 1) {
+    for (const ppz of [3, 4, 5]) {
+      for (const c of [1, 2]) {
+        const plan = planDeLlave(n, ppz, c);
+        const parejas = Array.from({ length: n }, (_, i) => ({ id: i + 1, cabeza_de_serie: false }));
+        const zonas = armarZonas(parejas, ppz, () => 0.5);
+        assert.deepEqual(zonas.map((z) => z.parejas.length).sort(), [...plan.zonas].sort(), `${n}/${ppz}/${c}: zonas`);
+        const mejores = zonas.map((z, zona) => ({ id: z.parejas[c], zona })).filter((m) => m.id).slice(0, plan.llave?.mejores ?? 0);
+        const llave = armarLlave(zonas.map((z) => ({ nombre: z.nombre, clasificados: z.parejas.slice(0, c) })), mejores);
+        assert.equal(plan.llave?.tamanio ?? null, llave.tamanio ?? null, `${n}/${ppz}/${c}: tamaño de la llave`);
+        if (plan.llave) assert.equal(llave.slots.filter((x) => x === null).length, plan.llave.pases, `${n}/${ppz}/${c}: pases`);
+        if (llave.slots && zonas.length > 1) {
+          const zonaDe = new Map(zonas.flatMap((z, i) => z.parejas.map((id) => [id, i])));
+          for (const x of partidosDeLlave(llave).filter((m) => m.ronda === 1 && m.pareja1 && m.pareja2)) {
+            assert.notEqual(zonaDe.get(x.pareja1), zonaDe.get(x.pareja2), `${n}/${ppz}/${c}: misma zona en primera ronda`);
+          }
+        }
+      }
+    }
+  }
+});
+
 test("llave: de 1 a 8 zonas, con 1 o 2 clasificados, todos entran una vez y ningún 2º cruza a su 1º en primera ronda", async () => {
   const { armarLlave, partidosDeLlave, potenciaDeDos } = await import("../src/services/torneos/llave_reglas.js");
   for (let cantidadZonas = 1; cantidadZonas <= 8; cantidadZonas += 1) {
@@ -461,4 +586,36 @@ test("llave: el ganador avanza al lugar correcto y el podio sale de la final y l
   ];
   assert.deepEqual(podio(partidos, 3), { campeon: 3, subcampeon: 1, semifinalistas: [4, 2] });
   assert.deepEqual(podio(partidos.slice(0, 2), 3), { campeon: null, subcampeon: null, semifinalistas: [4, 2] }, "sin final jugada no hay campeón");
+});
+
+test("código de jugador: formato MP-XXXXX sin letras confusas y se acepta escrito de varias formas", async () => {
+  const { generarCodigoJugador, normalizarCodigoJugador } = await import("../src/services/common/codigo_jugador.js");
+  for (let i = 0; i < 200; i += 1) assert.match(generarCodigoJugador(), /^MP-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{5}$/);
+  assert.equal(generarCodigoJugador(() => 0), "MP-22222", "el azar es inyectable");
+  for (const escrito of ["MP-7K3QX", "mp-7k3qx", " 7k3qx ", "MP7K3QX", "mp 7k3qx"]) assert.equal(normalizarCodigoJugador(escrito), "MP-7K3QX", escrito);
+  for (const malo of ["MP-7K3Q", "MP-7K3QXX", "MP-0O1IL", "7K3Q!", "", null, 12345]) assert.equal(normalizarCodigoJugador(malo), null, String(malo));
+});
+
+test("inscripción online: con nombre del compañero o con su código (que se normaliza)", async () => {
+  const { validarInscripcionOnline } = await import("../src/services/torneos/inscripcion_reglas.js");
+  assert.deepEqual(validarInscripcionOnline({ categoria_id: 3, codigo_companiero: "mp-7k3qx", jugador2_nombre: "Ignorado" }).datos,
+    { categoria_id: 3, codigo_companiero: "MP-7K3QX", telefono: null, nota: null }, "con código se ignora el nombre");
+  assert.match(validarInscripcionOnline({ categoria_id: 3, codigo_companiero: "XYZ" }).error, /MP-XXXXX/);
+  assert.equal(validarInscripcionOnline({ categoria_id: 3, codigo_companiero: "", jugador2_nombre: "Juan Pérez" }).datos.jugador2_nombre, "Juan Pérez");
+});
+
+test("historial: puesto alcanzado por ronda de llave y resumen con títulos, finales y mejor puesto", async () => {
+  const { puestoAlcanzado, resumirHistorial } = await import("../src/services/jugadores/jugador_reglas.js");
+  assert.equal(puestoAlcanzado({ rondas: 3, alcanzada: 3, campeon: true }), "campeon");
+  assert.equal(puestoAlcanzado({ rondas: 3, alcanzada: 3, campeon: false }), "final");
+  assert.equal(puestoAlcanzado({ rondas: 3, alcanzada: 2, campeon: false }), "semifinal");
+  assert.equal(puestoAlcanzado({ rondas: 3, alcanzada: 1, campeon: false }), "cuartos");
+  assert.equal(puestoAlcanzado({ rondas: 5, alcanzada: 1, campeon: false }), "llave", "en llaves grandes, más allá de octavos");
+  assert.equal(puestoAlcanzado({ rondas: 3, alcanzada: null, campeon: false }), "zona", "no llegó a la llave");
+  assert.equal(puestoAlcanzado({ rondas: null, alcanzada: null, campeon: false }), "zona", "la categoría todavía no tiene llave");
+  const resumen = resumirHistorial([
+    { torneo_id: 1, puesto: "semifinal" }, { torneo_id: 1, puesto: "campeon" }, { torneo_id: 2, puesto: "final" }, { torneo_id: 3, puesto: "zona" },
+  ]);
+  assert.deepEqual(resumen, { torneos: 3, titulos: 1, finales: 2, mejor_puesto: "campeon" }, "dos categorías del mismo torneo cuentan un torneo");
+  assert.deepEqual(resumirHistorial([]), { torneos: 0, titulos: 0, finales: 0, mejor_puesto: null });
 });

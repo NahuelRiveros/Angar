@@ -16,9 +16,9 @@ import { getInscripciones, cargarPareja, editarPareja, resolverInscripcion } fro
 import { mensajeDe } from "./use_cambio_torneo.js";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
-const COLORES = { pendiente: "bg-amber-50 text-amber-900 ring-amber-200", confirmada: "bg-emerald-50 text-emerald-800 ring-emerald-200", rechazada: "bg-red-50 text-red-800 ring-red-200", cancelada: "bg-slate-100 text-slate-600 ring-slate-200" };
+const COLORES = { esperando: "bg-sky-50 text-sky-900 ring-sky-200", pendiente: "bg-amber-50 text-amber-900 ring-amber-200", confirmada: "bg-emerald-50 text-emerald-800 ring-emerald-200", rechazada: "bg-red-50 text-red-800 ring-red-200", cancelada: "bg-slate-100 text-slate-600 ring-slate-200" };
 // Primero lo que pide una acción.
-const ORDEN = { pendiente: 0, confirmada: 1, rechazada: 2, cancelada: 3 };
+const ORDEN = { pendiente: 0, esperando: 1, confirmada: 2, rechazada: 3, cancelada: 4 };
 const claveInscripciones = (torneoId) => ["torneos", Number(torneoId), "inscripciones"];
 
 const nombre = z.string().trim().min(3, "Nombre y apellido (mínimo 3 caracteres).").max(80, "Hasta 80 caracteres.");
@@ -83,7 +83,7 @@ export default function InscripcionesSeccion({ torneo, editable }) {
 
       <ul className="grid gap-3 md:grid-cols-2">
         {filas.map((i) => {
-          const activa = i.estado === "pendiente" || i.estado === "confirmada";
+          const activa = ["esperando", "pendiente", "confirmada"].includes(i.estado);
           return (
             <li key={i.id} className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${activa ? "" : "opacity-70"}`}>
               <div className="flex items-start justify-between gap-2">
@@ -93,6 +93,7 @@ export default function InscripcionesSeccion({ torneo, editable }) {
                     {i.jugador1_nombre} / {i.jugador2_nombre}
                   </p>
                   <p className="text-xs text-(--kt-ink-soft)">{nombreCategoria.get(i.categoria_id)} · {i.origen === "online" ? "Se anotó online" : "Cargada por vos"}</p>
+                  {i.estado === "esperando" && <p className="text-xs text-sky-900">Invitó a su compañero por código: cuando acepte, la podés confirmar.</p>}
                 </div>
                 <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ${COLORES[i.estado]}`}>{ESTADOS_INSCRIPCION[i.estado]}</span>
               </div>
@@ -108,7 +109,7 @@ export default function InscripcionesSeccion({ torneo, editable }) {
                   {i.estado === "pendiente" && PERMITIDO.cargarParejas.includes(torneo.estado) && (
                     <button type="button" disabled={confirmar.isPending} onClick={() => confirmar.mutate(i)} className={`${BOTON} border-emerald-200 bg-emerald-50 text-emerald-800`}><Check size={15} aria-hidden="true" /> Confirmar</button>
                   )}
-                  {i.estado === "pendiente" && <button type="button" onClick={() => setModal({ tipo: "rechazar", inscripcion: i })} className={`${BOTON} border-red-200 bg-red-50 text-red-800`}><X size={15} aria-hidden="true" /> Rechazar</button>}
+                  {["pendiente", "esperando"].includes(i.estado) && <button type="button" onClick={() => setModal({ tipo: "rechazar", inscripcion: i })} className={`${BOTON} border-red-200 bg-red-50 text-red-800`}><X size={15} aria-hidden="true" /> Rechazar</button>}
                   <button type="button" onClick={() => setModal({ tipo: "pareja", inscripcion: i })} aria-label={`Editar ${i.jugador1_nombre} / ${i.jugador2_nombre}`} className={`${BOTON} border-slate-300 bg-white text-slate-700`}><Pencil size={15} aria-hidden="true" /> Editar</button>
                   {!i.zona_id && <button type="button" onClick={() => setModal({ tipo: "baja", inscripcion: i })} className={`${BOTON} border-slate-300 bg-white text-slate-700`}><UserMinus size={15} aria-hidden="true" /> Dar de baja</button>}
                 </div>

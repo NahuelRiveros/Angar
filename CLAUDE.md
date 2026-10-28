@@ -34,20 +34,30 @@ Decisiones de negocio ya tomadas (no inventar otras; preguntar lo que falte):
   el organizador la confirma o rechaza con motivo) y el organizador carga parejas a mano
   (entran confirmadas). Una inscripción viva por jugador y categoría; el cupo cuenta confirmadas.
 - Zonas: sorteo automático con cabezas de serie separadas (azar criptográfico) y ajuste a mano;
-  nunca una zona de 2 (salvo que haya solo 2 parejas). Rearmar o mover solo sin resultados.
-- Tabla: ganados → dif. de sets → dif. de games → entre ellas (empate de dos). El super
-  tie-break cuenta como un set y un game.
+  nunca una zona de 2 (salvo que haya solo 2 parejas). El cupo se elige de una lista de cantidades
+  que dan zonas iguales (u "Otro número", con aviso de zonas desparejas); si al sortear las
+  confirmadas no dan zonas iguales, se avisa y se deja sortear igual. Rearmar o mover solo sin resultados.
+- Tabla: ganados → dif. de sets → dif. de games → entre ellas (empate de dos) → games a favor →
+  sorteo (número al azar guardado en `inscripcion.sorteo` al entrar en una zona; la tabla marca
+  `desempate`). El super tie-break cuenta como un set y un game.
+- Llave sin pases: si sobran lugares, los completan los mejores del puesto siguiente (terceros, o
+  segundos si clasifica 1) por promedio por partido (ganados, sets, games, games a favor, sorteo); si
+  no alcanzan, pases. La lista de cupo marca con ★ los cupos de llave justa.
 - Llave: se arma con las zonas terminadas y el torneo en juego. Los 1º de zona son cabezas en
-  orden (A, B…) y reciben los pases (byes); un 2º nunca cruza en primera ronda al 1º de su zona
-  y, si se puede, queda en la otra mitad. Sin partido por el 3º: los semifinalistas lo comparten.
+  orden (A, B…), después los 2º y los mejores terceros; si quedan pases, son de los 1º. Nadie cruza
+  en primera ronda a alguien de su zona y, si se puede, el 2º queda en la otra mitad. Sin partido por el 3º: los semifinalistas lo comparten.
   Con llave armada las zonas quedan cerradas; para corregirlas se deshace la llave (solo sin
   resultados de llave). Corregir un partido cuyo siguiente ya se jugó y cambia el ganador: se frena.
 - El precio del mes es configurable por variable de entorno; el valor del ejemplo no es real.
+- Jugadores: cada cuenta tiene un código público (`MP-XXXXX`). Al anotarse, el compañero va por
+  nombre (sin cuenta) o se lo invita por su código: la inscripción queda "esperando" hasta que
+  acepta (si rechaza, se cancela) y el organizador confirma recién después. El historial
+  (torneos, títulos, mejor puesto) es público y solo deportivo, en participantes y perfiles.
 
 Plan por etapas (todas hechas): 1) limpieza de la base ✅ 2) suscripción por organizador ✅
 3) torneos, categorías, reglas y premios ✅ 4) inscripciones y zonas ✅ 5) llaves y partidos ✅
-6) vista pública del torneo ✅. Idea para una etapa 7: perfil de jugador con código, historial,
-copas y estrellas; no empezarla sin las decisiones pendientes (ver la memoria del proyecto).
+6) vista pública del torneo ✅. Etapa 7 (perfil de jugador) en parte: código de jugador, invitar
+al compañero, historial, participantes y perfiles hechos; faltan estrellas, foto y ranking.
 
 - `client_config.js`: id de la instalación y políticas de acceso (registro público, contraseñas).
 - `permisos_config.js`: permisos del **equipo de la plataforma** (`suscripciones.ver`,
@@ -112,7 +122,9 @@ Torneos (`/api/torneos`, pantallas `/mis-torneos` y `/mis-torneos/:id`): tablas 
 `torneo_categoria` y `torneo_premio`. Reglas puras en `services/torneos/torneo_reglas.js`; el
 servicio verifica el dueño (ajeno = 404) y bloquea el torneo en cada escritura. Lecturas solo con
 `requireAuth`; escrituras con `requireSuscripcionVigente`. Cada escritura devuelve el torneo
-completo y el frontend lo guarda directo en la caché (`detalle/use_cambio_torneo.js`).
+completo y el frontend lo guarda directo en la caché (`detalle/use_cambio_torneo.js`). Cada pestaña del
+detalle abre con `detalle/guia_seccion.jsx` (qué se hace ahí y qué se puede según el estado, leído de
+`EDICION_POR_ESTADO`/`PERMITIDO`); si cambia una regla, actualizar también esos textos.
 
 Juego (etapa 4): tablas `inscripcion`, `zona` y `partido` (+ formato de zona en `torneo_categoria`).
 Lógica pura en `services/torneos/zona_reglas.js` (marcadores, tamaños de zonas, sorteo, fixture
@@ -126,14 +138,37 @@ ni teléfonos). Pantallas: pestañas Inscripciones y Zonas del detalle, `/torneo
 Llave (etapa 5): `partido` con fase "llave", `ronda` y `orden` (posición; define a qué partido
 avanza el ganador) y parejas vacías hasta que se definen; `formato_llave` en la categoría.
 Lógica pura en `services/torneos/llave_reglas.js` (siembra, pases, avance, podio) y base en
-`llave_service.js`. El resultado de cualquier partido va por `PUT /partidos/:id/resultado`, que
-responde las zonas o la llave según la fase (`fase` en la respuesta). Pestaña Llave en el detalle.
+`llave_service.js`. El tamaño de zonas y de llave (`tamaniosDeZonas`, `potenciaDeDos`, `nombreRonda`,
+`planDeLlave`, `zonasIguales`, `cuposConZonasIguales`) vive en `torneo_config.js` porque también lo muestra la interfaz
+(`detalle/calculo_llave.jsx`: formulario y tarjeta de categoría, pestaña Zonas antes de sortear);
+`zona_reglas`/`llave_reglas` lo reexportan y un test cruza el cálculo con el sorteo y la llave reales.
+La clasificación (tablas + mejores terceros) sale de una sola función, `clasificacionDeCategoria`
+(`zona_reglas.js`), que usan las zonas y la llave vía `clasificacionDe` (`llave_service.js`).
+Modelos de reglamento editables: `detalle/reglamentos_modelo.js` (el de zonas y llave se arma con las categorías). El resultado de cualquier partido va por `PUT /partidos/:id/resultado`, que
+responde las zonas o la llave según la fase (`fase` en la respuesta). Día, hora y cancha (opcionales) van por
+`PUT /partidos/:id/programacion` (`PERMITIDO.programarPartidos`: inscripción o en juego); rearmar zonas los borra. Pestaña Llave en el detalle.
+
+Lista pública `/torneos`: `GET /api/publico/torneos?q&estado&rama&nivel` (filtros con allowlist en
+`publico_reglas.js`; rama/nivel = alguna categoría que lo juegue) trae por torneo categorías, formato, parejas,
+lugares libres y premio del campeón en dos consultas por página; los filtros viven en la URL (`tarjeta_torneo.jsx`).
 
 Vista pública (etapa 6): `GET /api/publico/torneos/:id/categorias/:categoriaId` devuelve zonas
 (tabla, fixture, resultados) y llave con podio, solo con nombres de parejas, para torneos en
 inscripción, en juego o finalizados. Cache-Control de 30 s y botón "Actualizar": sin consultas
 automáticas (Neon cobra mientras está despierta). En `/torneos/:id`: `ResultadosPublicos` y
 `BotonCompartir` (menú del sistema en celular; en la compu copia el link).
+
+Jugadores (etapa 7, parte): `usuario.codigo_jugador` (lo pone un hook al crear; el arranque completa
+las cuentas viejas con `asignarCodigosFaltantes`) e `inscripcion.usuario2_id` (compañero invitado).
+Índices únicos parciales impiden estar dos veces vivo en una categoría como titular o invitado; el
+cruce (titular en una e invitado en otra) lo frena `yaAnotado` con la categoría bloqueada. Historial:
+`services/jugadores/jugador_service.js` (`participacionesDe` trae a varios jugadores en una sola
+consulta) y `jugador_reglas.js` (puesto alcanzado por ronda de llave; etiquetas `PUESTOS_ALCANZADOS`
+en `torneo_config.js`). Rutas: `/api/jugadores/yo`, `/api/jugadores/:codigo` (público),
+`/api/publico/torneos/:id/participantes`, `POST /api/inscripciones/:id/invitacion`. Pantallas:
+`/mi-perfil`, `/jugadores/:codigo` y la sección Participantes de `/torneos/:id`. El registro sin
+`returnTo` termina en `/mi-perfil?bienvenida=1`; Mi perfil muestra `suscripcion/tarjeta_organizador.jsx`
+(invita a organizar o resume el plan; la activación sigue siendo automática en `/mi-suscripcion`).
 
 ## Comandos reales (desde la raíz)
 
@@ -175,7 +210,7 @@ actualizar el script o ejecutarlo explícitamente con `node --test`.
 - Base local de desarrollo: PostgreSQL 17 en `localhost`, base `mipadel` (la de DistribuCG es
   `Distribuidora`: no usarla). El `.env` local deja `BD_URL` vacía y usa `DB_*`.
 - `servidor/tests/ux_rules.test.mjs` prueba reglas sin conexión a la base.
-- `suscripcion`, `torneo`, `juego` y `llave` `.integration.mjs` solo corren contra `localhost` (si `BD_URL` está cargada, se saltea),
+- `suscripcion`, `torneo`, `juego`, `llave` y `jugadores` `.integration.mjs` solo corren contra `localhost` (si `BD_URL` está cargada, se saltea),
   crea un schema `mipadel_it_<aleatorio>` y borra solo ese schema al terminar.
 - Playwright levanta solo Vite en `127.0.0.1:4178` y simula la API; no necesita el backend.
 - No enviar correos, procesar pagos externos ni subir archivos reales al ejecutar pruebas.

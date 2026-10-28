@@ -7,7 +7,7 @@ import {
 } from "../../controllers/torneos/torneo_controller.js";
 import {
   listarInscripcionesController, cargarParejaController, editarParejaController, confirmarController, rechazarController, bajaController,
-  verZonasController, generarZonasController, moverParejaController, resultadoController, borrarResultadoController,
+  verZonasController, generarZonasController, moverParejaController, resultadoController, borrarResultadoController, programarController,
   verLlaveController, armarLlaveController, deshacerLlaveController,
 } from "../../controllers/torneos/juego_controller.js";
 
@@ -45,3 +45,4 @@ torneoRouter.post("/:torneoId/categorias/:categoriaId/llave/armar", escribir, ar
 torneoRouter.post("/:torneoId/categorias/:categoriaId/llave/deshacer", escribir, deshacerLlaveController);
 torneoRouter.put("/:torneoId/partidos/:partidoId/resultado", escribir, resultadoController);
 torneoRouter.delete("/:torneoId/partidos/:partidoId/resultado", escribir, borrarResultadoController);
+torneoRouter.put("/:torneoId/partidos/:partidoId/programacion", escribir, programarController);

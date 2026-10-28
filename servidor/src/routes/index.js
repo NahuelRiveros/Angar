@@ -12,7 +12,7 @@ import { ubicacionRouter } from "./ubicacion/ubicacion_router.js";
 import { bannerAnuncioRouter } from "./sistema/banner_anuncio_router.js";
 import { uploadRouter } from "./upload_router.js";
 import { torneoRouter } from "./torneos/torneo_router.js";
-import { inscripcionJugadorRouter, torneoPublicoRouter } from "./torneos/jugador_router.js";
+import { inscripcionJugadorRouter, torneoPublicoRouter, jugadorRouter } from "./torneos/jugador_router.js";
 
 const router = Router();
 
@@ -58,6 +58,7 @@ router.use("/banner", bannerAnuncioRouter);           // ← cinta de anuncios (
 router.use("/upload", uploadRouter);                  // ← subida genérica de imágenes (Cloudinary)
 router.use("/torneos", torneoRouter);                // ← torneos del organizador (categorías, reglas y premios)
 router.use("/inscripciones", inscripcionJugadorRouter); // ← el jugador se anota y ve sus inscripciones
+router.use("/jugadores", jugadorRouter);                 // ← perfil propio y público (código de jugador)
 router.use("/publico/torneos", torneoPublicoRouter);    // ← torneos publicados (sin cuenta)
 
 export default router;

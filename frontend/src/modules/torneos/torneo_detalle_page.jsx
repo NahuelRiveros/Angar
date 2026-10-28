@@ -18,6 +18,7 @@ import CategoriasSeccion from "./detalle/categorias_seccion.jsx";
 import InscripcionesSeccion from "./detalle/inscripciones_seccion.jsx";
 import ZonasSeccion from "./detalle/zonas_seccion.jsx";
 import LlaveSeccion from "./detalle/llave_seccion.jsx";
+import GuiaSeccion from "./detalle/guia_seccion.jsx";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const SECCIONES = [["datos", "Datos"], ["categorias", "Categorías y premios"], ["reglamento", "Reglamento"], ["inscripciones", "Inscripciones"], ["zonas", "Zonas"], ["llave", "Llave"]];
@@ -83,6 +84,7 @@ export default function TorneoDetallePage() {
         ))}
       </div>
       <section role="tabpanel" className="rounded-3xl border border-(--kt-border) bg-white p-4 shadow-sm sm:p-6">
+        <GuiaSeccion seccion={seccion} estado={t.estado} soloLectura={soloLectura} />
         {seccion === "datos" && <DatosTorneoForm torneo={t} editable={puede("datos")} />}
         {seccion === "categorias" && <CategoriasSeccion torneo={t} editarCategorias={puede("categorias")} editarPremios={puede("premios")} />}
         {seccion === "reglamento" && <ReglamentoForm torneo={t} editable={puede("datos")} />}

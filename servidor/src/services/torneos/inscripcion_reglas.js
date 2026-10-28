@@ -1,4 +1,5 @@
 // Validación de inscripciones sin base de datos (se prueban en ux_rules.test.mjs).
+import { normalizarCodigoJugador } from "../common/codigo_jugador.js";
 
 const texto = (v) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ") : v);
 
@@ -18,14 +19,22 @@ function opcionales(b) {
 
 const idValido = (v) => Number.isInteger(Number(v)) && Number(v) > 0 && Number(v) <= 2147483647;
 
-/** El jugador logueado es el jugador 1 (su nombre sale de la cuenta); escribe el de su compañero. */
+/**
+ * El jugador logueado es el jugador 1 (su nombre sale de la cuenta). Al compañero lo indica
+ * por nombre (no tiene cuenta) o por su código de jugador (se lo invita y tiene que aceptar).
+ */
 export function validarInscripcionOnline(body) {
   const b = body ?? {};
   if (!idValido(b.categoria_id)) return { error: "Elegí la categoría." };
-  const companiero = nombreJugador(b.jugador2_nombre, "Tu compañero");
-  if (companiero.error) return companiero;
   const extra = opcionales(b);
   if (extra.error) return extra;
+  if (b.codigo_companiero != null && b.codigo_companiero !== "") {
+    const codigo = normalizarCodigoJugador(b.codigo_companiero);
+    if (!codigo) return { error: "El código de tu compañero tiene la forma MP-XXXXX (lo ve en su perfil)." };
+    return { datos: { categoria_id: Number(b.categoria_id), codigo_companiero: codigo, ...extra.datos } };
+  }
+  const companiero = nombreJugador(b.jugador2_nombre, "Tu compañero");
+  if (companiero.error) return companiero;
   return { datos: { categoria_id: Number(b.categoria_id), jugador2_nombre: companiero.valor, ...extra.datos } };
 }
 

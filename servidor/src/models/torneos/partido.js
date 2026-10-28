@@ -20,6 +20,10 @@ export const Partido = defineModel("Partido", {
   formato: { type: DataTypes.STRING(20), allowNull: false },
   sets: { type: DataTypes.JSONB, allowNull: true },
   ganador_id: { type: DataTypes.INTEGER, allowNull: true, references: { model: "inscripcion", key: "id" } },
+  // Programación opcional: día (YYYY-MM-DD), hora (HH:MM, hora argentina) y cancha en texto libre.
+  fecha: { type: DataTypes.DATEONLY, allowNull: true },
+  hora: { type: DataTypes.STRING(5), allowNull: true },
+  cancha: { type: DataTypes.STRING(40), allowNull: true },
   creado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
   actualizado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {

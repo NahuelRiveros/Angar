@@ -10,6 +10,8 @@ const TorneoDetallePage = lazy(() => import("../../modules/torneos/torneo_detall
 const TorneosPublicosPage = lazy(() => import("../../modules/torneos/publico/torneos_publicos_page.jsx"));
 const TorneoPublicoPage = lazy(() => import("../../modules/torneos/publico/torneo_publico_page.jsx"));
 const MisInscripcionesPage = lazy(() => import("../../modules/torneos/publico/mis_inscripciones_page.jsx"));
+const MiPerfilPage = lazy(() => import("../../modules/jugadores/perfil_pages.jsx").then((m) => ({ default: m.MiPerfilPage })));
+const PerfilPublicoPage = lazy(() => import("../../modules/jugadores/perfil_pages.jsx").then((m) => ({ default: m.PerfilPublicoPage })));
 
 export const generalRoutes = [
   { path: "/", element: <HomePage /> },
@@ -27,4 +29,6 @@ export const generalRoutes = [
   { path: "/torneos", element: <TorneosPublicosPage /> },
   { path: "/torneos/:torneoId", element: <TorneoPublicoPage /> },
   { path: "/mis-inscripciones", element: protegida(<MisInscripcionesPage />) },
+  { path: "/mi-perfil", element: protegida(<MiPerfilPage />) },
+  { path: "/jugadores/:codigo", element: <PerfilPublicoPage /> },
 ];

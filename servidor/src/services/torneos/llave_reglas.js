@@ -1,5 +1,9 @@
 // Llave eliminatoria sin base de datos (se prueba en ux_rules.test.mjs).
 // Los slots son las posiciones de la primera ronda: el slot 2i juega contra el 2i+1.
+import { potenciaDeDos, nombreRonda } from "../../../../torneo_config.js";
+
+// Viven en torneo_config.js porque también los usa el cálculo que ve el organizador.
+export { potenciaDeDos, nombreRonda };
 
 /** Orden clásico de siembra: el 1 y el 2 en mitades opuestas, el 1 contra el último. */
 export function ordenDeSiembra(tamanio) {
@@ -11,25 +15,45 @@ export function ordenDeSiembra(tamanio) {
   return orden.slice(0, tamanio);
 }
 
-export const potenciaDeDos = (n) => 2 ** Math.ceil(Math.log2(Math.max(2, n)));
-
-/** "Final", "Semifinal", "Cuartos de final"… según cuántos partidos tiene la ronda. */
-export function nombreRonda(partidosEnRonda) {
-  return { 1: "Final", 2: "Semifinal", 4: "Cuartos de final", 8: "Octavos de final", 16: "16avos de final" }[partidosEnRonda] ?? `Ronda de ${partidosEnRonda * 2}`;
-}
-
 /**
  * Ubica a los clasificados en la llave.
  * zonas: [{ nombre, clasificados: [id del 1º, id del 2º?] }] en orden A, B, C…
- * - Los 1º son las cabezas de serie en orden de zona: si sobran lugares, el pase (bye) es para ellos.
- * - Un 2º nunca cruza en primera ronda al 1º de su zona, y si se puede queda en la otra mitad
- *   del cuadro (así recién se podrían volver a cruzar en la final).
+ * mejores: [{ id, zona }] los mejores del puesto siguiente que completan la llave, del mejor al peor.
+ * - Los 1º son las cabezas de serie en orden de zona; después los 2º y al final los mejores
+ *   (en su orden). Si todavía sobran lugares, el pase (bye) es para los 1º.
+ * - Nadie cruza en primera ronda a alguien de su misma zona, y si se puede el 2º (o el mejor
+ *   tercero) queda en la otra mitad del cuadro que el 1º de su zona.
  * Devuelve { tamanio, slots } con el id de cada posición o null si es un pase.
  */
-export function armarLlave(zonas) {
+const LIMITE_DE_PASOS = 20000;
+
+/**
+ * Último arreglo: si dos de la misma zona quedaron cruzados en primera ronda (pasa cuando las
+ * semillas fijas de los 1º no dejan otra), intercambia al de peor semilla con otro, empezando por
+ * las semillas más bajas, siempre que el cambio no arme un cruce nuevo.
+ */
+function separarCruces(slots, zonaDelSlot, orden) {
+  const cruzado = (slot) => slots[slot] !== null && slots[slot ^ 1] !== null && zonaDelSlot[slot] === zonaDelSlot[slot ^ 1];
+  const porSemillaBaja = slots.map((_, slot) => slot).sort((a, b) => orden[b] - orden[a]);
+  for (const slot of porSemillaBaja) {
+    if (!cruzado(slot)) continue;
+    const peor = orden[slot] > orden[slot ^ 1] ? slot : slot ^ 1;
+    for (const otro of porSemillaBaja) {
+      if (otro === peor || otro === (peor ^ 1) || slots[otro] === null) continue;
+      const [zonaA, zonaB] = [zonaDelSlot[peor], zonaDelSlot[otro]];
+      if (zonaA === zonaDelSlot[otro ^ 1] || zonaB === zonaDelSlot[peor ^ 1]) continue;
+      [slots[peor], slots[otro]] = [slots[otro], slots[peor]];
+      [zonaDelSlot[peor], zonaDelSlot[otro]] = [zonaB, zonaA];
+      break;
+    }
+  }
+}
+
+export function armarLlave(zonas, mejores = []) {
   const primeros = zonas.map((z, i) => ({ id: z.clasificados[0], zona: i })).filter((p) => p.id);
   const segundos = zonas.map((z, i) => ({ id: z.clasificados[1], zona: i })).filter((p) => p.id);
-  const cantidad = primeros.length + segundos.length;
+  const terceros = mejores.map((m) => ({ id: m.id, zona: m.zona }));
+  const cantidad = primeros.length + segundos.length + terceros.length;
   if (cantidad < 2) return { error: "Hacen falta al menos 2 parejas clasificadas para armar la llave." };
 
   const tamanio = potenciaDeDos(cantidad);
@@ -41,39 +65,57 @@ export function armarLlave(zonas) {
 
   const mitad = (slot) => (slot < tamanio / 2 ? 0 : 1);
   const slotDelPrimero = new Map(primeros.map((p, i) => [p.zona, slotDeSemilla.get(i + 1)]));
-  const lugares = Array.from({ length: segundos.length }, (_, i) => slotDeSemilla.get(primeros.length + i + 1));
+  const resto = [...segundos, ...terceros];
+  const lugares = Array.from({ length: resto.length }, (_, i) => slotDeSemilla.get(primeros.length + i + 1));
 
   // Prueba con la condición preferida (otra mitad); si no hay forma, solo con la obligatoria.
+  // Cada intento tiene un tope de pasos: con muchas zonas la búsqueda completa sería eterna.
   for (const exigirOtraMitad of [true, false]) {
     const usados = new Set();
     const asignado = [];
-    const sirve = (segundo, slot) => {
-      if (zonaDelSlot[slot ^ 1] === segundo.zona) return false; // su rival en primera ronda sería el 1º de su zona
-      const delPrimero = slotDelPrimero.get(segundo.zona);
+    let pasos = 0;
+    const sirve = (pareja, slot) => {
+      if (zonaDelSlot[slot ^ 1] === pareja.zona) return false; // su rival en primera ronda sería de su zona
+      const delPrimero = slotDelPrimero.get(pareja.zona);
       return !exigirOtraMitad || delPrimero === undefined || mitad(delPrimero) !== mitad(slot);
     };
     const ubicar = (i) => {
       if (i === lugares.length) return true;
-      // Preferencia: el 2º de la zona "siguiente" a la de su rival (1ºA contra 2ºB, 1ºB contra 2ºC…).
+      if ((pasos += 1) > LIMITE_DE_PASOS) return false;
       const rival = zonaDelSlot[lugares[i] ^ 1];
-      const candidatos = segundos.filter((s) => !usados.has(s.id))
-        .sort((a, b) => (rival === null ? 0 : ((a.zona - rival + zonas.length) % zonas.length) - ((b.zona - rival + zonas.length) % zonas.length)) || a.zona - b.zona);
+      // Los 2º van primero: preferencia por la zona "siguiente" a la de su rival (1ºA contra 2ºB…).
+      // Los mejores terceros mantienen su orden: el mejor toma la mejor semilla que pueda.
+      const candidatos = i < segundos.length
+        ? segundos.filter((s) => !usados.has(s.id))
+          .sort((a, b) => (rival === null ? 0 : ((a.zona - rival + zonas.length) % zonas.length) - ((b.zona - rival + zonas.length) % zonas.length)) || a.zona - b.zona)
+        : terceros.filter((s) => !usados.has(s.id));
       for (const candidato of candidatos) {
         if (!sirve(candidato, lugares[i])) continue;
         usados.add(candidato.id);
         asignado[i] = candidato;
+        zonaDelSlot[lugares[i]] = candidato.zona;
         if (ubicar(i + 1)) return true;
         usados.delete(candidato.id);
+        zonaDelSlot[lugares[i]] = null;
       }
       return false;
     };
     if (ubicar(0)) {
       asignado.forEach((s, i) => { slots[lugares[i]] = s.id; });
+      separarCruces(slots, zonaDelSlot, orden);
       return { tamanio, slots };
     }
   }
-  // Solo pasa con una única zona de 2 clasificados: inevitable que se crucen.
-  segundos.forEach((s, i) => { slots[lugares[i]] = s.id; });
+  // Sin solución (por ejemplo, una única zona) o búsqueda agotada: de a uno, evitando su zona si se puede.
+  const libres = [...resto];
+  lugares.forEach((lugar) => {
+    const pool = libres.filter((s) => segundos.includes(s)).length ? libres.filter((s) => segundos.includes(s)) : libres;
+    const elegido = pool.find((s) => zonaDelSlot[lugar ^ 1] !== s.zona) ?? pool[0];
+    libres.splice(libres.indexOf(elegido), 1);
+    slots[lugar] = elegido.id;
+    zonaDelSlot[lugar] = elegido.zona;
+  });
+  separarCruces(slots, zonaDelSlot, orden);
   return { tamanio, slots };
 }
 

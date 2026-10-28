@@ -95,13 +95,21 @@ test("llave de 4: semis cruzadas (1ºA-2ºB), el ganador avanza y el podio sale 
   assert.equal(detalle.rondas[1].partidos[0].pareja1, null, "borrar la semi saca al ganador de la final");
 });
 
-test("llave de 6 en cuadro de 8: los 1º de A y B pasan sin jugar a semis", { skip: sin }, async () => {
-  const { torneo, categoria, zonas: armadas } = await torneoConZonasJugadas("Copa 9", 9);
+test("3 zonas de 3: 6 clasificados + los 2 mejores terceros llenan los cuartos, sin pases", { skip: sin }, async () => {
+  const { torneo, categoria } = await torneoConZonasJugadas("Copa 9", 9);
+  const vistas = await zonas.verZonas(torneo.id, categoria.id, org);
+  assert.deepEqual(vistas.mejores, { puesto: 3, cupo: 2, definidos: true });
+  const terceros = vistas.zonas.flatMap((z) => z.tabla.filter((f) => f.mejor));
+  assert.equal(terceros.length, 2, "dos terceros marcados como mejores");
+  assert.ok(terceros.every((f) => f.posicion === 3 && f.clasificado));
+
   const detalle = await llave.armarLlaveCategoria(torneo.id, categoria.id, org);
-  assert.deepEqual(detalle.rondas.map((r) => [r.nombre, r.partidos.length]), [["Cuartos de final", 2], ["Semifinal", 2], ["Final", 1]]);
-  const primerosConPase = detalle.rondas[1].partidos.flatMap((p) => [p.pareja1, p.pareja2]).filter(Boolean);
-  const primeroDe = (nombre) => armadas.find((z) => z.nombre === nombre).tabla[0].pareja.id;
-  assert.deepEqual(primerosConPase.map((p) => p.id).sort(), [primeroDe("A"), primeroDe("B")].sort());
+  assert.deepEqual(detalle.rondas.map((r) => [r.nombre, r.partidos.length]), [["Cuartos de final", 4], ["Semifinal", 2], ["Final", 1]]);
+  const primeraRonda = detalle.rondas[0].partidos;
+  assert.ok(primeraRonda.every((p) => p.pareja1 && p.pareja2), "nadie pasa sin jugar");
+  const zonaDe = new Map(vistas.zonas.flatMap((z) => z.parejas.map((p) => [p.id, z.nombre])));
+  assert.ok(primeraRonda.every((p) => zonaDe.get(p.pareja1.id) !== zonaDe.get(p.pareja2.id)), "nadie cruza a su zona en cuartos");
+  assert.deepEqual(primeraRonda.flatMap((p) => [p.pareja1.id, p.pareja2.id]).filter((id) => terceros.some((t) => t.inscripcion_id === id)).sort(), terceros.map((t) => t.inscripcion_id).sort());
 });
 
 test("armar requiere zonas terminadas; deshacer la llave reabre las zonas para corregir", { skip: sin }, async () => {

@@ -37,9 +37,56 @@ const FICHA = {
   ],
 };
 
+// Como la lista pública: lo que cuenta la tarjeta sale de las categorías del torneo.
+const TARJETA = {
+  id: 5, nombre: "Abierto de Verano", estado: "inscripcion", sede: "Club Norte", localidad: "Formosa", fecha_inicio: "2026-12-05", fecha_fin: "2026-12-06",
+  descripcion: "Torneo de verano con zonas y llaves, cancha techada.",
+  categorias: [{ nombre: "4ta Caballeros", rama: "caballeros" }, { nombre: "Suma 13", rama: null }], ramas: ["caballeros"],
+  formato: { parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6" }, parejas: 18, lugares_libres: 6, premio_campeon: "Trofeo",
+};
+const EN_JUEGO = { ...TARJETA, id: 6, nombre: "Copa Damas", estado: "en_juego", descripcion: null, categorias: [{ nombre: "6ta Damas", rama: "damas" }], ramas: ["damas"], formato: null, lugares_libres: null, premio_campeon: null, parejas: 9 };
+
+test("lista de torneos: la tarjeta cuenta qué se juega, y se busca y filtra desde la dirección", async ({ page }, info) => {
+  const pedidos = [];
+  await api(page, { rutas: {
+    "GET /publico/torneos": (route) => {
+      const filtros = Object.fromEntries(new URL(route.request().url()).searchParams);
+      pedidos.push(filtros);
+      const data = [TARJETA, EN_JUEGO].filter((t) => (!filtros.q || t.nombre.toLowerCase().includes(filtros.q.toLowerCase())) && (!filtros.estado || t.estado === filtros.estado));
+      return route.fulfill({ json: { ok: true, page: 1, limit: 12, total: data.length, totalPages: 1, data } });
+    },
+  } });
+  await page.goto("/torneos");
+  const tarjeta = page.getByRole("link", { name: /Abierto de Verano/ });
+  await expect(tarjeta.getByText("Zonas de 3, clasifican 2 y llave · Un set a 6 games")).toBeVisible();
+  await expect(tarjeta.getByText("Campeón: Trofeo")).toBeVisible();
+  await expect(tarjeta.getByText("Quedan 6 lugares")).toBeVisible();
+  await expect(tarjeta.getByRole("list", { name: "Categorías" }).getByRole("listitem")).toHaveText(["4ta Caballeros", "Suma 13"]);
+  await expect(tarjeta.getByText("Anotarme")).toBeVisible();
+  const enJuego = page.getByRole("link", { name: /Copa Damas/ });
+  await expect(enJuego.getByText("Formato según la categoría")).toBeVisible();
+  await expect(enJuego.getByText("9 parejas")).toBeVisible();
+  await expect(enJuego.getByText("Ver resultados")).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("lista_torneos.png"), fullPage: true });
+
+  await page.getByRole("searchbox", { name: "Buscar torneo" }).fill("copa");
+  await expect(page).toHaveURL(/[?&]q=copa/);
+  await expect(page.getByText("1 torneo con esos filtros")).toBeVisible();
+  await expect(tarjeta).toHaveCount(0);
+  await page.getByLabel("Estado").selectOption("inscripcion");
+  await expect(page.getByText("No encontramos torneos con esos filtros")).toBeVisible();
+  expect(pedidos.at(-1)).toMatchObject({ q: "copa", estado: "inscripcion" });
+
+  await page.getByRole("button", { name: "Limpiar filtros" }).click();
+  await expect(page).toHaveURL(/\/torneos$/);
+  await expect(page.getByText("2 torneos")).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: "Buscar torneo" })).toHaveValue("");
+});
+
 test("un visitante ve los torneos y la ficha; para anotarse le pide ingresar", async ({ page }, info) => {
   await api(page, { rutas: {
-    "GET /publico/torneos": { ok: true, page: 1, limit: 12, total: 1, totalPages: 1, data: [{ id: 5, nombre: "Abierto de Verano", estado: "inscripcion", sede: "Club Norte", localidad: "Formosa", fecha_inicio: "2026-12-05", fecha_fin: "2026-12-06" }] },
+    "GET /publico/torneos": { ok: true, page: 1, limit: 12, total: 1, totalPages: 1, data: [TARJETA] },
     "GET /publico/torneos/5": { ok: true, data: FICHA },
   } });
   await page.goto("/");
@@ -65,8 +112,8 @@ test("un jugador se anota con su compañero en una categoría con lugar", async 
   await expect(categoria.locator("option", { hasText: "Suma 13" })).toHaveCount(0, { timeout: 5000 });
   await expect(categoria).toHaveValue("51", { timeout: 5000 });
   await page.getByRole("button", { name: "Anotarme" }).click();
-  await expect(page.getByText("Nombre y apellido de tu compañero")).toBeVisible();
-  await page.getByLabel("Tu compañero").fill("Pedro Gómez");
+  await expect(page.getByText("Nombre y apellido de tu compañero (mínimo 3 caracteres).")).toBeVisible();
+  await page.getByLabel("Nombre y apellido de tu compañero").fill("Pedro Gómez");
   await page.getByLabel("Tu teléfono (opcional)").fill("370 400-0000");
   await page.getByRole("button", { name: "Anotarme" }).click();
   await expect(page.getByText("Tu inscripción quedó pendiente")).toBeVisible();
@@ -154,6 +201,97 @@ const ZONAS_ARMADAS = {
     tabla: [11, 12, 13].map((id, i) => ({ inscripcion_id: id, posicion: i + 1, pg: 0, pj: 0, pp: 0, sets_favor: 0, sets_contra: 0, games_favor: 0, games_contra: 0, clasificado: false, pareja: pareja(id, ["Ana / Bea", "Caro / Dani", "Eli / Flor"][i], i === 0) })),
   }],
 };
+
+test("organizador: antes de sortear ve qué zonas y llave salen, con aviso si quedan desparejas, y puede sortear igual", async ({ page }) => {
+  const confirmadas = Array.from({ length: 7 }, (_, i) => pareja(20 + i, `Pareja ${i + 1}`));
+  await api(page, { roles: ["organizador"], rutas: {
+    "GET /torneos/9": { ok: true, data: detalle("en_juego") },
+    "GET /torneos/9/categorias/91/zonas": { ok: true, data: { ...ZONAS_ARMADAS, zonas: [], sin_zona: confirmadas } },
+  } });
+  await page.goto("/mis-torneos/9");
+  await page.getByRole("tab", { name: "Zonas" }).click();
+  await expect(page.getByText("Con 7 parejas: 2 zonas (1 de 4 y 1 de 3), clasifican 4. Llave de 4: empieza en semifinal, justa.")).toBeVisible();
+  await expect(page.getByText("en las zonas de 4 cada pareja juega 3 partidos y en las de 3, 2. Podés sortear igual")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sortear zonas" })).toBeEnabled();
+});
+
+test("zonas terminadas: muestra los mejores terceros que completan la llave y qué desempate definió cada lugar", async ({ page }, info) => {
+  const fila = (id, nombre, posicion, extra = {}) => ({ inscripcion_id: id, posicion, pg: 3 - posicion, pj: 2, pp: posicion - 1, sets_favor: 0, sets_contra: 0, games_favor: 0, games_contra: 0, clasificado: posicion <= 2, desempate: null, pareja: pareja(id, nombre), ...extra });
+  const zona = (id, letra, base, extra3 = {}) => ({
+    id, nombre: letra, completa: true, partidos: [],
+    parejas: [1, 2, 3].map((n) => pareja(base + n, `${letra}${n}`)),
+    tabla: [fila(base + 1, `${letra}1`, 1, { desempate: base === 30 ? "sorteo" : null }), fila(base + 2, `${letra}2`, 2, { desempate: base === 30 ? "sorteo" : null }), fila(base + 3, `${letra}3`, 3, extra3)],
+  });
+  const datos = { ...ZONAS_ARMADAS, mejores: { puesto: 3, cupo: 2, definidos: true }, zonas: [
+    zona(1, "A", 10, { clasificado: true, mejor: true }), zona(2, "B", 20, { clasificado: true, mejor: true, desempate_mejor: "sorteo" }), zona(3, "C", 30),
+  ] };
+  await api(page, { roles: ["organizador"], rutas: {
+    "GET /torneos/9": { ok: true, data: detalle("en_juego") },
+    "GET /torneos/9/categorias/91/zonas": { ok: true, data: datos },
+  } });
+  await page.goto("/mis-torneos/9");
+  await page.getByRole("tab", { name: "Zonas" }).click();
+  await expect(page.getByText("Además clasifican los 2 mejores terceros de todas las zonas.")).toBeVisible();
+  const zonaB = page.getByRole("region", { name: "Zona B" });
+  await expect(zonaB.getByRole("row", { name: /B3/ }).getByText("Mejor 3º")).toBeVisible();
+  await expect(zonaB.getByRole("row", { name: /B3/ }).getByText("Definido por sorteo")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Zona C" }).getByText("Definido por sorteo")).toHaveCount(2);
+  await expect(page.getByRole("region", { name: "Zona C" }).getByText("Mejor 3º")).toHaveCount(0);
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("mejores_terceros.png"), fullPage: true });
+});
+
+test("organizador: en Zonas ve cuántas parejas faltan para completar el cupo", async ({ page }, info) => {
+  const torneo = detalle("inscripcion");
+  torneo.categorias[0].cupo_parejas = 9;
+  let confirmadas = 7;
+  await api(page, { roles: ["organizador"], rutas: {
+    "GET /torneos/9": { ok: true, data: torneo },
+    "GET /torneos/9/categorias/91/zonas": (route) => route.fulfill({ json: { ok: true, data: { ...ZONAS_ARMADAS, zonas: [], sin_zona: Array.from({ length: confirmadas }, (_, i) => pareja(20 + i, `Pareja ${i + 1}`)) } } }),
+  } });
+  await page.goto("/mis-torneos/9");
+  await page.getByRole("tab", { name: "Zonas" }).click();
+  await expect(page.getByText("Faltan 2 parejas para completar el cupo (7 de 9 confirmadas).")).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("zonas_cupo.png"), fullPage: true });
+  confirmadas = 9;
+  await page.reload();
+  await page.getByRole("tab", { name: "Zonas" }).click();
+  await expect(page.getByText("Cupo completo: 9 de 9 parejas confirmadas.")).toBeVisible();
+});
+
+test("organizador: con la inscripción abierta carga día, hora y cancha de un partido (el resultado recién en juego)", async ({ page }, info) => {
+  let zonas = structuredClone(ZONAS_ARMADAS);
+  const pedidos = await api(page, { roles: ["organizador"], rutas: {
+    "GET /torneos/9": { ok: true, data: detalle("inscripcion") },
+    "GET /torneos/9/categorias/91/zonas": (route) => route.fulfill({ json: { ok: true, data: zonas } }),
+    "PUT /torneos/9/partidos/101/programacion": (route, body) => {
+      zonas = structuredClone(zonas);
+      Object.assign(zonas.zonas[0].partidos[0], { fecha: body.fecha || null, hora: body.hora || null, cancha: body.cancha || null });
+      return route.fulfill({ json: { ok: true, mensaje: "Horario guardado.", data: { fase: "zona", ...zonas } } });
+    },
+  } });
+  await page.goto("/mis-torneos/9");
+  await page.getByRole("tab", { name: "Zonas" }).click();
+  await expect(page.getByRole("button", { name: /^Cargar resultado de/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Horario de Ana / Bea contra Eli / Flor" }).click();
+  const modal = page.getByRole("dialog", { name: "Horario del partido" });
+  await modal.getByLabel("Día").fill("2026-12-05");
+  await modal.getByLabel("Hora").fill("18:30");
+  await modal.getByLabel("Cancha").fill("Cancha 2");
+  await modal.getByRole("button", { name: "Guardar horario" }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.getByText("sáb 05/12 · 18:30 · Cancha 2")).toBeVisible();
+  expect(pedidos.find((p) => p.clave === "PUT /torneos/9/partidos/101/programacion").body).toEqual({ fecha: "2026-12-05", hora: "18:30", cancha: "Cancha 2" });
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("horario_zona.png"), fullPage: true });
+
+  await page.getByRole("button", { name: "Horario de Ana / Bea contra Eli / Flor" }).click();
+  await expect(modal.getByLabel("Cancha")).toHaveValue("Cancha 2");
+  await modal.getByRole("button", { name: "Quitar horario" }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.getByText("sáb 05/12 · 18:30 · Cancha 2")).toHaveCount(0);
+});
 
 test("organizador: sortea las zonas y carga un resultado (el servidor rechaza un marcador imposible)", async ({ page }, info) => {
   let zonas = { ...ZONAS_ARMADAS, zonas: [], sin_zona: ZONAS_ARMADAS.zonas[0].parejas };

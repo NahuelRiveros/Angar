@@ -100,10 +100,10 @@ test("el organizador crea un torneo, carga categorías y premios, y abre la insc
   await expect(modal.getByText("Elegí el nivel.")).toBeVisible();
   await modal.getByLabel("Nivel").selectOption("4");
   await modal.getByLabel("Rama").selectOption("caballeros");
-  await modal.getByLabel("Cupo de parejas (opcional)").fill("16");
+  await modal.getByLabel("Cupo de parejas").selectOption("15");
   await modal.getByRole("button", { name: "Agregar categoría" }).click();
   await expect(page.getByRole("heading", { name: "4ta Caballeros" })).toBeVisible();
-  await expect(page.getByText("Cupo: 16 parejas")).toBeVisible();
+  await expect(page.getByText("Cupo: 15 parejas")).toBeVisible();
 
   await page.getByRole("button", { name: "Agregar categoría" }).click();
   modal = page.getByRole("dialog", { name: "Nueva categoría" });
@@ -139,7 +139,7 @@ test("el organizador crea un torneo, carga categorías y premios, y abre la insc
 
   const premiosEnviados = pedidos.find((p) => p.ruta.endsWith("/premios")).body;
   expect(premiosEnviados).toEqual({ premios: [{ puesto: "campeon", etiqueta: "", descripcion: "$200.000 + trofeo" }, { puesto: "otro", etiqueta: "Fair play", descripcion: "Paletas" }] });
-  expect(pedidos.find((p) => p.metodo === "POST" && p.ruta === "/torneos/100/categorias").body).toEqual({ nivel: 4, rama: "caballeros", cupo_parejas: 16, parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6", formato_llave: "mejor_de_3_stb" });
+  expect(pedidos.find((p) => p.metodo === "POST" && p.ruta === "/torneos/100/categorias").body).toEqual({ nivel: 4, rama: "caballeros", cupo_parejas: 15, parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6", formato_llave: "mejor_de_3_stb" });
 });
 
 const TORNEO_EN_JUEGO = {
@@ -158,6 +158,98 @@ test("en juego no se agregan categorías pero sí premios; la lista muestra el t
   await expect(page.getByRole("button", { name: /Quitar 6ta Damas/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Premios" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Finalizar torneo" })).toBeVisible();
+});
+
+test("el cupo se elige entre cantidades con zonas iguales; otro número avisa que quedan desparejas", async ({ page }, info) => {
+  const borrador = { ...structuredClone(TORNEO_EN_JUEGO), estado: "borrador", categorias: [] };
+  const pedidos = await servidorFalso(page, { torneos: [borrador] });
+  await page.goto("/mis-torneos/" + borrador.id);
+  await page.getByRole("tab", { name: /Categorías/ }).click();
+  await page.getByRole("button", { name: "Agregar categoría" }).click();
+  const modal = page.getByRole("dialog", { name: "Nueva categoría" });
+  const calculo = modal.getByRole("region", { name: "Cálculo de la llave" });
+  await expect(calculo.getByText("Elegí un cupo para ver")).toBeVisible();
+
+  await modal.getByLabel("Nivel").selectOption("6");
+  await modal.getByLabel("Rama").selectOption("caballeros");
+  const cupo = modal.getByLabel("Cupo de parejas");
+  await expect(cupo.locator("option", { hasText: "18 parejas · 6 zonas de 3 · llave de 16 (+4 mejores terceros)" })).toHaveCount(1);
+  await expect(cupo.locator("option", { hasText: "★ 24 parejas · 8 zonas de 3 · llave de 16 justa" })).toHaveCount(1);
+  await cupo.selectOption("18");
+  await expect(calculo.getByText("Llave de 16: empieza en octavos de final, se completa con 4 mejores terceros.")).toBeVisible();
+  await expect(calculo.getByText("Zonas desparejas:")).toHaveCount(0);
+
+  await cupo.selectOption("otro");
+  await modal.getByLabel("¿Cuántas parejas?").fill("20");
+  await expect(calculo.getByText("en las zonas de 4 cada pareja juega 3 partidos y en las de 3, 2.")).toBeVisible();
+  await noOverflow(page);
+  await calculo.getByRole("list").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath("calculo_llave.png") });
+
+  await calculo.getByRole("button", { name: "Usar zonas de 5, clasifican 2" }).click();
+  await expect(modal.getByLabel("Parejas por zona")).toHaveValue("5");
+  await expect(calculo.getByText("Llave de 8: empieza en cuartos de final, justa.")).toBeVisible();
+  await expect(calculo.getByText("Zonas desparejas:")).toHaveCount(0);
+  await modal.getByRole("button", { name: "Agregar categoría" }).click();
+  await expect(modal).toHaveCount(0);
+  expect(pedidos.find((p) => p.metodo === "POST" && p.ruta.endsWith("/categorias")).body).toMatchObject({ cupo_parejas: 20, parejas_por_zona: 5, clasifican_por_zona: 2 });
+  await expect(page.getByText("Con 20 parejas: 4 zonas de 5, clasifican 8. Llave de 8: empieza en cuartos de final, justa.")).toBeVisible();
+
+  // Al editarla, 20 con zonas de 5 está en la lista; un número fuera de la lista vacío no se guarda.
+  await page.getByRole("button", { name: "Editar 6ta Caballeros" }).click();
+  const edicion = page.getByRole("dialog", { name: "Editar 6ta Caballeros" });
+  await expect(edicion.getByLabel("Cupo de parejas")).toHaveValue("20");
+  await edicion.getByLabel("Cupo de parejas").selectOption("otro");
+  await edicion.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(edicion.getByText("Entre 2 y 256 parejas.")).toBeVisible();
+});
+
+test("reglamento: se empieza desde un modelo (el de zonas y llave toma la configuración), se edita y se guarda", async ({ page }, info) => {
+  const torneo = { ...structuredClone(TORNEO_EN_JUEGO), estado: "inscripcion", categorias: [{ id: 70, nivel: 6, rama: "damas", nombre_personalizado: null, cupo_parejas: 21, parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6", formato_llave: "mejor_de_3_stb", premios: [] }] };
+  const pedidos = await servidorFalso(page, { torneos: [torneo] });
+  await page.goto("/mis-torneos/" + torneo.id);
+  await page.getByRole("tab", { name: "Reglamento" }).click();
+  const texto = page.getByLabel("Reglamento", { exact: true });
+  await expect(texto).toHaveValue("Sets a 6 games.");
+  await page.getByLabel("Modelo de reglamento").selectOption("zonas_llave");
+  await page.getByRole("button", { name: "Usar este modelo" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Reemplazar" }).click();
+  await expect(texto).toHaveValue(/6ta Damas: zonas de 3 parejas, todos contra todos, clasifican los 2 primeros\. Partidos de zona: un set a 6 games\. Partidos de llave: mejor de 3, el 3º con super tie-break\./);
+  await expect(texto).toHaveValue(/5\) Games a favor\.\n6\) Sorteo/);
+  await page.getByLabel("Modelo de reglamento").selectOption("mixto");
+  await page.getByRole("button", { name: "Agregar al final" }).click();
+  await expect(texto).toHaveValue(/^ZONAS Y LLAVE[\s\S]*REGLAMENTO DE CATEGORÍAS MIXTAS[\s\S]*Regla local \(opcional/);
+  await texto.press("End");
+  await texto.pressSequentially("\nTolerancia: 20 minutos.");
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("reglamento_modelo.png"), fullPage: true });
+  await page.getByRole("button", { name: "Guardar reglamento" }).click();
+  await expect(page.getByText("Cambios guardados.")).toBeVisible();
+  const guardado = pedidos.findLast((p) => p.metodo === "PATCH").body.reglamento;
+  expect(guardado).toContain("REGLAMENTO DE CATEGORÍAS MIXTAS");
+  expect(guardado.endsWith("Tolerancia: 20 minutos.")).toBeTruthy();
+});
+
+test("cada pestaña tiene su guía según el estado del torneo; se oculta y se recuerda", async ({ page }, info) => {
+  await servidorFalso(page, { torneos: [structuredClone(TORNEO_EN_JUEGO)] });
+  await page.goto("/mis-torneos/" + TORNEO_EN_JUEGO.id);
+  const guia = page.getByRole("complementary", { name: /^Guía:/ });
+  await expect(guia.getByText("Los datos que ven los jugadores")).toBeVisible();
+  await page.getByRole("tab", { name: /Categorías/ }).click();
+  await expect(guia.getByText("Las categorías y sus premios")).toBeVisible();
+  await expect(guia.getByText("Con el torneo en juego ya no se agregan ni quitan categorías")).toBeVisible();
+  await page.getByRole("tab", { name: "Llave" }).click();
+  await expect(guia.getByText("Ya podés armar la llave de cada categoría que terminó sus zonas.")).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("guia_llave.png"), fullPage: true });
+
+  await guia.getByRole("button", { name: "Ocultar" }).click();
+  await expect(guia).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "¿Qué puedo hacer acá?" })).toBeVisible();
+  await expect(guia).toHaveCount(0);
+  await page.getByRole("button", { name: "¿Qué puedo hacer acá?" }).click();
+  await expect(guia.getByText("Paso 1 de 6")).toBeVisible();
 });
 
 test("con el plan vencido se ve todo pero en solo lectura", async ({ page }, info) => {

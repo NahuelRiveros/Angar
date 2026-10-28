@@ -1,5 +1,9 @@
 // Zonas, fixture, resultados y posiciones sin base de datos (se prueban en ux_rules.test.mjs).
-import { FORMATOS_PARTIDO } from "../../../../torneo_config.js";
+import { FORMATOS_PARTIDO, tamaniosDeZonas, completarLlave } from "../../../../torneo_config.js";
+import { esFechaValida } from "../suscripciones/suscripcion_reglas.js";
+
+// El cálculo de tamaños vive en torneo_config.js porque también lo muestra la interfaz.
+export { tamaniosDeZonas };
 
 const LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 export const nombreZona = (indice) => LETRAS[indice] ?? `Z${indice + 1}`;
@@ -18,6 +22,21 @@ function setValido(a, b, games) {
 function superTieBreakValido(a, b) {
   const [mayor, menor] = a > b ? [a, b] : [b, a];
   return mayor >= 10 && mayor - menor >= 2 && (mayor === 10 || mayor - menor === 2);
+}
+
+/**
+ * Día, hora y cancha de un partido. Todo opcional: vacío borra el dato.
+ * Devuelve { datos: { fecha, hora, cancha } } o { error }.
+ */
+export function validarProgramacion(body) {
+  const b = body ?? {};
+  const limpio = (v) => (typeof v === "string" ? v.trim() : v ?? "");
+  const [fecha, hora, cancha] = [limpio(b.fecha), limpio(b.hora), limpio(b.cancha)];
+  if ([fecha, hora, cancha].some((v) => typeof v !== "string")) return { error: "Día, hora y cancha van como texto." };
+  if (fecha && !esFechaValida(fecha)) return { error: "El día tiene que ser una fecha válida (AAAA-MM-DD)." };
+  if (hora && !/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) return { error: "La hora tiene que ser HH:MM (por ejemplo, 18:30)." };
+  if (cancha.length > 40) return { error: "La cancha puede tener hasta 40 caracteres." };
+  return { datos: { fecha: fecha || null, hora: hora || null, cancha: cancha || null } };
 }
 
 /**
@@ -51,20 +70,6 @@ export function validarResultado(sets, codigoFormato) {
 }
 
 // ── Armado de zonas ─────────────────────────────────────────────────────────
-
-/**
- * Cuántas parejas va a tener cada zona. Busca zonas del tamaño pedido (o una más si sobran);
- * si para eso alguna tendría que quedar con 2, prefiere una zona más grande.
- */
-export function tamaniosDeZonas(cantidad, parejasPorZona) {
-  if (cantidad < 2) return [];
-  const repartir = (zonas) => Array.from({ length: zonas }, (_, i) => Math.floor(cantidad / zonas) + (i < cantidad % zonas ? 1 : 0));
-  const pocas = Math.max(1, Math.floor(cantidad / parejasPorZona));
-  const tamanios = repartir(pocas);
-  if (tamanios[0] <= parejasPorZona + 1) return tamanios;
-  const masZonas = repartir(Math.ceil(cantidad / parejasPorZona));
-  return Math.min(...masZonas) >= 3 ? masZonas : tamanios;
-}
 
 /** Fisher-Yates con el azar inyectable (los tests lo fijan). */
 function mezclar(lista, azar) {
@@ -114,14 +119,18 @@ export function fixtureTodosContraTodos(ids) {
 
 // ── Tabla de posiciones ─────────────────────────────────────────────────────
 
+// Desempate final: el número que recibe cada pareja al sortear las zonas (azar guardado de antemano,
+// así la tabla da siempre lo mismo). Sin número, el id: estable aunque no sea azar.
+const numeroDeSorteo = (sorteo, id) => sorteo.get(id) ?? id;
+
 /**
- * Posiciones de una zona: partidos ganados → diferencia de sets → diferencia de games →
- * resultado entre ellas (si empatan exactamente dos). El super tie-break cuenta como un set
- * y como un game para quien lo gana. Los clasificados se marcan cuando la zona terminó.
- * partidos: [{ pareja1_id, pareja2_id, ganador_id, sets, formato }].
+ * Posiciones de una zona: ganados → diferencia de sets → diferencia de games → entre ellas (si empatan
+ * dos) → games a favor → sorteo. `desempate` dice qué definió el lugar de una fila frente a la de al lado
+ * cuando venían iguales ("entre_ellas", "games_favor" o "sorteo"); null si alcanzó con lo anterior.
+ * Clasifican las primeras `clasifican` recién con la zona terminada.
  */
-export function tablaDeZona(parejas, partidos, clasifican) {
-  const fila = new Map(parejas.map((id) => [id, { inscripcion_id: id, pj: 0, pg: 0, pp: 0, sets_favor: 0, sets_contra: 0, games_favor: 0, games_contra: 0 }]));
+export function tablaDeZona(parejas, partidos, clasifican, sorteo = new Map()) {
+  const fila = new Map(parejas.map((id) => [id, { inscripcion_id: id, pj: 0, pg: 0, pp: 0, sets_favor: 0, sets_contra: 0, games_favor: 0, games_contra: 0, desempate: null }]));
   const jugados = partidos.filter((p) => p.ganador_id && p.sets?.length);
   for (const p of jugados) {
     const uno = fila.get(p.pareja1_id);
@@ -140,26 +149,93 @@ export function tablaDeZona(parejas, partidos, clasifican) {
     ganador.pg += 1; perdedor.pp += 1;
   }
 
-  const clave = (f) => [f.pg, f.sets_favor - f.sets_contra, f.games_favor - f.games_contra];
-  const comparar = (x, y) => {
-    const [a, b] = [clave(x), clave(y)];
-    for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return b[i] - a[i];
-    return 0;
-  };
-  const filas = [...fila.values()].sort((x, y) => comparar(x, y) || x.inscripcion_id - y.inscripcion_id);
-
-  // Entre ellas: solo cuando el empate es de exactamente dos parejas.
-  for (let i = 0; i < filas.length - 1; i += 1) {
-    const grupo = filas.filter((f) => comparar(f, filas[i]) === 0);
-    if (grupo.length !== 2 || grupo[0] !== filas[i]) continue;
-    const [x, y] = grupo;
+  const principal = (f) => [f.pg, f.sets_favor - f.sets_contra, f.games_favor - f.games_contra];
+  const filas = ordenarConDesempate([...fila.values()], principal, (x, y) => {
     const directo = jugados.find((p) => [p.pareja1_id, p.pareja2_id].includes(x.inscripcion_id) && [p.pareja1_id, p.pareja2_id].includes(y.inscripcion_id));
-    if (directo?.ganador_id === y.inscripcion_id) [filas[i], filas[i + 1]] = [y, x];
-  }
+    return directo ? (directo.ganador_id === x.inscripcion_id ? -1 : 1) : 0;
+  }, (f) => f.games_favor, (f) => numeroDeSorteo(sorteo, f.inscripcion_id));
 
   const completa = parejas.length > 1 && jugados.length === (parejas.length * (parejas.length - 1)) / 2;
   return {
     completa,
     filas: filas.map((f, i) => ({ ...f, posicion: i + 1, clasificado: completa && i < clasifican })),
   };
+}
+
+/**
+ * Ordena por `principal` (mayor primero). Cada grupo empatado se define: si son dos, `entreEllas`
+ * (−1 si va primero x); después `gamesFavor` (mayor primero) y por último el número de `sorteo`.
+ * Marca en `desempate` el criterio que separó a cada fila de su vecina empatada.
+ */
+function ordenarConDesempate(lista, principal, entreEllas, gamesFavor, numero) {
+  const comparar = (x, y) => {
+    const [a, b] = [principal(x), principal(y)];
+    for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return b[i] - a[i];
+    return 0;
+  };
+  const ordenadas = [...lista].sort(comparar);
+  const resultado = [];
+  for (let i = 0; i < ordenadas.length;) {
+    let fin = i + 1;
+    while (fin < ordenadas.length && comparar(ordenadas[i], ordenadas[fin]) === 0) fin += 1;
+    const grupo = ordenadas.slice(i, fin);
+    if (grupo.length === 1) {
+      // Sin empate en este orden: no arrastra el desempate de otro (el de su zona, por ejemplo).
+      resultado.push({ ...grupo[0], desempate: null });
+    } else {
+      const directo = grupo.length === 2 && entreEllas ? entreEllas(grupo[0], grupo[1]) : 0;
+      if (directo) {
+        const par = directo < 0 ? grupo : [grupo[1], grupo[0]];
+        resultado.push(...par.map((f) => ({ ...f, desempate: "entre_ellas" })));
+      } else {
+        const definidas = grupo.sort((x, y) => gamesFavor(y) - gamesFavor(x) || numero(x) - numero(y));
+        definidas.forEach((f, k) => {
+          const igualA = (otra) => otra && gamesFavor(otra) === gamesFavor(f);
+          resultado.push({ ...f, desempate: igualA(definidas[k - 1]) || igualA(definidas[k + 1]) ? "sorteo" : "games_favor" });
+        });
+      }
+    }
+    i = fin;
+  }
+  return resultado;
+}
+
+/**
+ * Los mejores del puesto `puesto` (1 = primero) entre zonas terminadas, para completar la llave.
+ * Se comparan promedios por partido (las zonas pueden tener distinto tamaño): ganados → dif. de
+ * sets → dif. de games → games a favor → sorteo. tablas: [{ filas }] en orden de zona.
+ * Devuelve todos los candidatos ordenados: [{ id, zona, desempate }].
+ */
+export function mejoresDelPuesto(tablas, puesto, sorteo = new Map()) {
+  const candidatos = tablas.flatMap(({ filas }, zona) => (filas[puesto - 1] ? [{ ...filas[puesto - 1], zona }] : []));
+  const promedio = (valor, f) => (f.pj ? valor / f.pj : 0);
+  const ordenados = ordenarConDesempate(candidatos,
+    (f) => [promedio(f.pg, f), promedio(f.sets_favor - f.sets_contra, f), promedio(f.games_favor - f.games_contra, f)],
+    null, (f) => promedio(f.games_favor, f), (f) => numeroDeSorteo(sorteo, f.inscripcion_id));
+  return ordenados.map((f) => ({ id: f.inscripcion_id, zona: f.zona, desempate: f.desempate }));
+}
+
+/**
+ * Clasificación de toda la categoría: la tabla de cada zona y, cuando terminaron todas, quiénes
+ * completan la llave como mejores del puesto siguiente (marcados con `mejor` y `clasificado`).
+ * zonas: [{ parejas: [ids], partidos }] en orden. Devuelve { tablas, completas, mejores, puestoMejores, cupoMejores }.
+ */
+export function clasificacionDeCategoria(zonas, clasifican, sorteo = new Map()) {
+  const tablas = zonas.map((z) => tablaDeZona(z.parejas, z.partidos, clasifican, sorteo));
+  const completas = tablas.length > 0 && tablas.every((t) => t.completa);
+  const directos = zonas.reduce((suma, z) => suma + Math.min(clasifican, z.parejas.length), 0);
+  const plan = completarLlave(directos, zonas.filter((z) => z.parejas.length > clasifican).length);
+  const cupoMejores = plan?.mejores ?? 0;
+  const puestoMejores = clasifican + 1;
+  let mejores = [];
+  if (completas && cupoMejores) {
+    mejores = mejoresDelPuesto(tablas, puestoMejores, sorteo).slice(0, cupoMejores);
+    const elegidos = new Map(mejores.map((m) => [m.id, m]));
+    for (const tabla of tablas) {
+      tabla.filas = tabla.filas.map((f) => (elegidos.has(f.inscripcion_id)
+        ? { ...f, clasificado: true, mejor: true, desempate_mejor: elegidos.get(f.inscripcion_id).desempate }
+        : f));
+    }
+  }
+  return { tablas, completas, mejores, puestoMejores, cupoMejores };
 }

@@ -2,7 +2,7 @@ import {
   listarInscripciones, cargarPareja, editarPareja, confirmarInscripcion, rechazarInscripcion, darDeBaja,
   anotarseOnline, misInscripciones, cancelarMia,
 } from "../../services/torneos/inscripcion_service.js";
-import { verZonas, generarZonas, moverPareja, cargarResultado, borrarResultado } from "../../services/torneos/zona_service.js";
+import { verZonas, generarZonas, moverPareja, cargarResultado, borrarResultado, programarPartido } from "../../services/torneos/zona_service.js";
 import { verLlave, armarLlaveCategoria, deshacerLlave } from "../../services/torneos/llave_service.js";
 import { listarTorneosPublicos, verTorneoPublico, verCategoriaPublica } from "../../services/torneos/publico_service.js";
 import { conIds, responderError } from "./torneo_controller.js";
@@ -42,6 +42,9 @@ export const resultadoController = conIds(async (req, res, { torneoId, partidoId
 export const borrarResultadoController = conIds(async (req, res, { torneoId, partidoId }) =>
   res.json({ ok: true, mensaje: "Resultado borrado.", data: await borrarResultado(torneoId, partidoId, req.user) }), "No pudimos borrar el resultado.");
 
+export const programarController = conIds(async (req, res, { torneoId, partidoId }) =>
+  res.json({ ok: true, mensaje: "Horario guardado.", data: await programarPartido(torneoId, partidoId, req.user, req.body) }), "No pudimos guardar el horario.");
+
 // ── Organizador: llave ──────────────────────────────────────────────────────
 export const verLlaveController = conIds(async (req, res, { torneoId, categoriaId }) =>
   res.json({ ok: true, data: await verLlave(torneoId, categoriaId, req.user) }), "No pudimos cargar la llave.");
@@ -57,8 +60,11 @@ export async function anotarseController(req, res) {
   const torneoId = Number(req.body?.torneo_id);
   if (!Number.isInteger(torneoId) || torneoId <= 0) return res.status(400).json({ ok: false, codigo: "DATOS_INVALIDOS", mensaje: "Elegí el torneo." });
   try {
-    await anotarseOnline(req.user, torneoId, req.body);
-    return res.status(201).json({ ok: true, mensaje: "¡Listo! Tu inscripción quedó pendiente: el organizador la va a confirmar." });
+    const inscripcion = await anotarseOnline(req.user, torneoId, req.body);
+    const mensaje = inscripcion.estado === "esperando"
+      ? `¡Listo! Le enviamos la invitación a ${inscripcion.jugador2_nombre}: cuando la acepte, la organización confirma la inscripción.`
+      : "¡Listo! Tu inscripción quedó pendiente: el organizador la va a confirmar.";
+    return res.status(201).json({ ok: true, mensaje });
   } catch (e) { return responderError(res, e, "No pudimos anotarte."); }
 }
 
@@ -77,7 +83,8 @@ export const cancelarMiaController = conIds(async (req, res, { inscripcionId }) 
 export async function torneosPublicosController(req, res) {
   try {
     res.set("Cache-Control", "public, max-age=60");
-    return res.json({ ok: true, ...await listarTorneosPublicos({ page: req.query.page, limit: req.query.limit }) });
+    const { page, limit, q, estado, rama, nivel } = req.query;
+    return res.json({ ok: true, ...await listarTorneosPublicos({ page, limit, q, estado, rama, nivel }) });
   } catch (e) { return responderError(res, e, "No pudimos cargar los torneos."); }
 }
 

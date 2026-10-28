@@ -93,7 +93,16 @@ test("cupo: no se pasa ni con dos confirmaciones al mismo tiempo; la vista públ
   const sumaPublica = ficha.categorias.find((c) => c.id === suma.id);
   assert.deepEqual([ficha.inscripcion_abierta, sumaPublica.confirmadas, sumaPublica.lugares_libres], [true, 2, 0]);
   assert.ok(!JSON.stringify(ficha).includes("111111"), "sin teléfonos en la ficha pública");
-  assert.equal((await publico.listarTorneosPublicos()).total, 1);
+  const lista = await publico.listarTorneosPublicos();
+  assert.equal(lista.total, 1);
+  assert.equal(lista.data[0].parejas, ficha.categorias.reduce((n, c) => n + c.confirmadas, 0), "cuenta las confirmadas de todas sus categorías");
+  assert.ok(lista.data[0].categorias.some((c) => c.nombre === "Suma 13"));
+  assert.ok(!JSON.stringify(lista).includes("111111"), "sin teléfonos en la lista");
+  assert.equal((await publico.listarTorneosPublicos({ q: torneo.nombre.slice(0, 5).toLowerCase() })).total, 1, "busca sin importar mayúsculas");
+  assert.equal((await publico.listarTorneosPublicos({ q: "no-existe-%" })).total, 0);
+  assert.equal((await publico.listarTorneosPublicos({ estado: "finalizado" })).total, 0);
+  assert.equal((await publico.listarTorneosPublicos({ nivel: "4" })).total, 1, "tiene una categoría de 4ta");
+  assert.equal((await publico.listarTorneosPublicos({ rama: "damas" })).total, 0);
   await assert.rejects(torneos.eliminarCategoria(torneo.id, suma.id, org), /parejas anotadas/);
 });
 
@@ -114,6 +123,15 @@ test("zonas: sorteo con cabezas separadas, fixture, mover parejas y resultados q
 
   const partido = detalle.zonas[0].partidos[0];
   await assert.rejects(zonas.cargarResultado(torneo.id, partido.id, org, [[6, 3]]), /en juego/, "con la inscripción abierta todavía no se cargan resultados");
+
+  // El horario sí se publica con la inscripción abierta, y lo ve cualquiera en la vista pública.
+  detalle = await zonas.programarPartido(torneo.id, partido.id, org, { fecha: "2026-12-05", hora: "18:30", cancha: "Cancha 2" });
+  assert.equal(detalle.fase, "zona");
+  assert.deepEqual((({ fecha, hora, cancha }) => ({ fecha, hora, cancha }))(detalle.zonas[0].partidos[0]), { fecha: "2026-12-05", hora: "18:30", cancha: "Cancha 2" });
+  await assert.rejects(zonas.programarPartido(torneo.id, partido.id, org, { hora: "25:00" }), /HH:MM/);
+  await assert.rejects(zonas.programarPartido(torneo.id, partido.id, jugadores[0], { cancha: "1" }), /No encontramos ese torneo/, "solo el dueño");
+  const vista = await publico.verCategoriaPublica(torneo.id, cuarta.id);
+  assert.equal(vista.zonas[0].partidos[0].cancha, "Cancha 2");
   await torneos.cambiarEstado(torneo.id, org, "en_juego");
   await assert.rejects(zonas.cargarResultado(torneo.id, partido.id, org, [[6, 5]]), /no es un resultado válido/);
   detalle = await zonas.cargarResultado(torneo.id, partido.id, org, [[6, 3]]);

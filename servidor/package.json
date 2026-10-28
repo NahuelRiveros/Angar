@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test tests/ux_rules.test.mjs tests/despliegue.test.mjs tests/super_admin.test.mjs",
-    "test:integration": "node --test tests/suscripcion.integration.mjs tests/torneo.integration.mjs tests/juego.integration.mjs tests/llave.integration.mjs",
+    "test:integration": "node --test tests/suscripcion.integration.mjs tests/torneo.integration.mjs tests/juego.integration.mjs tests/llave.integration.mjs tests/jugadores.integration.mjs",
     "env:verificar": "node ../scripts/verificar_env.mjs",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",

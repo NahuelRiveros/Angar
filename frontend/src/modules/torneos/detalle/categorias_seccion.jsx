@@ -8,10 +8,11 @@ import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import InputField from "../../../controls/ui/input_field.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
-import { NIVELES, RAMAS, PUESTOS, LIMITES, ZONAS, FORMATOS_PARTIDO, nombreNivel } from "../../../../../torneo_config.js";
+import { NIVELES, RAMAS, PUESTOS, LIMITES, ZONAS, FORMATOS_PARTIDO, nombreNivel, cuposConZonasIguales } from "../../../../../torneo_config.js";
 import { crearCategoria, actualizarCategoria, eliminarCategoria } from "../api/torneos_api.js";
 import { useCambioTorneo, mensajeDe } from "./use_cambio_torneo.js";
 import PremiosModal from "./premios_modal.jsx";
+import { CalculoLlave, ResumenLlave, SelectorCupo } from "./calculo_llave.jsx";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const OPCIONES_NIVEL = NIVELES.map((n) => ({ value: String(n), label: nombreNivel(n) }));
@@ -26,8 +27,8 @@ const esquema = z.object({
   nivel: z.string(),
   rama: z.string(),
   nombre_personalizado: z.string().trim().max(60, "Hasta 60 caracteres."),
-  cupo_parejas: z.string().trim().refine((v) => v === "" || (Number.isInteger(Number(v)) && Number(v) >= LIMITES.cupoMinimo && Number(v) <= LIMITES.cupoMaximo),
-    `Entre ${LIMITES.cupoMinimo} y ${LIMITES.cupoMaximo} parejas, o vacío.`),
+  cupo_opcion: z.string(),
+  cupo_otro: z.string().trim(),
   parejas_por_zona: z.string(),
   clasifican_por_zona: z.string(),
   formato_zona: z.string(),
@@ -37,20 +38,32 @@ const esquema = z.object({
   if (d.modo === "propio" && d.nombre_personalizado.length < 2) ctx.addIssue({ code: "custom", path: ["nombre_personalizado"], message: "Escribí el nombre (mínimo 2 caracteres)." });
   if (d.modo === "lista" && !d.nivel) ctx.addIssue({ code: "custom", path: ["nivel"], message: "Elegí el nivel." });
   if (d.modo === "lista" && !d.rama) ctx.addIssue({ code: "custom", path: ["rama"], message: "Elegí la rama." });
+  const otro = Number(d.cupo_otro);
+  if (d.cupo_opcion === "otro" && !(Number.isInteger(otro) && otro >= LIMITES.cupoMinimo && otro <= LIMITES.cupoMaximo)) {
+    ctx.addIssue({ code: "custom", path: ["cupo_otro"], message: `Entre ${LIMITES.cupoMinimo} y ${LIMITES.cupoMaximo} parejas.` });
+  }
 });
 
+// "otro" toma el número escrito; "" es sin cupo.
+const cupoDe = (d) => (d.cupo_opcion === "otro" ? d.cupo_otro : d.cupo_opcion);
 const aCuerpo = (d) => ({
   ...(d.modo === "propio" ? { nombre_personalizado: d.nombre_personalizado } : { nivel: Number(d.nivel), rama: d.rama }),
-  cupo_parejas: d.cupo_parejas === "" ? null : Number(d.cupo_parejas),
+  cupo_parejas: cupoDe(d) === "" ? null : Number(cupoDe(d)),
   parejas_por_zona: Number(d.parejas_por_zona), clasifican_por_zona: Number(d.clasifican_por_zona), formato_zona: d.formato_zona, formato_llave: d.formato_llave,
 });
 const formatoDe = (c) => {
   const f = { ...ZONAS.predeterminado, ...c };
   return { parejas_por_zona: String(f.parejas_por_zona), clasifican_por_zona: String(f.clasifican_por_zona), formato_zona: f.formato_zona, formato_llave: f.formato_llave };
 };
+// Un cupo guardado que no está en la lista de zonas iguales se muestra como "Otro número".
+const cupoInicial = (c) => {
+  if (!c?.cupo_parejas) return { cupo_opcion: "", cupo_otro: "" };
+  const enLista = cuposConZonasIguales(c.parejas_por_zona ?? ZONAS.predeterminado.parejas_por_zona).includes(c.cupo_parejas);
+  return enLista ? { cupo_opcion: String(c.cupo_parejas), cupo_otro: "" } : { cupo_opcion: "otro", cupo_otro: String(c.cupo_parejas) };
+};
 const valoresDe = (c) => c
-  ? { modo: c.nombre_personalizado ? "propio" : "lista", nivel: c.nivel ? String(c.nivel) : "", rama: c.rama ?? "", nombre_personalizado: c.nombre_personalizado ?? "", cupo_parejas: c.cupo_parejas ? String(c.cupo_parejas) : "", ...formatoDe(c) }
-  : { modo: "lista", nivel: "", rama: "", nombre_personalizado: "", cupo_parejas: "", ...formatoDe({}) };
+  ? { modo: c.nombre_personalizado ? "propio" : "lista", nivel: c.nivel ? String(c.nivel) : "", rama: c.rama ?? "", nombre_personalizado: c.nombre_personalizado ?? "", ...cupoInicial(c), ...formatoDe(c) }
+  : { modo: "lista", nivel: "", rama: "", nombre_personalizado: "", ...cupoInicial(null), ...formatoDe({}) };
 
 export default function CategoriasSeccion({ torneo, editarCategorias, editarPremios }) {
   const [formulario, setFormulario] = useState(null); // { categoria } — null cerrado, categoria null = nueva
@@ -86,6 +99,7 @@ export default function CategoriasSeccion({ torneo, editarCategorias, editarPrem
             </div>
             <p className="mt-1 text-xs text-(--kt-ink-soft)">Zonas de {c.parejas_por_zona}, clasifican {c.clasifican_por_zona} · {FORMATOS_PARTIDO[c.formato_zona]?.etiqueta}</p>
             <p className="text-xs text-(--kt-ink-soft)">Llave: {FORMATOS_PARTIDO[c.formato_llave]?.etiqueta}</p>
+            {c.cupo_parejas && <ResumenLlave cantidad={c.cupo_parejas} parejasPorZona={c.parejas_por_zona} clasifican={c.clasifican_por_zona} className="mt-1" />}
             {c.premios.length > 0 ? (
               <ul className="mt-2 space-y-1 text-sm">
                 {c.premios.map((p) => (
@@ -115,11 +129,15 @@ export default function CategoriasSeccion({ torneo, editarCategorias, editarPrem
 }
 
 function CategoriaModal({ torneo, categoria, onClose }) {
-  const { register, control, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(esquema), defaultValues: valoresDe(categoria) });
+  const { register, control, handleSubmit, setValue, formState: { errors } } = useForm({ resolver: zodResolver(esquema), defaultValues: valoresDe(categoria) });
   const guardar = useCambioTorneo(torneo.id,
     (datos) => (categoria ? actualizarCategoria(torneo.id, categoria.id, aCuerpo(datos)) : crearCategoria(torneo.id, aCuerpo(datos))),
     { onExito: onClose });
-  const modo = useWatch({ control, name: "modo" });
+  const [modo, cupoOpcion, cupoOtro, parejasPorZona, clasifican] = useWatch({ control, name: ["modo", "cupo_opcion", "cupo_otro", "parejas_por_zona", "clasifican_por_zona"] });
+  const usarArmado = (ppz, c) => {
+    setValue("parejas_por_zona", String(ppz), { shouldValidate: true });
+    setValue("clasifican_por_zona", String(c), { shouldValidate: true });
+  };
 
   return (
     <Modal title={categoria ? `Editar ${categoria.nombre}` : "Nueva categoría"} onClose={onClose} busy={guardar.isPending}>
@@ -140,14 +158,14 @@ function CategoriaModal({ torneo, categoria, onClose }) {
         ) : (
           <InputField label="Nombre de la categoría" name="nombre_personalizado" placeholder="Ej: Suma 13, +45, Libre" maxLength={60} register={register} error={errors.nombre_personalizado?.message} />
         )}
-        <InputField label="Cupo de parejas (opcional)" name="cupo_parejas" type="number" inputMode="numeric" min={LIMITES.cupoMinimo} max={LIMITES.cupoMaximo}
-          placeholder="Sin tope" register={register} error={errors.cupo_parejas?.message} />
         <fieldset className="space-y-3 rounded-2xl bg-(--kt-bg-soft) p-3">
           <legend className="px-1 text-sm font-semibold text-(--kt-ink)">Zonas y llave</legend>
           <div className="grid gap-3 sm:grid-cols-2">
             <SelectField label="Parejas por zona" name="parejas_por_zona" options={OPCIONES_TAMANIO} showPlaceholderOption={false} register={register} error={errors.parejas_por_zona?.message} />
             <SelectField label="Clasifican por zona" name="clasifican_por_zona" options={OPCIONES_CLASIFICAN} showPlaceholderOption={false} register={register} error={errors.clasifican_por_zona?.message} />
           </div>
+          <SelectorCupo register={register} errors={errors} opcion={cupoOpcion} parejasPorZona={Number(parejasPorZona)} clasifican={Number(clasifican)} />
+          <CalculoLlave cupo={cupoDe({ cupo_opcion: cupoOpcion, cupo_otro: cupoOtro })} parejasPorZona={Number(parejasPorZona)} clasifican={Number(clasifican)} onUsar={usarArmado} />
           <SelectField label="Formato de los partidos de zona" name="formato_zona" options={OPCIONES_FORMATO} showPlaceholderOption={false} register={register} error={errors.formato_zona?.message} />
           <SelectField label="Formato de los partidos de la llave" name="formato_llave" options={OPCIONES_FORMATO} showPlaceholderOption={false} register={register} error={errors.formato_llave?.message} />
         </fieldset>

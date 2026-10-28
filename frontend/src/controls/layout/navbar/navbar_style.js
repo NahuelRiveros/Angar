@@ -47,15 +47,15 @@ export const UI_NAVBAR = {
   // ════════════════════════════════════════════════════════════════
 
   barra_header:                                            // ← bg de toda la barra (ambos tamaños)
-    "sticky top-0 z-30 border-b border-slate-200/70 bg-slate-100/96 backdrop-blur-xl transition-all duration-300",
+    "sticky top-0 z-30 border-b border-(--kt-border)/70 bg-white/95 shadow-[0_4px_24px_-16px_rgba(7,61,43,0.25)] backdrop-blur-xl",
   barra_header_con_sombra:
     "shadow-lg shadow-slate-900/8",
 
   barra_linea_acento:
-    "absolute inset-x-0 top-0 h-0.5 bg-linear-to-r from-[var(--kt-turquoise)] via-[var(--kt-petrol)] to-[var(--kt-turquoise)]",
+    "absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-(--kt-teal-500)/25 to-transparent",
 
   barra_nav_container:
-    "mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8",
+    "mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6 lg:h-[88px] lg:px-8",
 
   // ════════════════════════════════════════════════════════════════
   // BRAND / LOGO
@@ -78,23 +78,23 @@ export const UI_NAVBAR = {
   // ════════════════════════════════════════════════════════════════
 
   btn_login_desktop:
-    `inline-flex items-center gap-2 rounded-xl ${C.activo_bg} px-4 py-2 text-sm font-bold ${C.activo_texto} shadow-sm ${C.activo_sombra} transition-all ${C.btn_hover}`,
+    `inline-flex min-h-11 items-center gap-4 rounded-full bg-(--kt-night) px-5 py-2.5 text-sm font-bold text-white transition hover:bg-(--kt-teal-700) focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--kt-teal-700)`,
 
   btn_hamburguesa:
-    `inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 ${C.foco_ring} focus-visible:ring-offset-2`,
+    `inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-2xl border border-(--kt-border) bg-(--kt-bg-soft) px-2.5 text-sm font-bold text-(--kt-night) transition hover:bg-(--kt-turquoise-soft) focus-visible:outline-none focus-visible:ring-2 ${C.foco_ring} focus-visible:ring-offset-2`,
 
   // ════════════════════════════════════════════════════════════════
   // NAVEGACIÓN DESKTOP (navbar_desktop.jsx)
   // ════════════════════════════════════════════════════════════════
 
   desktop_contenedor:                                      // ← scroll horizontal si no entran todos los menús (evita que se encimen con logo/userbox)
-    "hidden min-w-0 flex-1 items-center gap-1.5 overflow-x-auto xl:flex [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+    "mx-auto hidden min-w-0 items-center gap-1 overflow-x-auto rounded-full border border-(--kt-border)/60 bg-(--kt-bg-soft)/80 p-1.5 lg:flex [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
 
   desktop_link:
-    "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-3 text-sm font-semibold transition-all duration-200",
+    "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold transition-colors duration-200 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--kt-teal-500)",
 
   desktop_link_activo:                                     // ← C.activo_bg
-    `${C.activo_bg} ${C.activo_texto} shadow-md ${C.activo_sombra}`,
+    `bg-(--kt-night) text-white shadow-sm`,
 
   desktop_link_inactivo:                                   // ← C.hover_bg / C.hover_texto
     `text-slate-600 ${C.hover_bg} ${C.hover_texto}`,
@@ -212,13 +212,13 @@ export const UI_NAVBAR = {
   mobile_links_lista:
     "mb-3 space-y-0.5",
   mobile_link:
-    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold shadow-sm transition-all duration-150",
+    "flex min-h-14 items-center gap-3 rounded-2xl px-4 py-3 text-base font-bold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--kt-teal-500)",
 
   mobile_link_activo:
     `${C.activo_bg} ${C.activo_texto} ${C.activo_sombra}`,
 
   mobile_link_inactivo:
-    `bg-white text-slate-600 shadow-slate-100 ${C.hover_bg} ${C.hover_texto}`,
+    `text-(--kt-ink-soft) ${C.hover_bg} ${C.hover_texto}`,
 
   mobile_link_icono:
     "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500",

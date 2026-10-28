@@ -1,16 +1,23 @@
 import { brandConfig } from "../../config/brand_config.js";
 
-const TAMANIOS = { sm: "text-xl", md: "text-3xl sm:text-4xl", hero: "text-6xl sm:text-7xl" };
+const TAMANIOS = {
+  sm: { texto: "text-lg", icono: "h-9 w-9" },
+  md: { texto: "text-3xl sm:text-4xl", icono: "h-12 w-12 sm:h-14 sm:w-14" },
+  hero: { texto: "text-4xl sm:text-7xl", icono: "h-16 w-16 sm:h-24 sm:w-24" },
+};
 
-/** Logo de texto con el nombre de la marca. `variant="light"` es para fondos oscuros. */
+/** Símbolo de pádel y marca; la variante clara se usa sobre fondos oscuros. */
 export default function LogoMarca({ size = "md", variant = "dark", className = "" }) {
-  const color = variant === "light" ? "text-white" : "text-(--kt-ink)";
+  const claro = variant === "light";
+  const tamanio = TAMANIOS[size] ?? TAMANIOS.md;
   return (
-    <span
-      aria-label={brandConfig.logo.ariaLabel}
-      className={`kt-display inline-flex font-bold leading-none tracking-tight ${TAMANIOS[size] ?? TAMANIOS.md} ${color} ${className}`}
-    >
-      {brandConfig.logo.texto}
+    <span aria-label={brandConfig.logo.ariaLabel}
+      className={`inline-flex shrink-0 items-center gap-2.5 ${className}`}>
+      <img src="/favicon.svg" alt="" aria-hidden="true" width="64" height="64"
+        className={`shrink-0 ${tamanio.icono}`} />
+      <span aria-hidden="true" className={`kt-display whitespace-nowrap font-extrabold leading-none tracking-[-0.055em] ${tamanio.texto} ${claro ? "text-white" : "text-(--kt-night)"}`}>
+        {brandConfig.logo.texto}<span className={claro ? "text-(--kt-accent-on-dark)" : "text-(--kt-teal-500)"}>{brandConfig.logo.acento}</span>
+      </span>
     </span>
   );
 }

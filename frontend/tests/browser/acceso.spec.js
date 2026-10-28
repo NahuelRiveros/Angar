@@ -72,7 +72,7 @@ test("inicia sesión con nombre de usuario y muestra el error de credenciales", 
   expect(enviados).toEqual([{ identificador: "ana.jugadora", password: "mala" }, { identificador: "ana.jugadora", password: "Clave1234" }]);
 });
 
-test("registro con usuario opcional muestra si ya está en uso y valida el formato", async ({ page }) => {
+test("registro con usuario opcional muestra si ya está en uso, valida el formato y termina en Mi perfil", async ({ page }, info) => {
   await mockApi(page);
   const registros = [];
   await page.route("**/api/auth/register", async (route) => {
@@ -81,6 +81,8 @@ test("registro con usuario opcional muestra si ya está en uso y valida el forma
     const repetido = body.nombre_usuario === "ana";
     await route.fulfill({ status: repetido ? 400 : 201, contentType: "application/json", body: JSON.stringify(repetido ? { ok: false, codigo: "NOMBRE_USUARIO_DUPLICADO", mensaje: "Ese usuario ya está en uso. Probá con otro." } : { ok: true }) });
   });
+  await page.route("**/api/jugadores/yo", (route) => route.fulfill({ json: { ok: true, data: { codigo: "MP-7K3QX", nombre: "Ana Jugadora", resumen: { torneos: 0, titulos: 0, finales: 0, mejor_puesto: null }, historial: [] } } }));
+  await page.route("**/api/suscripcion/mia", (route) => route.fulfill({ json: { ok: true, data: { es_organizador: false, dias_prueba: 14 } } }));
   await page.goto("/register");
   await page.getByLabel(/^Nombre/).fill("Ana");
   await page.getByLabel(/^Apellido/).fill("Jugadora");
@@ -97,7 +99,13 @@ test("registro con usuario opcional muestra si ya está en uso y valida el forma
   await noOverflow(page);
   await page.getByLabel(/^Usuario/).fill("Ana.Jugadora");
   await page.getByRole("button", { name: "Crear cuenta y continuar" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  // Sin página de origen, el registro termina en Mi perfil: código y la puerta para organizar.
+  await expect(page).toHaveURL(/\/mi-perfil\?bienvenida=1$/);
+  await expect(page.getByText("¡Tu cuenta está lista!")).toBeVisible();
+  await expect(page.getByText("MP-7K3QX")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Quiero organizar torneos" })).toHaveAttribute("href", "/mi-suscripcion");
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("bienvenida.png"), fullPage: true });
   expect(registros.map((r) => r.nombre_usuario)).toEqual(["ana", "Ana.Jugadora"]);
 });
 

@@ -1,6 +1,6 @@
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, Award, CalendarDays, MapPin, MessageCircle } from "lucide-react";
@@ -17,15 +17,23 @@ import { getTorneoPublico, anotarme } from "../api/torneos_api.js";
 import { EstadoTorneo } from "../torneo_ui.jsx";
 import BotonCompartir from "./boton_compartir.jsx";
 import ResultadosPublicos from "./resultados_publicos.jsx";
+import ParticipantesPublicos from "./participantes_publicos.jsx";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60";
 const mensajeDe = (error, porDefecto) => error?.response?.data?.mensaje || porDefecto;
 
+// Mismo formato que valida el servidor (codigo_jugador.js): MP- y 5 letras o números sin confusos.
+const CODIGO = /^(MP-?)?[23456789ABCDEFGHJKMNPQRSTVWXYZ]{5}$/i;
 const esquema = z.object({
   categoria_id: z.string().min(1, "Elegí la categoría."),
-  jugador2_nombre: z.string().trim().min(3, "Nombre y apellido de tu compañero (mínimo 3 caracteres).").max(80, "Hasta 80 caracteres."),
+  modo: z.enum(["nombre", "codigo"]),
+  jugador2_nombre: z.string().trim().max(80, "Hasta 80 caracteres."),
+  codigo_companiero: z.string().trim(),
   telefono: z.string().trim().refine((v) => v === "" || /^[0-9+()\s-]{6,40}$/.test(v), "Solo números, espacios, +, - y paréntesis."),
   nota: z.string().trim().max(300, "Hasta 300 caracteres."),
+}).superRefine((d, ctx) => {
+  if (d.modo === "nombre" && d.jugador2_nombre.length < 3) ctx.addIssue({ code: "custom", path: ["jugador2_nombre"], message: "Nombre y apellido de tu compañero (mínimo 3 caracteres)." });
+  if (d.modo === "codigo" && !CODIGO.test(d.codigo_companiero.replace(/\s+/g, ""))) ctx.addIssue({ code: "custom", path: ["codigo_companiero"], message: "El código tiene la forma MP-XXXXX (tu compañero lo ve en su perfil)." });
 });
 
 export default function TorneoPublicoPage() {
@@ -59,6 +67,7 @@ export default function TorneoPublicoPage() {
 
       {t.inscripcion_abierta && <Anotarme torneo={t} />}
       {["en_juego", "finalizado"].includes(t.estado) && <ResultadosPublicos torneo={t} />}
+      <ParticipantesPublicos torneoId={t.id} />
 
       <section aria-labelledby="categorias-titulo" className="space-y-3">
         <h2 id="categorias-titulo" className="kt-display text-xl font-bold text-(--kt-ink)">Categorías y premios</h2>
@@ -100,12 +109,17 @@ function Anotarme({ torneo }) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const conLugar = torneo.categorias.filter((c) => c.lugares_libres !== 0);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+  const { register, control, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(esquema),
-    defaultValues: { categoria_id: conLugar.length === 1 ? String(conLugar[0].id) : "", jugador2_nombre: "", telefono: "", nota: "" },
+    defaultValues: { categoria_id: conLugar.length === 1 ? String(conLugar[0].id) : "", modo: "nombre", jugador2_nombre: "", codigo_companiero: "", telefono: "", nota: "" },
   });
+  const modo = useWatch({ control, name: "modo" });
   const anotar = useMutation({
-    mutationFn: (d) => anotarme({ ...d, torneo_id: torneo.id, categoria_id: Number(d.categoria_id) }),
+    // Se manda solo una de las dos formas de indicar al compañero.
+    mutationFn: ({ modo: forma, jugador2_nombre: nombre, codigo_companiero: codigo, ...d }) => anotarme({
+      ...d, torneo_id: torneo.id, categoria_id: Number(d.categoria_id),
+      ...(forma === "codigo" ? { codigo_companiero: codigo } : { jugador2_nombre: nombre }),
+    }),
     onSuccess: async (r) => {
       toast.success(r.mensaje);
       reset();
@@ -131,7 +145,20 @@ function Anotarme({ torneo }) {
           <p className="text-sm text-(--kt-ink-soft)">Te anotás con tu nombre de la cuenta. La organización confirma tu inscripción.</p>
           <SelectField label="Categoría" name="categoria_id" register={register} error={errors.categoria_id?.message} placeholder="Elegí"
             options={conLugar.map((c) => ({ value: String(c.id), label: c.nombre }))} />
-          <InputField label="Tu compañero" name="jugador2_nombre" placeholder="Nombre y apellido" maxLength={80} register={register} error={errors.jugador2_nombre?.message} />
+          <fieldset className="space-y-2">
+            <legend className="mb-1.5 text-sm font-semibold text-(--kt-ink)">Tu compañero</legend>
+            {[["nombre", "No tiene cuenta: escribo su nombre"], ["codigo", "Tiene cuenta: lo invito con su código"]].map(([valor, etiqueta]) => (
+              <label key={valor} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-3 text-sm has-checked:border-(--kt-petrol) has-checked:bg-(--kt-bg-soft)">
+                <input type="radio" value={valor} {...register("modo")} /> {etiqueta}
+              </label>
+            ))}
+          </fieldset>
+          {modo === "codigo" ? (
+            <InputField label="Código de tu compañero" name="codigo_companiero" placeholder="MP-XXXXX" maxLength={12} autoComplete="off"
+              helperText="Lo ve en su perfil. Le llega una invitación y tiene que aceptarla." register={register} error={errors.codigo_companiero?.message} />
+          ) : (
+            <InputField label="Nombre y apellido de tu compañero" name="jugador2_nombre" placeholder="Ej: Juan Pérez" maxLength={80} register={register} error={errors.jugador2_nombre?.message} />
+          )}
           <InputField label="Tu teléfono (opcional)" name="telefono" type="tel" inputMode="tel" placeholder="Para que la organización te avise horarios" maxLength={40} register={register} error={errors.telefono?.message} />
           <InputField label="Nota para la organización (opcional)" name="nota" maxLength={300} register={register} error={errors.nota?.message} />
           {anotar.isError && <ErrorBanner message={mensajeDe(anotar.error, "No pudimos anotarte. Probá de nuevo.")} />}

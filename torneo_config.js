@@ -71,7 +71,67 @@ export const ZONAS = {
   predeterminado: { parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6", formato_llave: "mejor_de_3_stb" },
 };
 
+// ── Cálculo de zonas y llave ────────────────────────────────────────────────
+// Lo usan el sorteo y la llave del servidor y el cálculo que ve el organizador: una sola cuenta.
+
+/**
+ * Cuántas parejas va a tener cada zona. Busca zonas del tamaño pedido (o una más si sobran);
+ * si para eso alguna tendría que quedar con 2, prefiere una zona más grande.
+ */
+export function tamaniosDeZonas(cantidad, parejasPorZona) {
+  if (cantidad < 2) return [];
+  const repartir = (zonas) => Array.from({ length: zonas }, (_, i) => Math.floor(cantidad / zonas) + (i < cantidad % zonas ? 1 : 0));
+  const pocas = Math.max(1, Math.floor(cantidad / parejasPorZona));
+  const tamanios = repartir(pocas);
+  if (tamanios[0] <= parejasPorZona + 1) return tamanios;
+  const masZonas = repartir(Math.ceil(cantidad / parejasPorZona));
+  return Math.min(...masZonas) >= 3 ? masZonas : tamanios;
+}
+
+export const potenciaDeDos = (n) => 2 ** Math.ceil(Math.log2(Math.max(2, n)));
+
+/** "Final", "Semifinal", "Cuartos de final"… según cuántos partidos tiene la ronda. */
+export function nombreRonda(partidosEnRonda) {
+  return { 1: "Final", 2: "Semifinal", 4: "Cuartos de final", 8: "Octavos de final", 16: "16avos de final" }[partidosEnRonda] ?? `Ronda de ${partidosEnRonda * 2}`;
+}
+
+/**
+ * Cómo se completa la llave con `directos` clasificados: tamaño (potencia de 2), cuántos lugares
+ * se llenan con los mejores del puesto siguiente (terceros, o segundos si clasifica 1) de las
+ * `disponibles` zonas que los tienen, y cuántos quedan como pases (byes). Con menos de 2 no hay llave.
+ */
+export function completarLlave(directos, disponibles) {
+  if (directos < 2) return null;
+  const tamanio = potenciaDeDos(directos);
+  const mejores = Math.min(tamanio - directos, disponibles);
+  return { tamanio, mejores, pases: tamanio - directos - mejores };
+}
+
+/**
+ * Qué torneo sale con `cantidad` parejas: zonas, clasificados directos y llave. Los lugares que
+ * sobran en la llave los toman los mejores del puesto siguiente; si no alcanzan, quedan pases.
+ */
+export function planDeLlave(cantidad, parejasPorZona, clasificanPorZona) {
+  const zonas = tamaniosDeZonas(cantidad, parejasPorZona);
+  if (!zonas.length) return null;
+  const clasificados = zonas.reduce((suma, t) => suma + Math.min(clasificanPorZona, t), 0);
+  const llave = completarLlave(clasificados, zonas.filter((t) => t > clasificanPorZona).length);
+  if (!llave) return { zonas, clasificados, llave: null };
+  return { zonas, clasificados, llave: { ...llave, puestoMejores: clasificanPorZona + 1, primeraRonda: nombreRonda(llave.tamanio / 2) } };
+}
+
+/** Llave justa: la llenan los clasificados directos, sin mejores del puesto siguiente ni pases. */
+export const llaveJusta = (plan) => Boolean(plan?.llave) && plan.llave.mejores === 0 && plan.llave.pases === 0;
+
+export const zonasIguales = (plan) => new Set(plan.zonas).size === 1;
+
+/** Cupos que dan todas las zonas del mismo tamaño (de 2 a `maximoZonas` zonas): nadie juega menos partidos. */
+export function cuposConZonasIguales(parejasPorZona, maximoZonas = 16) {
+  return Array.from({ length: maximoZonas - 1 }, (_, i) => parejasPorZona * (i + 2)).filter((n) => n <= LIMITES.cupoMaximo);
+}
+
 export const ESTADOS_INSCRIPCION = {
+  esperando: "Esperando al compañero",
   pendiente: "Pendiente",
   confirmada: "Confirmada",
   rechazada: "Rechazada",
@@ -84,6 +144,19 @@ export const PERMITIDO = {
   cargarParejas: ["borrador", "inscripcion"],
   armarZonas: ["inscripcion", "en_juego"],
   cargarResultados: ["en_juego"],
+  // Día, hora y cancha: se pueden publicar antes de empezar a jugar.
+  programarPartidos: ["inscripcion", "en_juego"],
   armarLlave: ["en_juego"],
 };
 
+// Hasta dónde llegó una pareja, de mejor a peor (historial y perfil del jugador).
+// "final" = llegó a la final y no la ganó (o todavía se juega).
+export const PUESTOS_ALCANZADOS = {
+  campeon: "Campeón",
+  final: "Finalista",
+  semifinal: "Semifinal",
+  cuartos: "Cuartos de final",
+  octavos: "Octavos de final",
+  llave: "Llave",
+  zona: "Zona",
+};

@@ -1,12 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDown, ArrowRight, MoveUpRight } from "lucide-react";
+import { ArrowDown, ArrowRight, MoveUpRight, Pause, Play } from "lucide-react";
 import { HOME_TEXTOS_DEFAULT } from "../../config/home_config.js";
 import { JUGADORES_HOME } from "./home_media.js";
 
 export default function HomeHero({ texto }) {
   const [activo, setActivo] = useState(0);
+  const [pausado, setPausado] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [hover, setHover] = useState(false);
+  const [foco, setFoco] = useState(false);
+  const enPausa = pausado || hover || foco;
   const jugador = JUGADORES_HOME[activo];
+
+  useEffect(() => {
+    if (enPausa) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) setActivo((actual) => (actual + 1) % JUGADORES_HOME.length);
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [enPausa, activo]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const actualizar = () => setPausado(media.matches);
+    media.addEventListener("change", actualizar);
+    return () => media.removeEventListener("change", actualizar);
+  }, []);
 
   return (
     <section className="padel-hero" aria-labelledby="home-titulo">
@@ -30,7 +49,11 @@ export default function HomeHero({ texto }) {
           <a className="padel-how" href="#como-funciona"><ArrowDown size={15} aria-hidden="true" /> {texto("hero_cta_secundario", HOME_TEXTOS_DEFAULT.hero_cta_secundario)}</a>
         </div>
 
-        <div className="padel-athletes">
+        <div className="padel-athletes"
+          onPointerEnter={(event) => { if (event.pointerType === "mouse") setHover(true); }}
+          onPointerLeave={() => setHover(false)}
+          onFocusCapture={() => setFoco(true)}
+          onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFoco(false); }}>
           <div className="padel-athletes-halo" aria-hidden="true" />
           <span className="padel-argentina" aria-hidden="true">ARG<span />PASIÓN SIN LÍMITES</span>
           <div className="padel-athlete-stage" role="img" aria-label={`Composición de referentes argentinos del pádel. Destacado: ${jugador.nombre}.`}>
@@ -41,7 +64,7 @@ export default function HomeHero({ texto }) {
                 className={`padel-athlete padel-athlete-position-${posicion}`} />;
             })}
           </div>
-          <div className="padel-player-caption" aria-live="polite" aria-atomic="true">
+          <div className="padel-player-caption" aria-live={enPausa ? "polite" : "off"} aria-atomic="true">
             <span>REFERENTES ARGENTINOS</span>
             <strong className="kt-display">{jugador.nombre}</strong>
             <span>{jugador.origen}</span>
@@ -52,6 +75,10 @@ export default function HomeHero({ texto }) {
                 {p.corto}
               </button>
             ))}
+            <button type="button" className="padel-player-toggle" aria-label={pausado ? "Reanudar carrusel de jugadores" : "Pausar carrusel de jugadores"}
+              onClick={() => setPausado((actual) => !actual)}>
+              {pausado ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
+            </button>
           </div>
         </div>
       </div>

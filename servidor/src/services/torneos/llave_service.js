@@ -3,7 +3,7 @@ import { sequelize } from "../../database/sequelize.js";
 import { TorneoCategoria, Inscripcion, Zona, Partido } from "../../models/index.js";
 import { PERMITIDO, ESTADOS_TORNEO } from "../../../../torneo_config.js";
 import { torneoPropio, error } from "./torneo_service.js";
-import { tablaDeZona, validarResultado } from "./zona_reglas.js";
+import { validarResultado, clasificacionDeCategoria } from "./zona_reglas.js";
 import { armarLlave, partidosDeLlave, destinoDelGanador, nombreRonda, podio } from "./llave_reglas.js";
 
 export const tieneLlave = (categoriaId, t) => Partido.count({ where: { categoria_id: categoriaId, fase: "llave" }, transaction: t });
@@ -21,18 +21,37 @@ async function categoriaDelTorneo(torneo, categoriaId, t) {
   return categoria;
 }
 
-/** Zonas con sus clasificados (en orden) y si terminaron. */
-async function clasificados(categoria, t) {
-  const [zonas, parejas, partidos] = await Promise.all([
+/**
+ * Zonas, inscripciones y partidos de zona de una categoría, con la clasificación calculada
+ * (tablas y mejores del puesto siguiente). La usan las zonas y la llave: una sola cuenta.
+ */
+export async function clasificacionDe(categoria, t) {
+  const [zonas, inscripciones, partidos] = await Promise.all([
     Zona.findAll({ where: { categoria_id: categoria.id }, order: [["orden", "ASC"]], transaction: t }),
-    Inscripcion.findAll({ where: { categoria_id: categoria.id, estado: "confirmada" }, attributes: ["id", "zona_id"], order: [["id", "ASC"]], transaction: t }),
-    Partido.findAll({ where: { categoria_id: categoria.id, fase: "zona" }, transaction: t }),
+    Inscripcion.findAll({ where: { categoria_id: categoria.id, estado: "confirmada" }, attributes: ["id", "jugador1_nombre", "jugador2_nombre", "cabeza_de_serie", "zona_id", "sorteo"], order: [["id", "ASC"]], transaction: t }),
+    Partido.findAll({ where: { categoria_id: categoria.id, fase: "zona" }, order: [["zona_id", "ASC"], ["orden", "ASC"]], transaction: t }),
   ]);
-  return zonas.map((z) => {
-    const ids = parejas.filter((p) => p.zona_id === z.id).map((p) => p.id);
-    const tabla = tablaDeZona(ids, partidos.filter((p) => p.zona_id === z.id).map((p) => p.get({ plain: true })), categoria.clasifican_por_zona);
-    return { nombre: z.nombre, completa: tabla.completa, clasificados: tabla.filas.filter((f) => f.clasificado).map((f) => f.inscripcion_id) };
+  const plano = partidos.map((p) => p.get({ plain: true }));
+  const deZonas = zonas.map((z) => ({
+    zona: z,
+    parejas: inscripciones.filter((i) => i.zona_id === z.id).map((i) => i.id),
+    partidos: plano.filter((p) => p.zona_id === z.id),
+  }));
+  const sorteo = new Map(inscripciones.filter((i) => i.sorteo !== null).map((i) => [i.id, i.sorteo]));
+  return { deZonas, inscripciones, clasificacion: clasificacionDeCategoria(deZonas, categoria.clasifican_por_zona, sorteo) };
+}
+
+/**
+ * Zonas con sus clasificados directos (en orden) y si terminaron, más los mejores del puesto
+ * siguiente que completan la llave. Sale de la misma clasificación que muestran las zonas.
+ */
+async function clasificados(categoria, t) {
+  const { deZonas, clasificacion } = await clasificacionDe(categoria, t);
+  const zonas = deZonas.map(({ zona }, i) => {
+    const tabla = clasificacion.tablas[i];
+    return { nombre: zona.nombre, completa: tabla.completa, clasificados: tabla.filas.filter((f) => f.clasificado && !f.mejor).map((f) => f.inscripcion_id) };
   });
+  return { zonas, mejores: clasificacion.mejores };
 }
 
 /** La llave por rondas, con nombres de parejas, el podio y si se puede armar. */
@@ -40,7 +59,7 @@ export async function detalleLlave(categoria, t) {
   const [partidos, parejas, zonas] = await Promise.all([
     Partido.findAll({ where: { categoria_id: categoria.id, fase: "llave" }, order: [["ronda", "ASC"], ["orden", "ASC"]], transaction: t }),
     Inscripcion.findAll({ where: { categoria_id: categoria.id }, attributes: ["id", "jugador1_nombre", "jugador2_nombre"], transaction: t }),
-    clasificados(categoria, t),
+    clasificados(categoria, t).then((c) => c.zonas),
   ]);
   const nombre = new Map(parejas.map((p) => [p.id, `${p.jugador1_nombre} / ${p.jugador2_nombre}`]));
   const pareja = (id) => (id ? { id, nombre: nombre.get(id) } : null);
@@ -60,7 +79,7 @@ export async function detalleLlave(categoria, t) {
       return {
         ronda: i + 1,
         nombre: nombreRonda(2 ** (rondas - i - 1)),
-        partidos: deRonda.map((p) => ({ id: p.id, orden: p.orden, formato: p.formato, pareja1: pareja(p.pareja1_id), pareja2: pareja(p.pareja2_id), sets: p.sets, ganador_id: p.ganador_id })),
+        partidos: deRonda.map((p) => ({ id: p.id, orden: p.orden, formato: p.formato, pareja1: pareja(p.pareja1_id), pareja2: pareja(p.pareja2_id), sets: p.sets, ganador_id: p.ganador_id, fecha: p.fecha, hora: p.hora, cancha: p.cancha })),
       };
     }),
     podio: { campeon: pareja(resultado.campeon), subcampeon: pareja(resultado.subcampeon), semifinalistas: resultado.semifinalistas.map(pareja) },
@@ -79,12 +98,12 @@ export async function armarLlaveCategoria(torneoId, categoriaId, usuario) {
     exigirEnJuego(torneo);
     const categoria = await categoriaDelTorneo(torneo, categoriaId, t);
     if (await llaveConResultados(categoria.id, t)) throw error("La llave ya tiene resultados: no se puede volver a armar.", 409, "CON_RESULTADOS");
-    const zonas = await clasificados(categoria, t);
+    const { zonas, mejores } = await clasificados(categoria, t);
     if (!zonas.length) throw error("Primero armá las zonas.", 409, "SIN_ZONAS");
     const pendientes = zonas.filter((z) => !z.completa).map((z) => z.nombre);
     if (pendientes.length) throw error(`Faltan resultados en la zona ${pendientes.join(", ")}.`, 409, "ZONAS_INCOMPLETAS");
 
-    const llave = armarLlave(zonas);
+    const llave = armarLlave(zonas, mejores);
     if (llave.error) throw error(llave.error, 409, "POCOS_CLASIFICADOS");
     await Partido.destroy({ where: { categoria_id: categoria.id, fase: "llave" }, transaction: t });
     await Partido.bulkCreate(partidosDeLlave(llave).map((p) => ({

@@ -2,6 +2,7 @@ import { seed_catalogos } from "./seed_catalogos.js";
 import { seed_rbac } from "./seed_rbac.js";
 import { sincronizarPermisos } from "../../services/usuarios/permisos_service.js";
 import { seed_super_admin } from "./seed_super_admin.js";
+import { asignarCodigosFaltantes } from "../../services/jugadores/jugador_service.js";
 
 /**
  * Seed de catálogos + usuario super admin — idempotente, seguro de correr
@@ -18,5 +19,6 @@ export async function seed_database() {
   await seed_rbac();
   await sincronizarPermisos(); // después de seed_rbac: asigna los permisos nuevos a sus roles por defecto
   await seed_super_admin();
+  await asignarCodigosFaltantes(); // cuentas creadas antes de existir el código de jugador
   console.log("✅ Seed finalizado");
 }

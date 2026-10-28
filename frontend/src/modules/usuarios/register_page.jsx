@@ -18,7 +18,8 @@ export default function RegisterPage() {
   const [created, setCreated] = useState(false);
   const { register, handleSubmit, getValues, formState: { errors, isSubmitting } } = useForm();
   if (!authConfig.publicRegistration) return <Navigate to="/login" replace />;
-  if (isAuth) return <Navigate to={destination} replace />;
+  // Quien vino de otra página (un torneo, por ejemplo) vuelve ahí; si no, conoce su perfil y su código.
+  if (isAuth) return <Navigate to={params.get("returnTo") ? destination : "/mi-perfil?bienvenida=1"} replace />;
   return <AuthLayout title={authConfig.texts.registerTitle} subtitle={authConfig.texts.registerSubtitle}>
     <form className="space-y-4" onSubmit={handleSubmit(async ({ nombre, apellido, email, nombre_usuario, password }) => {
       setError("");

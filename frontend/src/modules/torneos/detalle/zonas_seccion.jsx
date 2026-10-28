@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Shuffle, Star, Trophy } from "lucide-react";
+import { CalendarClock, Shuffle, Star, Trophy } from "lucide-react";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
 import { FORMATOS_PARTIDO, PERMITIDO } from "../../../../../torneo_config.js";
-import { getZonas, sortearZonas, moverPareja, guardarResultado, borrarResultado } from "../api/torneos_api.js";
+import { getZonas, sortearZonas, moverPareja, guardarResultado, borrarResultado, programarPartido } from "../api/torneos_api.js";
+import { AvisoMejores, HorarioPartido, MarcasDeFila } from "../torneo_ui.jsx";
+import ProgramacionModal from "./programacion_modal.jsx";
 import { mensajeDe } from "./use_cambio_torneo.js";
 import ResultadoModal from "./resultado_modal.jsx";
+import { ResumenLlave } from "./calculo_llave.jsx";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const claveZonas = (torneoId, categoriaId) => ["torneos", Number(torneoId), "zonas", Number(categoriaId)];
@@ -46,15 +49,39 @@ export default function ZonasSeccion({ torneo, editable }) {
   );
 }
 
+const parejas = (n) => `${n} pareja${n === 1 ? "" : "s"}`;
+
+/** Cuántas confirmadas hay contra el cupo de la categoría: lo que falta para llenarlo, o si se pasó. */
+function EstadoCupo({ cupo, confirmadas }) {
+  if (!cupo) return <p className="text-sm text-(--kt-ink-soft)">{parejas(confirmadas)} confirmada{confirmadas === 1 ? "" : "s"} · sin cupo.</p>;
+  const faltan = cupo - confirmadas;
+  const [texto, tono] = faltan > 0
+    ? [<>Faltan <strong>{parejas(faltan)}</strong> para completar el cupo ({confirmadas} de {cupo} confirmadas).{confirmadas >= 2 && " Igual podés armar las zonas con las que hay."}</>, "border-sky-200 bg-sky-50 text-sky-900"]
+    : faltan === 0
+      ? [<>Cupo completo: <strong>{confirmadas} de {cupo}</strong> parejas confirmadas.</>, "border-emerald-200 bg-emerald-50 text-emerald-900"]
+      : [<>Hay <strong>{parejas(-faltan)} más</strong> que el cupo ({confirmadas} confirmadas, cupo de {cupo}).</>, "border-amber-200 bg-amber-50 text-amber-900"];
+  return (
+    <div role="status" className={`space-y-2 rounded-2xl border p-3 text-sm ${tono}`}>
+      <p>{texto}</p>
+      <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-white/80">
+        <div className="h-full rounded-full bg-current opacity-60" style={{ width: `${Math.min(100, (confirmadas / cupo) * 100)}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function ZonasDeCategoria({ torneo, categoriaId, editable }) {
   const [confirmarSorteo, setConfirmarSorteo] = useState(false);
   const [partidoAbierto, setPartidoAbierto] = useState(null);
+  const [aProgramar, setAProgramar] = useState(null);
   const zonas = useQuery({ queryKey: claveZonas(torneo.id, categoriaId), queryFn: () => getZonas(torneo.id, categoriaId) });
   const sortear = useCambioZonas(torneo.id, categoriaId, () => sortearZonas(torneo.id, categoriaId), { onExito: () => setConfirmarSorteo(false) });
   const mover = useCambioZonas(torneo.id, categoriaId, ({ parejaId, zonaId }) => moverPareja(torneo.id, categoriaId, parejaId, zonaId));
   const cerrarPartido = { onExito: () => setPartidoAbierto(null), errorEnPantalla: true };
   const guardar = useCambioZonas(torneo.id, categoriaId, ({ partidoId, sets }) => guardarResultado(torneo.id, partidoId, sets), cerrarPartido);
   const borrar = useCambioZonas(torneo.id, categoriaId, (partidoId) => borrarResultado(torneo.id, partidoId), cerrarPartido);
+  const programar = useCambioZonas(torneo.id, categoriaId, ({ partidoId, ...datos }) => programarPartido(torneo.id, partidoId, datos),
+    { onExito: () => setAProgramar(null), errorEnPantalla: true });
 
   if (zonas.isPending) return <AdminSpinner />;
   if (zonas.isError) {
@@ -70,10 +97,15 @@ function ZonasDeCategoria({ torneo, categoriaId, editable }) {
   const hayResultados = d.zonas.some((z) => z.partidos.some((p) => p.sets));
   const puedeArmar = editable && PERMITIDO.armarZonas.includes(torneo.estado);
   const puedeCargar = editable && PERMITIDO.cargarResultados.includes(torneo.estado);
+  const puedeProgramar = editable && PERMITIDO.programarPartidos.includes(torneo.estado);
   const opcionesZona = d.zonas.map((z) => ({ value: String(z.id), label: `Zona ${z.nombre}` }));
+
+  const confirmadas = d.zonas.reduce((suma, z) => suma + z.parejas.length, 0) + d.sin_zona.length;
+  const cupo = torneo.categorias.find((c) => c.id === categoriaId)?.cupo_parejas ?? null;
 
   return (
     <div className="space-y-4">
+      <EstadoCupo cupo={cupo} confirmadas={confirmadas} />
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-(--kt-bg-soft) p-3">
         <p className="text-sm text-(--kt-ink)">
           Zonas de <strong>{d.formato.parejas_por_zona}</strong> · clasifican <strong>{d.formato.clasifican_por_zona}</strong> · {FORMATOS_PARTIDO[d.formato.formato_zona]?.etiqueta}
@@ -95,6 +127,10 @@ function ZonasDeCategoria({ torneo, categoriaId, editable }) {
       {d.sin_zona.length > 0 && (
         <div role="status" className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           <p className="font-semibold">{d.sin_zona.length} pareja{d.sin_zona.length === 1 ? "" : "s"} confirmada{d.sin_zona.length === 1 ? "" : "s"} sin zona{d.zonas.length ? ": ubicalas o volvé a sortear." : "."}</p>
+          {d.zonas.length === 0 && d.sin_zona.length >= 2 && (
+            <ResumenLlave cantidad={d.sin_zona.length} parejasPorZona={d.formato.parejas_por_zona} clasifican={d.formato.clasifican_por_zona} className="text-amber-900"
+              consejo="Podés sortear igual, o cargar o dar de baja parejas para que queden todas iguales." />
+          )}
           {d.zonas.length > 0 && puedeArmar && d.sin_zona.map((p) => (
             <div key={p.id} className="flex flex-wrap items-center gap-2">
               <span className="min-w-0 flex-1">{p.nombre}</span>
@@ -106,6 +142,7 @@ function ZonasDeCategoria({ torneo, categoriaId, editable }) {
       )}
       {d.zonas.length === 0 && d.sin_zona.length < 2 && <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-(--kt-ink-soft)">Hacen falta al menos 2 parejas confirmadas para armar las zonas.</p>}
 
+      {d.zonas.length > 0 && <AvisoMejores mejores={d.mejores} />}
       <div className="grid gap-4 lg:grid-cols-2">
         {d.zonas.map((zona) => {
           const zonaConResultados = zona.partidos.some((p) => p.sets);
@@ -133,7 +170,7 @@ function ZonasDeCategoria({ torneo, categoriaId, editable }) {
                         <td className="py-2 pr-2 font-bold">{f.posicion}</td>
                         <td className="py-2 pr-2">
                           <span className="font-semibold">{f.pareja?.cabeza_de_serie && <Star size={12} aria-label="Cabeza de serie" className="mr-1 inline fill-amber-400 text-amber-500" />}{f.pareja?.nombre}</span>
-                          {f.clasificado && <span className="ml-1.5 inline-flex items-center gap-0.5 text-xs font-bold text-emerald-800"><Trophy size={12} aria-hidden="true" /> Clasifica</span>}
+                          <MarcasDeFila fila={f} />
                           {puedeArmar && !zonaConResultados && d.zonas.length > 1 && (
                             <div className="mt-1 w-40"><SelectField label={`Mover a ${f.pareja?.nombre}`} showLabel={false} name={`mover-${f.inscripcion_id}`} value="" placeholder="Mover a…" disabled={mover.isPending}
                               options={opcionesZona.filter((o) => Number(o.value) !== zona.id)} onChange={(e) => e.target.value && mover.mutate({ parejaId: f.inscripcion_id, zonaId: Number(e.target.value) })} /></div>
@@ -150,12 +187,19 @@ function ZonasDeCategoria({ torneo, categoriaId, editable }) {
               <ol className="space-y-2">
                 {zona.partidos.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-(--kt-bg-soft) px-3 py-2 text-sm">
-                    <span className="min-w-0 flex-1">
+                    <span className="min-w-0 basis-full sm:flex-1 sm:basis-0">
                       <span className={p.ganador_id === p.pareja1?.id ? "font-bold" : ""}>{p.pareja1?.nombre}</span>
                       <span className="text-(--kt-ink-soft)"> vs </span>
                       <span className={p.ganador_id === p.pareja2?.id ? "font-bold" : ""}>{p.pareja2?.nombre}</span>
+                      <HorarioPartido partido={p} className="mt-0.5" />
                     </span>
                     {p.sets ? <span className="font-mono font-bold">{marcador(p.sets)}</span> : <span className="text-xs text-(--kt-ink-soft)">Sin jugar</span>}
+                    {puedeProgramar && (
+                      <button type="button" onClick={() => { programar.reset(); setAProgramar(p); }} className={`${BOTON} border-slate-300 bg-white text-slate-700`}
+                        aria-label={`Horario de ${p.pareja1?.nombre} contra ${p.pareja2?.nombre}`}>
+                        <CalendarClock size={15} aria-hidden="true" /> Horario
+                      </button>
+                    )}
                     {puedeCargar && (
                       <button type="button" onClick={() => setPartidoAbierto(p)} className={`${BOTON} border-slate-300 bg-white text-slate-700`} aria-label={`${p.sets ? "Corregir" : "Cargar"} resultado de ${p.pareja1?.nombre} contra ${p.pareja2?.nombre}`}>
                         {p.sets ? "Corregir" : "Cargar resultado"}
@@ -170,8 +214,9 @@ function ZonasDeCategoria({ torneo, categoriaId, editable }) {
       </div>
 
       <ConfirmDialog open={confirmarSorteo} loading={sortear.isPending} variant="warning" confirmLabel="Volver a sortear"
-        title="¿Volver a sortear las zonas?" message="Se arman de nuevo con todas las parejas confirmadas y se rehace el fixture. Las cabezas de serie siguen separadas."
+        title="¿Volver a sortear las zonas?" message="Se arman de nuevo con todas las parejas confirmadas y se rehace el fixture: se pierden los horarios cargados. Las cabezas de serie siguen separadas."
         onClose={() => setConfirmarSorteo(false)} onConfirm={() => sortear.mutate()} />
+      {aProgramar && <ProgramacionModal partido={aProgramar} guardar={programar} onClose={() => setAProgramar(null)} />}
       {partidoAbierto && (
         <ResultadoModal partido={partidoAbierto} guardar={guardar} borrar={borrar} onClose={() => { guardar.reset(); setPartidoAbierto(null); }} />
       )}
