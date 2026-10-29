@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Award, CalendarDays, Layers, MapPin, Users } from "lucide-react";
 import { FORMATOS_PARTIDO } from "../../../../../torneo_config.js";
 import { formatearFechaAR } from "../../../utils/formatear_fecha.js";
-import { EstadoTorneo } from "../torneo_ui.jsx";
+import { EstadoTorneo } from "../comun/torneo_ui.jsx";
 
 // Más categorías que esto se resumen con "+N" para que la tarjeta no crezca de más.
 const CATEGORIAS_VISIBLES = 4;

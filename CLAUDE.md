@@ -88,7 +88,9 @@ frontend/src/
   controls/                        controles compartidos, layout, acceso
   controls/layout/panel/           marco del panel de gestión (/panel): menú lateral por rol
   controls/ui/                     campos, modal, data_grid, confirm_dialog
-  modules/                         pantallas por área (home, usuarios, panel; torneos a crear)
+  modules/                         pantallas por área (home, usuarios, panel, jugadores, suscripcion, torneos)
+  modules/torneos/                 api, comun (monto, torneo_ui), organizador (páginas), detalle (pestañas),
+                                   publico, inscripciones (Mis inscripciones) y avisos (campanita)
   hooks/                           hooks compartidos
   config/                          configuración visual y funcional
 servidor/src/
@@ -161,11 +163,11 @@ del torneo con cada inscripción online nueva y cada comprobante de inscripción
 guardar (un error del correo nunca rompe la acción), nunca a dominios de prueba (`@example.test`…) y se apagan con
 `AVISOS_POR_CORREO=no` (los tests de integración y la demo lo hacen solos).
 Al anotarse en una categoría que cobra, la ficha pública lleva a `/mis-inscripciones?pagar=<id>&nueva=1` (pago destacado).
-Campanita de la barra (`modules/torneos/campana_avisos.jsx`, en `navbar_config.extras`): invitaciones sin responder y
-comprobantes por mandar o rechazados (`avisos_inscripciones.js`, mismas reglas que el servidor), con la misma consulta
-de Mis inscripciones (`use_mis_inscripciones.js`, 5 min en caché, sin polling).
+Campanita de la barra (`modules/torneos/avisos/campana_avisos.jsx`, en `navbar_config.extras`): invitaciones sin responder y
+comprobantes por mandar o rechazados (`avisos/avisos_inscripciones.js`, mismas reglas que el servidor), con la misma consulta
+de Mis inscripciones (`inscripciones/use_mis_inscripciones.js`, 5 min en caché, sin polling).
 Mis inscripciones: pestañas Activas / Jugadas / Bajas (`?ver=`), lo que pide acción primero y un "próximo paso"
-por tarjeta (`secciones_inscripciones.js`).
+por tarjeta (`inscripciones/secciones_inscripciones.js`).
 
 Usuarios registrados (inicio del panel, solo `super_admin` con `requireRole`): `GET /api/admin/registrados`
 (`registrados_service.js`): totales (todos, 7 y 30 días) y los últimos con nombre y fecha, sin contacto ni cuentas de prueba.

@@ -1,4 +1,4 @@
-import { LIMITES } from "../../../../torneo_config.js";
+import { LIMITES } from "../../../../../torneo_config.js";
 
 // Monto de inscripción en un campo de texto: mismas reglas que el servidor (torneo_reglas.js),
 // hasta 2 decimales y se acepta la coma.

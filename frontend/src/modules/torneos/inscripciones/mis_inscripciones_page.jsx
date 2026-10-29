@@ -9,11 +9,11 @@ import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import { ESTADOS_INSCRIPCION, PERMITIDO } from "../../../../../torneo_config.js";
 import { formatearFechaAR } from "../../../utils/formatear_fecha.js";
 import { cancelarMiInscripcion } from "../api/torneos_api.js";
-import { useMisInscripciones } from "../use_mis_inscripciones.js";
-import { avisosDeInscripciones } from "../avisos_inscripciones.js";
-import { SECCIONES, seccionDe, proximoPaso, ordenarInscripciones } from "../secciones_inscripciones.js";
+import { useMisInscripciones } from "./use_mis_inscripciones.js";
+import { avisosDeInscripciones } from "../avisos/avisos_inscripciones.js";
+import { SECCIONES, seccionDe, proximoPaso, ordenarInscripciones } from "./secciones_inscripciones.js";
 import { responderInvitacion } from "../../jugadores/jugadores_api.js";
-import PagoInscripcion from "./pago_inscripcion.jsx";
+import PagoInscripcion from "../publico/pago_inscripcion.jsx";
 
 const COLORES = { esperando: "bg-sky-50 text-sky-900 ring-sky-200", pendiente: "bg-amber-50 text-amber-900 ring-amber-200", confirmada: "bg-emerald-50 text-emerald-800 ring-emerald-200", rechazada: "bg-red-50 text-red-800 ring-red-200", cancelada: "bg-slate-100 text-slate-600 ring-slate-200" };
 const mensajeDe = (error, porDefecto) => error?.response?.data?.mensaje || porDefecto;

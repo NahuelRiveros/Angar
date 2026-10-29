@@ -5,7 +5,7 @@ import { Landmark } from "lucide-react";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import InputField from "../../../controls/ui/input_field.jsx";
 import TextareaField from "../../../controls/ui/textarea_field.jsx";
-import { esMontoValido, montoParaEnviar, MENSAJE_MONTO } from "../monto.js";
+import { esMontoValido, montoParaEnviar, MENSAJE_MONTO } from "../comun/monto.js";
 import { actualizarTorneo } from "../api/torneos_api.js";
 import { useCambioTorneo, mensajeDe } from "./use_cambio_torneo.js";
 

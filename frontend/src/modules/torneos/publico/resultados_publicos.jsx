@@ -5,7 +5,7 @@ import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import { FORMATOS_PARTIDO } from "../../../../../torneo_config.js";
 import { getCategoriaPublica } from "../api/torneos_api.js";
-import { AvisoMejores, HorarioPartido, MarcasDeFila } from "../torneo_ui.jsx";
+import { AvisoMejores, HorarioPartido, MarcasDeFila } from "../comun/torneo_ui.jsx";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold";
 const mensajeDe = (error, porDefecto) => error?.response?.data?.mensaje || porDefecto;

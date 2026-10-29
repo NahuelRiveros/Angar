@@ -1,4 +1,4 @@
-import { avisosDeInscripciones } from "./avisos_inscripciones.js";
+import { avisosDeInscripciones } from "../avisos/avisos_inscripciones.js";
 
 // Pestañas de "Mis inscripciones": lo vigente primero; lo jugado y las bajas quedan aparte para
 // que no se acumulen a la vista.

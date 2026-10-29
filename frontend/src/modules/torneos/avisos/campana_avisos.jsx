@@ -2,9 +2,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, FileWarning, UserPlus } from "lucide-react";
-import { useAuth } from "../../auth/auth_context.jsx";
+import { useAuth } from "../../../auth/auth_context.jsx";
 import { avisosDeInscripciones } from "./avisos_inscripciones.js";
-import { useMisInscripciones } from "./use_mis_inscripciones.js";
+import { useMisInscripciones } from "../inscripciones/use_mis_inscripciones.js";
 import { claveAvisos, marcarAvisosLeidos, useMisAvisos } from "./avisos_api.js";
 
 const ICONOS = { invitacion: UserPlus, comprobante: FileWarning, comprobante_rechazado: FileWarning };

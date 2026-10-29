@@ -1,4 +1,4 @@
-import { PERMITIDO } from "../../../../torneo_config.js";
+import { PERMITIDO } from "../../../../../torneo_config.js";
 
 /**
  * Lo que el jugador tiene que hacer con sus inscripciones: responder una invitación o mandar el

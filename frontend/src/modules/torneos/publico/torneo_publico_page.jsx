@@ -14,7 +14,7 @@ import SelectField from "../../../controls/ui/select_field.jsx";
 import { PUESTOS } from "../../../../../torneo_config.js";
 import { formatearFechaAR } from "../../../utils/formatear_fecha.js";
 import { getTorneoPublico, anotarme } from "../api/torneos_api.js";
-import { EstadoTorneo } from "../torneo_ui.jsx";
+import { EstadoTorneo } from "../comun/torneo_ui.jsx";
 import BotonCompartir from "./boton_compartir.jsx";
 import ResultadosPublicos from "./resultados_publicos.jsx";
 import ParticipantesPublicos from "./participantes_publicos.jsx";

@@ -1,5 +1,5 @@
 import { Trophy } from "lucide-react";
-import { ESTADOS_TORNEO } from "../../../../torneo_config.js";
+import { ESTADOS_TORNEO } from "../../../../../torneo_config.js";
 
 const COLORES = {
   borrador: "bg-slate-100 text-slate-700 ring-slate-200",

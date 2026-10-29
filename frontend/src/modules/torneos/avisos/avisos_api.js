@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { http } from "../../api/http.js";
-import { useAuth } from "../../auth/auth_context.jsx";
+import { http } from "../../../api/http.js";
+import { useAuth } from "../../../auth/auth_context.jsx";
 
 export const claveAvisos = (usuarioId) => ["avisos", usuarioId];
 

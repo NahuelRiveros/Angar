@@ -5,7 +5,7 @@ import { ExternalLink, Sparkles, Trash2 } from "lucide-react";
 import ConfirmDialog from "../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../controls/ui/error_banner.jsx";
 import { useToast } from "../../controls/toast/toast_context.jsx";
-import { EstadoTorneo } from "../torneos/torneo_ui.jsx";
+import { EstadoTorneo } from "../torneos/comun/torneo_ui.jsx";
 import { getTorneosDemo, crearTorneosDemo, borrarTorneosDemo } from "./demo_api.js";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";

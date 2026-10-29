@@ -13,7 +13,7 @@ import { crearCategoria, actualizarCategoria, eliminarCategoria } from "../api/t
 import { useCambioTorneo, mensajeDe } from "./use_cambio_torneo.js";
 import PremiosModal from "./premios_modal.jsx";
 import { CalculoLlave, ResumenLlave, SelectorCupo } from "./calculo_llave.jsx";
-import { esMontoValido, montoParaEnviar, MENSAJE_MONTO } from "../monto.js";
+import { esMontoValido, montoParaEnviar, MENSAJE_MONTO } from "../comun/monto.js";
 import { formatearPesos } from "../../suscripcion/estado_plan.js";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";

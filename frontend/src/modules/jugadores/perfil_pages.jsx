@@ -2,7 +2,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Mail } from "lucide-react";
 import { useToast } from "../../controls/toast/toast_context.jsx";
-import { cambiarRecibirMails } from "../torneos/avisos_api.js";
+import { cambiarRecibirMails } from "../torneos/avisos/avisos_api.js";
 import { useAuth } from "../../auth/auth_context.jsx";
 import AdminSpinner from "../../controls/ui/admin_spinner.jsx";
 import ErrorBanner from "../../controls/ui/error_banner.jsx";

@@ -5,12 +5,12 @@ const HomePage = lazy(() => import("../../modules/home/home_page.jsx"));
 const LoginPage = lazy(() => import("../../modules/usuarios/login_page.jsx"));
 const RegisterPage = lazy(() => import("../../modules/usuarios/register_page.jsx"));
 const MiSuscripcionPage = lazy(() => import("../../modules/suscripcion/mi_suscripcion_page.jsx"));
-const MisTorneosPage = lazy(() => import("../../modules/torneos/mis_torneos_page.jsx"));
-const TorneoDetallePage = lazy(() => import("../../modules/torneos/torneo_detalle_page.jsx"));
-const ImprimirTorneoPage = lazy(() => import("../../modules/torneos/imprimir_torneo_page.jsx"));
+const MisTorneosPage = lazy(() => import("../../modules/torneos/organizador/mis_torneos_page.jsx"));
+const TorneoDetallePage = lazy(() => import("../../modules/torneos/organizador/torneo_detalle_page.jsx"));
+const ImprimirTorneoPage = lazy(() => import("../../modules/torneos/organizador/imprimir_torneo_page.jsx"));
 const TorneosPublicosPage = lazy(() => import("../../modules/torneos/publico/torneos_publicos_page.jsx"));
 const TorneoPublicoPage = lazy(() => import("../../modules/torneos/publico/torneo_publico_page.jsx"));
-const MisInscripcionesPage = lazy(() => import("../../modules/torneos/publico/mis_inscripciones_page.jsx"));
+const MisInscripcionesPage = lazy(() => import("../../modules/torneos/inscripciones/mis_inscripciones_page.jsx"));
 const MiPerfilPage = lazy(() => import("../../modules/jugadores/perfil_pages.jsx").then((m) => ({ default: m.MiPerfilPage })));
 const PerfilPublicoPage = lazy(() => import("../../modules/jugadores/perfil_pages.jsx").then((m) => ({ default: m.PerfilPublicoPage })));
 

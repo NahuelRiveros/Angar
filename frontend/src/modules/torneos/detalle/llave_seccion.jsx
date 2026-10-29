@@ -8,7 +8,7 @@ import SelectField from "../../../controls/ui/select_field.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
 import { FORMATOS_PARTIDO, PERMITIDO } from "../../../../../torneo_config.js";
 import { getLlave, cambiarLlave, guardarResultado, borrarResultado, programarPartido } from "../api/torneos_api.js";
-import { HorarioPartido } from "../torneo_ui.jsx";
+import { HorarioPartido } from "../comun/torneo_ui.jsx";
 import ProgramacionModal from "./programacion_modal.jsx";
 import { mensajeDe } from "./use_cambio_torneo.js";
 import ResultadoModal from "./resultado_modal.jsx";
