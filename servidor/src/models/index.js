@@ -23,6 +23,7 @@ import { Rol }             from "./usuario/rol.js";
 import { RolPermiso }      from "./usuario/rol_permiso.js";
 import { Permiso }         from "./usuario/permiso.js";
 import { Modulo }          from "./usuario/modulo.js";
+import { AvisoUsuario }    from "./usuario/aviso_usuario.js";
 
 // ── home/ — contenido configurable del home (imágenes/videos en Cloudinary) ──
 import { HomeArea }         from "./home/home_area.js";
@@ -103,7 +104,7 @@ aplicarRelaciones([
 export {
   Sexo, TipoDocumento, TipoPersona,
   Rol, Modulo, Permiso, RolPermiso,
-  Persona, Usuario, UsuarioRol,
+  Persona, Usuario, UsuarioRol, AvisoUsuario,
   HomeArea, HomeContenido, HomeTexto, HomePilar, HomeContacto,
   BannerAnuncio,
   Suscripcion, PagoSuscripcion,

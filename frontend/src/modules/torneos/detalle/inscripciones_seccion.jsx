@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { BadgeDollarSign, Check, FileText, MessageCircle, Pencil, Plus, Star, UserMinus, X } from "lucide-react";
+import { BadgeDollarSign, Check, Download, FileText, MessageCircle, Pencil, Plus, Star, UserMinus, X } from "lucide-react";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
@@ -15,6 +15,7 @@ import { ESTADOS_INSCRIPCION, ESTADOS_PAGO_INSCRIPCION, PERMITIDO } from "../../
 import { getInscripciones, cargarPareja, editarPareja, resolverInscripcion, getEnlaceComprobanteInscripcion } from "../api/torneos_api.js";
 import { abrirEnPestania } from "../../../utils/abrir_en_pestania.js";
 import { formatearPesos } from "../../suscripcion/estado_plan.js";
+import { inscripcionesACsv, nombreDeArchivo, descargarCsv } from "./exportar_inscripciones.js";
 import { mensajeDe } from "./use_cambio_torneo.js";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
@@ -80,11 +81,18 @@ export default function InscripcionesSeccion({ torneo, editable }) {
           <SelectField label="Categoría" name="filtro-categoria" value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Todas"
             options={torneo.categorias.map((c) => ({ value: String(c.id), label: c.nombre }))} />
         </div>
-        {puedeSumar && (
-          <button type="button" disabled={!torneo.categorias.length} onClick={() => setModal({ tipo: "pareja" })} className={`${BOTON} border-(--kt-petrol) bg-(--kt-petrol) text-white`}>
-            <Plus size={16} aria-hidden="true" /> Agregar pareja
+        <div className="flex flex-wrap gap-2">
+          {/* Con el filtro de categoría, baja solo esa categoría. */}
+          <button type="button" disabled={!filas.length} onClick={() => descargarCsv(inscripcionesACsv(filas, torneo.categorias), nombreDeArchivo(torneo))}
+            className={`${BOTON} border-slate-300 bg-white text-slate-700`}>
+            <Download size={16} aria-hidden="true" /> Descargar Excel
           </button>
-        )}
+          {puedeSumar && (
+            <button type="button" disabled={!torneo.categorias.length} onClick={() => setModal({ tipo: "pareja" })} className={`${BOTON} border-(--kt-petrol) bg-(--kt-petrol) text-white`}>
+              <Plus size={16} aria-hidden="true" /> Agregar pareja
+            </button>
+          )}
+        </div>
       </div>
       {pendientes > 0 && <p role="status" className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900">Tenés {pendientes === 1 ? "1 inscripción online" : `${pendientes} inscripciones online`} para revisar.</p>}
       {filas.length === 0 && <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-(--kt-ink-soft)">Todavía no hay parejas anotadas.</p>}

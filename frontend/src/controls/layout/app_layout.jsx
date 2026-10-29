@@ -23,15 +23,18 @@ function ScrollToTop() {
 export default function AppLayout({ children }) {
   const { pathname } = useLocation();
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 print:bg-white">
       <ScrollToTop />
-      <AnunciosBanner />
-      <Navbar />
-      <SuscripcionBanner />
+      {/* Al imprimir (fixture, llave) solo sale el contenido. "contents" no arma caja: la barra sigue fija (sticky). */}
+      <div className="contents print:hidden">
+        <AnunciosBanner />
+        <Navbar />
+        <SuscripcionBanner />
+      </div>
       <main id="main-content" tabIndex={-1}>
         <ErrorBoundary key={pathname}>{children}</ErrorBoundary>
       </main>
-      <Footer />
+      <div className="contents print:hidden"><Footer /></div>
     </div>
   );
 }

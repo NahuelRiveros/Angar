@@ -4,7 +4,7 @@ import { calcularHashEsquema } from "./schema_hash.js";
 import {
   Sexo, TipoDocumento, TipoPersona, Rol, Modulo, HomeArea,
   Permiso, Persona, HomeContenido, RolPermiso, Usuario,
-  UsuarioRol, BannerAnuncio, HomeTexto, HomePilar, HomeContacto,
+  UsuarioRol, AvisoUsuario, BannerAnuncio, HomeTexto, HomePilar, HomeContacto,
   Suscripcion, PagoSuscripcion, Torneo, TorneoCategoria, TorneoPremio, Inscripcion, Zona, Partido,
 } from "../models/index.js";
 
@@ -88,6 +88,7 @@ async function sincronizar_modelos() {
     Usuario,    // usuario → persona
     // nivel 3
     UsuarioRol,      // usuario_rol → usuario, rol
+    AvisoUsuario,    // aviso_usuario → usuario
     Suscripcion,     // suscripcion → usuario
     PagoSuscripcion, // pago_suscripcion → usuario
     Torneo,          // torneo → usuario

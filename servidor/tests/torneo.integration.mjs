@@ -111,3 +111,19 @@ test("estados: abrir inscripción pide sede, fecha y categorías; en juego no ca
   await s.eliminarTorneo(vacio.id, ana);
   await assert.rejects(s.obtenerTorneo(vacio.id, ana), /No encontramos/);
 });
+
+test("duplicar un torneo: copia datos, cobro, categorías y premios; queda en borrador sin fechas ni parejas", { skip: sin }, async () => {
+  const origen = await s.crearTorneo(ana, { nombre: "Abierto de Invierno", sede: "Club Sur", fecha_inicio: "2026-07-10", reglamento: "Zonas a un set.", monto_inscripcion: 18000, cobro_alias: "club.sur.ejemplo" });
+  let detalle = await s.crearCategoria(origen.id, ana, { nivel: 5, rama: "mixto", cupo_parejas: 12, monto_inscripcion: 18000, parejas_por_zona: 4 });
+  await s.guardarPremios(origen.id, detalle.categorias[0].id, ana, [{ puesto: "campeon", descripcion: "Trofeo" }]);
+  await s.cambiarEstado(origen.id, ana, "inscripcion");
+
+  const copia = await s.duplicarTorneo(origen.id, ana);
+  assert.notEqual(copia.id, origen.id);
+  assert.deepEqual([copia.nombre, copia.estado, copia.fecha_inicio, copia.sede, copia.reglamento, copia.monto_inscripcion, copia.cobro_alias],
+    ["Copia de Abierto de Invierno", "borrador", null, "Club Sur", "Zonas a un set.", 18000, "club.sur.ejemplo"]);
+  const [cat] = copia.categorias;
+  assert.deepEqual([cat.nombre, cat.cupo_parejas, cat.monto_inscripcion, cat.parejas_por_zona, cat.premios.map((p) => p.descripcion)], ["5ta Mixto", 12, 18000, 4, ["Trofeo"]]);
+  assert.notEqual(cat.id, detalle.categorias[0].id, "categorías nuevas, no compartidas");
+  await assert.rejects(s.duplicarTorneo(origen.id, { usuario_id: 999999, roles: ["organizador"] }), /No encontramos ese torneo/, "solo el dueño");
+});

@@ -4,6 +4,7 @@ import { normalizarPaginacion, armarPaginacion } from "../common/pagination.js";
 import { EDICION_POR_ESTADO, ESTADOS_TORNEO, TRANSICIONES, LIMITES, nombreCategoria } from "../../../../torneo_config.js";
 import {
   validarDatosTorneo, fechasCoherentes, puedePasar, faltantesPara, validarCategoria, claveCategoria, validarPremios,
+  copiaDeTorneo, copiaDeCategoria, copiaDePremio,
 } from "./torneo_reglas.js";
 
 export const error = (mensaje, status, codigo) => Object.assign(new Error(mensaje), { status, codigo });
@@ -85,6 +86,26 @@ export async function crearTorneo(usuario, body) {
   if (!fechasCoherentes(datos)) throw error("La fecha de fin no puede ser anterior a la de inicio.", 400, "FECHAS_INVALIDAS");
   const torneo = await Torneo.create({ ...datos, organizador_id: usuario.usuario_id, estado: "borrador" });
   return cargarDetalle(torneo);
+}
+
+/**
+ * Copia un torneo propio (en cualquier estado) a uno nuevo en borrador, para no cargar todo otra vez:
+ * datos, reglamento, cobro, categorías con su formato y premios. No copia fechas, parejas ni juego.
+ */
+export async function duplicarTorneo(torneoId, usuario) {
+  return sequelize.transaction(async (t) => {
+    const origen = await torneoPropio(torneoId, usuario, t);
+    const categorias = await TorneoCategoria.findAll({
+      where: { torneo_id: origen.id }, include: [{ model: TorneoPremio, as: "premios" }],
+      order: [["orden", "ASC"], ["id", "ASC"]], transaction: t,
+    });
+    const nuevo = await Torneo.create({ ...copiaDeTorneo(origen.get({ plain: true })), organizador_id: usuario.usuario_id }, { transaction: t });
+    for (const categoria of categorias) {
+      const copia = await TorneoCategoria.create({ ...copiaDeCategoria(categoria), torneo_id: nuevo.id }, { transaction: t });
+      if (categoria.premios.length) await TorneoPremio.bulkCreate(categoria.premios.map((p) => ({ ...copiaDePremio(p), categoria_id: copia.id })), { transaction: t });
+    }
+    return cargarDetalle(nuevo, t);
+  });
 }
 
 export async function actualizarTorneo(torneoId, usuario, body) {

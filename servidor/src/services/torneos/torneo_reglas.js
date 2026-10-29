@@ -158,3 +158,18 @@ export function validarPremios(lista) {
   }
   return { datos };
 }
+
+// ── Duplicar ────────────────────────────────────────────────────────────────
+// Lista explícita de lo que se copia: un campo nuevo del torneo no se copia sin decidirlo.
+// No van fechas (quedan vacías para no publicar con la fecha vieja), estado, inscripciones ni juego.
+const COPIABLES_TORNEO = ["descripcion", "sede", "direccion", "localidad", "contacto", "reglamento", "monto_inscripcion", "cobro_titular", "cobro_banco", "cobro_cbu", "cobro_alias"];
+const COPIABLES_CATEGORIA = ["nivel", "rama", "nombre_personalizado", "cupo_parejas", "monto_inscripcion", "orden", "parejas_por_zona", "clasifican_por_zona", "formato_zona", "formato_llave"];
+const COPIABLES_PREMIO = ["puesto", "etiqueta", "descripcion", "orden"];
+const elegir = (origen, campos) => Object.fromEntries(campos.map((c) => [c, origen[c] ?? null]));
+
+/** Datos del torneo nuevo: "Copia de …" (sin pasar los 120 caracteres), en borrador y sin fechas. */
+export function copiaDeTorneo(torneo) {
+  return { ...elegir(torneo, COPIABLES_TORNEO), nombre: `Copia de ${torneo.nombre}`.slice(0, 120), estado: "borrador", fecha_inicio: null, fecha_fin: null };
+}
+export const copiaDeCategoria = (categoria) => elegir(categoria, COPIABLES_CATEGORIA);
+export const copiaDePremio = (premio) => elegir(premio, COPIABLES_PREMIO);

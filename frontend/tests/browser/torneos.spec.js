@@ -42,6 +42,11 @@ async function servidorFalso(page, { roles = ["jugador", "organizador"], plan = 
     if (!torneo) return route.fulfill({ status: 404, json: { ok: false, codigo: "TORNEO_INEXISTENTE", mensaje: "No encontramos ese torneo." } });
     if (!sub && request.method() === "GET") return route.fulfill({ json: { ok: true, data: detalle(torneo) } });
     if (!sub && request.method() === "PATCH") { Object.assign(torneo, body); return responder(route, torneo, "Cambios guardados."); }
+    if (sub === "duplicar") {
+      const copia = { ...structuredClone(torneo), id: proximoId++, nombre: `Copia de ${torneo.nombre}`, estado: "borrador", fecha_inicio: null, fecha_fin: null };
+      torneos.push(copia);
+      return responder(route, copia, "Torneo duplicado: quedó en borrador. Revisá las fechas y abrí la inscripción.", 201);
+    }
     if (sub === "estado") {
       if (body.estado === "inscripcion" && (!torneo.sede || !torneo.categorias.length)) {
         return route.fulfill({ status: 409, json: { ok: false, codigo: "FALTAN_DATOS", mensaje: "Para abrir la inscripción falta cargar al menos una categoría." } });
@@ -252,6 +257,19 @@ test("cada pestaña tiene su guía según el estado del torneo; se oculta y se r
   await expect(guia.getByText("Paso 1 de 6")).toBeVisible();
 });
 
+test("duplicar un torneo jugado lo copia en borrador y lo abre", async ({ page }) => {
+  const pedidos = await servidorFalso(page, { torneos: [structuredClone(TORNEO_EN_JUEGO)] });
+  await page.goto("/mis-torneos/" + TORNEO_EN_JUEGO.id);
+  await page.getByRole("button", { name: "Duplicar torneo" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Las fechas quedan vacías");
+  await page.getByRole("dialog").getByRole("button", { name: "Duplicar", exact: true }).click();
+  await expect(page).toHaveURL(/\/mis-torneos\/100$/);
+  await expect(page.getByRole("heading", { name: "Copia de Copa Primavera" })).toBeVisible();
+  await expect(page.getByText("Borrador", { exact: true })).toBeVisible();
+  await expect(page.getByText("Torneo duplicado: quedó en borrador.")).toBeVisible();
+  expect(pedidos.filter((p) => p.metodo === "POST" && p.ruta.endsWith("/duplicar"))).toHaveLength(1);
+});
+
 test("con el plan vencido se ve todo pero en solo lectura", async ({ page }, info) => {
   await servidorFalso(page, { plan: PLAN_VENCIDO, torneos: [structuredClone(TORNEO_EN_JUEGO)] });
   await page.goto("/mis-torneos");
@@ -263,6 +281,7 @@ test("con el plan vencido se ve todo pero en solo lectura", async ({ page }, inf
   await expect(page.getByLabel("Nombre del torneo")).toBeDisabled();
   await expect(page.getByRole("button", { name: "Guardar datos" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Finalizar torneo" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Duplicar torneo" })).toHaveCount(0);
   await page.getByRole("tab", { name: "Reglamento" }).click();
   await expect(page.getByLabel("Reglamento")).toHaveValue("Sets a 6 games.");
   await expect(page.getByLabel("Reglamento")).toBeDisabled();

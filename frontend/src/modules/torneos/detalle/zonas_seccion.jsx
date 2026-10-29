@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Shuffle, Star, Trophy } from "lucide-react";
+import { CalendarClock, CalendarRange, Shuffle, Star, Trophy } from "lucide-react";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
@@ -10,6 +10,7 @@ import { FORMATOS_PARTIDO, PERMITIDO } from "../../../../../torneo_config.js";
 import { getZonas, sortearZonas, moverPareja, guardarResultado, borrarResultado, programarPartido } from "../api/torneos_api.js";
 import { AvisoMejores, HorarioPartido, MarcasDeFila } from "../torneo_ui.jsx";
 import ProgramacionModal from "./programacion_modal.jsx";
+import CronogramaModal from "./cronograma_modal.jsx";
 import { mensajeDe } from "./use_cambio_torneo.js";
 import ResultadoModal from "./resultado_modal.jsx";
 import { ResumenLlave } from "./calculo_llave.jsx";
@@ -37,14 +38,25 @@ function useCambioZonas(torneoId, categoriaId, accion, { onExito, errorEnPantall
 
 export default function ZonasSeccion({ torneo, editable }) {
   const [categoriaId, setCategoriaId] = useState(String(torneo.categorias[0]?.id ?? ""));
+  const [cronograma, setCronograma] = useState(false);
+  const puedeProgramar = editable && PERMITIDO.programarPartidos.includes(torneo.estado);
   if (!torneo.categorias.length) return <p className="text-sm text-(--kt-ink-soft)">Primero cargá las categorías del torneo.</p>;
   return (
     <div className="space-y-4">
-      <div className="max-w-xs">
-        <SelectField label="Categoría" name="zonas-categoria" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} showPlaceholderOption={false}
-          options={torneo.categorias.map((c) => ({ value: String(c.id), label: c.nombre }))} />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-48 flex-1 sm:max-w-xs">
+          <SelectField label="Categoría" name="zonas-categoria" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} showPlaceholderOption={false}
+            options={torneo.categorias.map((c) => ({ value: String(c.id), label: c.nombre }))} />
+        </div>
+        {/* Para todo el torneo (todas las categorías), no solo la elegida. */}
+        {puedeProgramar && (
+          <button type="button" onClick={() => setCronograma(true)} className={`${BOTON} border-(--kt-petrol) bg-white text-(--kt-petrol)`}>
+            <CalendarRange size={16} aria-hidden="true" /> Armar cronograma
+          </button>
+        )}
       </div>
       <ZonasDeCategoria key={categoriaId} torneo={torneo} categoriaId={Number(categoriaId)} editable={editable} />
+      {cronograma && <CronogramaModal torneo={torneo} onClose={() => setCronograma(false)} />}
     </div>
   );
 }

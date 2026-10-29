@@ -25,6 +25,8 @@ export const Usuario = defineModel("Usuario", {
 
   // "sub" de Google: fijo aunque la persona cambie el email de su cuenta de Google.
   google_id:     { type: DataTypes.STRING(255), allowNull: true, unique: true },
+  // Avisos por mail al jugador (confirmaciones, rechazos, horarios). La campanita llega igual.
+  recibir_mails: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
 
   // Hash bcrypt — nunca almacenar texto plano
   contrasena:    { type: DataTypes.STRING(255), allowNull: false },

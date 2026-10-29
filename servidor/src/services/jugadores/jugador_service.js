@@ -71,9 +71,10 @@ async function perfil(usuario) {
 }
 
 export async function miPerfil(usuarioId) {
-  const usuario = await Usuario.findByPk(usuarioId, { attributes: ["id", "persona_id", "codigo_jugador"] });
+  const usuario = await Usuario.findByPk(usuarioId, { attributes: ["id", "persona_id", "codigo_jugador", "recibir_mails"] });
   if (!usuario) throw error("No encontramos tu cuenta.", 404, "USUARIO_INEXISTENTE");
-  return perfil(usuario);
+  // La preferencia de mails es solo del perfil propio, nunca del público.
+  return { ...await perfil(usuario), recibir_mails: usuario.recibir_mails };
 }
 
 /** Perfil público por código: solo nombre y datos deportivos (nada de email ni teléfono). */

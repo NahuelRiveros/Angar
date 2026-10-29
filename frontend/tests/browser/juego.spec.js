@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { readFile } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
 import { EDICION_POR_ESTADO, TRANSICIONES } from "../../../torneo_config.js";
 
@@ -252,6 +253,45 @@ test("campanita: avisa invitaciones y comprobantes pendientes; el aviso lleva al
   await expect(page.getByRole("link", { name: "Ver mis inscripciones" })).toHaveCount(0);
 });
 
+test("campanita: las novedades (confirmación, horario) se ven con punto, se marcan leídas al abrir y llevan a su lugar", async ({ page }, info) => {
+  let datos = { no_leidos: 2, avisos: [
+    { id: 31, tipo: "inscripcion_confirmada", titulo: "Estás confirmado en Copa Club", detalle: "Tu inscripción en 6ta Damas quedó confirmada.", ruta: "/mis-inscripciones", leido_en: null, creado_en: "2026-10-28T21:00:00Z" },
+    { id: 30, tipo: "horario_partido", titulo: "Horario de tu partido en Copa Club", detalle: "Ana / Bea vs Eli / Flor: sáb 05/12 · 18:30 · Cancha 2.", ruta: "/torneos/9", leido_en: null, creado_en: "2026-10-28T20:00:00Z" },
+    { id: 20, tipo: "inscripcion_rechazada", titulo: "Tu inscripción en Copa Vieja fue rechazada", detalle: null, ruta: "/mis-inscripciones?ver=bajas", leido_en: "2026-10-20T10:00:00Z", creado_en: "2026-10-19T10:00:00Z" },
+  ] };
+  const pedidos = await api(page, { roles: ["jugador"], rutas: {
+    "GET /inscripciones/mias": { ok: true, data: [] },
+    "GET /avisos": (route) => route.fulfill({ json: { ok: true, data: datos } }),
+    "POST /avisos/leidos": (route) => { datos = { ...datos, no_leidos: 0, avisos: datos.avisos.map((a) => ({ ...a, leido_en: a.leido_en ?? "2026-10-29T10:00:00Z" })) }; return route.fulfill({ json: { ok: true, data: { marcados: 2 } } }); },
+  } });
+  await page.goto("/torneos");
+  await page.getByRole("button", { name: "Avisos: 2 pendientes" }).click();
+  const novedades = page.getByRole("list", { name: "Novedades" });
+  await expect(novedades.getByRole("link", { name: /Nueva: Estás confirmado en Copa Club/ })).toBeVisible();
+  await expect(novedades.getByRole("link", { name: /Nueva: Horario de tu partido/ })).toContainText("sáb 05/12 · 18:30 · Cancha 2");
+  await expect(novedades.getByRole("link", { name: /Copa Vieja/ })).not.toContainText("Nueva:");
+  await expect.poll(() => pedidos.filter((x) => x.clave === "POST /avisos/leidos").length).toBe(1);
+  await expect(page.getByRole("button", { name: "Avisos: nada pendiente" })).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("campanita_novedades.png") });
+  await novedades.getByRole("link", { name: /Horario de tu partido/ }).click();
+  await expect(page).toHaveURL(/\/torneos\/9$/);
+});
+
+test("mi perfil: el jugador apaga los avisos por mail", async ({ page }) => {
+  const pedidos = await api(page, { roles: ["jugador"], rutas: {
+    "GET /jugadores/yo": { ok: true, data: { codigo: "MP-7K3QX", nombre: "Eva Prueba", recibir_mails: true, resumen: { torneos: 0, titulos: 0, finales: 0, mejor_puesto: null }, historial: [] } },
+    "PUT /avisos/preferencias": (route, body) => route.fulfill({ json: { ok: true, data: { recibir_mails: body.recibir_mails } } }),
+  } });
+  await page.goto("/mi-perfil");
+  const interruptor = page.getByRole("switch", { name: /Recibir avisos por mail/ });
+  await expect(interruptor).toBeChecked();
+  await interruptor.click();
+  await expect(page.getByText("Listo: ya no te mandamos mails.")).toBeVisible();
+  await expect(interruptor).not.toBeChecked();
+  expect(pedidos.find((x) => x.clave === "PUT /avisos/preferencias").body).toEqual({ recibir_mails: false });
+});
+
 test("campanita: un visitante sin sesión no la ve", async ({ page }) => {
   await api(page, { rutas: {} });
   await page.goto("/torneos");
@@ -351,6 +391,93 @@ test("organizador: carga la cuenta en Datos, ve el comprobante y aprueba uno (qu
   await modal.getByRole("button", { name: "Rechazar comprobante" }).click();
   await expect(page.getByText("Motivo: El monto no coincide")).toBeVisible();
   expect(pedidos.find((x) => x.clave === "POST /torneos/9/inscripciones/2/pago/rechazar").body).toEqual({ motivo: "El monto no coincide" });
+});
+
+test("organizador: descarga la lista de inscriptos para Excel (acentos, teléfono, pago y sin fórmulas)", async ({ page }) => {
+  const torneo = detalle("inscripcion");
+  torneo.categorias[0].monto_inscripcion = 20000;
+  const inscripciones = [
+    { id: 1, categoria_id: 91, jugador1_nombre: "Ana Gómez", jugador2_nombre: "Bea \"La Rápida\" Ruiz", telefono: "3704000000", nota: null, origen: "online", estado: "confirmada", motivo_rechazo: null, cabeza_de_serie: true, zona_id: null, pago_estado: "aprobado", creado_en: "2026-10-20T15:00:00Z" },
+    { id: 2, categoria_id: 91, jugador1_nombre: "=HYPERLINK(\"http://malo\")", jugador2_nombre: "Dani Paz", telefono: null, nota: "Pagamos en el club", origen: "organizador", estado: "pendiente", motivo_rechazo: null, cabeza_de_serie: false, zona_id: null, pago_estado: null, creado_en: "2026-10-21T15:00:00Z" },
+  ];
+  await api(page, { roles: ["organizador"], rutas: {
+    "GET /torneos/9": { ok: true, data: torneo },
+    "GET /torneos/9/inscripciones": { ok: true, data: inscripciones },
+  } });
+  await page.goto("/mis-torneos/9");
+  await page.getByRole("tab", { name: "Inscripciones" }).click();
+  const descarga = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Descargar Excel" }).click();
+  const archivo = await descarga;
+  expect(archivo.suggestedFilename()).toMatch(/^inscriptos-.+\.csv$/);
+  const texto = await readFile(await archivo.path(), "utf8");
+  expect(texto.startsWith("﻿")).toBe(true);
+  const [encabezado, primera, segunda] = texto.slice(1).split("\r\n");
+  expect(encabezado).toBe('"Categoría";"Jugador 1";"Jugador 2";"Teléfono";"Estado";"Pago";"Cabeza de serie";"Cómo se anotó";"Anotada el";"Nota";"Motivo de rechazo"');
+  expect(primera).toContain('"Ana Gómez";"Bea ""La Rápida"" Ruiz";"3704000000";"Confirmada";"Pago aprobado";"Sí";"Online";"20/10/2026"');
+  expect(segunda).toContain(`"'=HYPERLINK(""http://malo"")"`);
+  expect(segunda).toContain('"Sin comprobante"');
+});
+
+test("organizador: arma el cronograma automático, ve cómo queda y lo guarda", async ({ page }, info) => {
+  const VISTA = { ya_programados: 1, sin_lugar: [{ id: 103, categoria: "6ta Damas", etapa: "Zona A", partido: "Ana / Bea vs Caro / Dani" }], asignados: [
+    { id: 101, fecha: "2026-12-05", hora: "18:00", cancha: "Cancha 1", categoria: "6ta Damas", etapa: "Zona A", partido: "Ana / Bea vs Eli / Flor" },
+    { id: 102, fecha: "2026-12-05", hora: "19:00", cancha: "Cancha 2", categoria: "6ta Damas", etapa: "Zona A", partido: "Caro / Dani vs Eli / Flor" },
+  ] };
+  const pedidos = await api(page, { roles: ["organizador"], rutas: {
+    "GET /torneos/9": { ok: true, data: detalle("inscripcion") },
+    "GET /torneos/9/categorias/91/zonas": { ok: true, data: ZONAS_ARMADAS },
+    "POST /torneos/9/cronograma/previsualizar": (route, body) => (body.canchas === 9
+      ? route.fulfill({ status: 400, json: { ok: false, mensaje: "Las canchas van de 1 a 20." } })
+      : route.fulfill({ json: { ok: true, data: VISTA } })),
+    "POST /torneos/9/cronograma": { ok: true, mensaje: "Cronograma guardado: 2 partidos con horario. Les avisamos a los jugadores.", data: VISTA },
+  } });
+  await page.goto("/mis-torneos/9");
+  await page.getByRole("tab", { name: "Zonas" }).click();
+  await page.getByRole("button", { name: "Armar cronograma" }).click();
+  const modal = page.getByRole("dialog", { name: "Armar cronograma" });
+  await expect(modal.getByLabel("Día 1")).toHaveValue("2026-12-05");
+  await modal.getByLabel("Canchas").fill("9");
+  await modal.getByRole("button", { name: "Ver cómo queda" }).click();
+  await expect(modal.getByText("Las canchas van de 1 a 20.")).toBeVisible();
+  await modal.getByLabel("Canchas").fill("2");
+  await modal.getByRole("button", { name: "Ver cómo queda" }).click();
+  const vista = modal.getByRole("region", { name: "Vista previa del cronograma" });
+  await expect(vista.getByText("2 partidos con horario · 1 ya tenían horario y se respetan")).toBeVisible();
+  await expect(vista.getByText("1 partido no entró")).toBeVisible();
+  await expect(vista.getByText("18:00 · C1")).toBeVisible();
+  await noOverflow(page);
+  await modal.screenshot({ path: info.outputPath("cronograma.png") });
+  expect(pedidos.filter((x) => x.clave === "POST /torneos/9/cronograma/previsualizar").at(-1).body)
+    .toEqual({ dias: ["2026-12-05"], desde: "18:00", hasta: "23:00", canchas: 2, minutos: 60, descanso: 1, incluir_llave: true });
+  await modal.getByRole("button", { name: "Guardar cronograma" }).click();
+  await expect(page.getByText("Cronograma guardado: 2 partidos con horario.")).toBeVisible();
+  await expect(modal).toHaveCount(0);
+  expect(pedidos.some((x) => x.clave === "POST /torneos/9/cronograma")).toBe(true);
+});
+
+test("organizador: versión para imprimir con zonas y horarios, sin menús al imprimir", async ({ page }, info) => {
+  const zonas = structuredClone(ZONAS_ARMADAS);
+  zonas.zonas[0].partidos[0] = { ...zonas.zonas[0].partidos[0], fecha: "2026-12-05", hora: "18:30", cancha: "Cancha 2" };
+  await page.addInitScript(() => { window.__impresiones = 0; window.print = () => { window.__impresiones += 1; }; });
+  await api(page, { roles: ["organizador"], rutas: {
+    "GET /torneos/9": { ok: true, data: detalle("en_juego") },
+    "GET /torneos/9/categorias/91/zonas": { ok: true, data: zonas },
+    "GET /torneos/9/categorias/91/llave": { ok: true, data: { armada: false, rondas: [], podio: {} } },
+  } });
+  await page.goto("/mis-torneos/9");
+  await page.getByRole("link", { name: "Imprimir fixture y llave" }).click();
+  await expect(page).toHaveURL(/\/mis-torneos\/9\/imprimir$/);
+  await expect(page.getByRole("heading", { name: "6ta Damas" })).toBeVisible();
+  await expect(page.getByText("sáb 05/12 · 18:30 · Cancha 2")).toBeVisible();
+  await expect(page.getByText("La llave se arma cuando terminen las zonas.")).toBeVisible();
+  await page.getByRole("button", { name: "Imprimir o guardar PDF" }).click();
+  expect(await page.evaluate(() => window.__impresiones)).toBe(1);
+  await page.emulateMedia({ media: "print" });
+  await expect(page.getByRole("navigation", { name: "Navegación principal" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Imprimir o guardar PDF" })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Zona A" })).toBeVisible();
+  await page.screenshot({ path: info.outputPath("imprimir.png"), fullPage: true });
 });
 
 test("organizador: confirma, rechaza con motivo y carga una pareja a mano", async ({ page }, info) => {

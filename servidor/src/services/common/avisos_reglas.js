@@ -33,7 +33,46 @@ const AVISOS = {
     renglones: [`${d.pareja} (${d.categoria}) mandó el comprobante del pago.`, "Al aprobarlo, la inscripción queda confirmada."],
     boton: ["Revisar el comprobante", `/mis-torneos/${d.torneoId}`],
   }),
+  // ── Al jugador (la campanita guarda título y detalle; el mail suma el botón) ──
+  inscripcion_confirmada: (d) => ({
+    asunto: `Estás confirmado en ${d.torneo}`,
+    renglones: [`Tu inscripción en ${d.categoria} quedó confirmada${d.pago ? " (pago aprobado)" : ""}. ¡Nos vemos en la cancha!`],
+    boton: ["Ver mis inscripciones", "/mis-inscripciones"],
+  }),
+  inscripcion_rechazada: (d) => ({
+    asunto: `Tu inscripción en ${d.torneo} fue rechazada`,
+    renglones: [`La organización rechazó tu inscripción en ${d.categoria}.`, `Motivo: ${d.motivo}`],
+    boton: ["Ver mis inscripciones", "/mis-inscripciones?ver=bajas"],
+  }),
+  comprobante_rechazado: (d) => ({
+    asunto: `Revisá el comprobante de ${d.torneo}`,
+    renglones: [`La organización rechazó el comprobante de tu inscripción en ${d.categoria}.`, `Motivo: ${d.motivo}`, "Mandá otro para confirmar tu lugar."],
+    boton: ["Mandar otro comprobante", `/mis-inscripciones?pagar=${d.inscripcionId}`],
+  }),
+  invitacion_companiero: (d) => ({
+    asunto: `${d.quien} te invitó a jugar ${d.torneo}`,
+    renglones: [`${d.quien} te anotó como compañero en ${d.categoria}.`, "Aceptá o rechazá la invitación desde tu cuenta."],
+    boton: ["Responder la invitación", "/mis-inscripciones"],
+  }),
+  horario_partido: (d) => ({
+    asunto: `Horario de tu partido en ${d.torneo}`,
+    renglones: [`${d.partido}: ${d.cuando}.`],
+    boton: ["Ver el torneo", `/torneos/${d.torneoId}`],
+  }),
+  horarios_torneo: (d) => ({
+    asunto: `Tus horarios en ${d.torneo}`,
+    renglones: ["Ya están los horarios de tus partidos:", ...d.partidos],
+    boton: ["Ver el torneo", `/torneos/${d.torneoId}`],
+  }),
 };
+
+/** Lo que guarda la campanita: el asunto sin el prefijo, los renglones y a dónde lleva. */
+export function avisoParaCampanita(tipo, datos) {
+  const armar = AVISOS[tipo];
+  if (!armar) throw new Error(`Aviso desconocido: ${tipo}`);
+  const { asunto, renglones, boton: [, ruta] } = armar(datos);
+  return { tipo, titulo: asunto.slice(0, 160), detalle: renglones.join(" ").slice(0, 300), ruta };
+}
 
 /** { subject, text, html } del aviso; los datos del usuario se escapan en el HTML. */
 export function armarAviso(tipo, datos, baseUrl) {

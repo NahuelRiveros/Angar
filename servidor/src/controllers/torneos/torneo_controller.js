@@ -1,6 +1,6 @@
 import {
   listarMisTorneos, obtenerTorneo, crearTorneo, actualizarTorneo, cambiarEstado, eliminarTorneo,
-  crearCategoria, actualizarCategoria, eliminarCategoria, guardarPremios,
+  crearCategoria, actualizarCategoria, eliminarCategoria, guardarPremios, duplicarTorneo,
 } from "../../services/torneos/torneo_service.js";
 
 export function responderError(res, e, mensaje) {
@@ -45,6 +45,9 @@ export const estadoController = conIds(async (req, res, { torneoId }) => {
   const data = await cambiarEstado(torneoId, req.user, String(req.body?.estado ?? ""));
   return res.json({ ok: true, mensaje: "Estado actualizado.", data });
 }, "No pudimos cambiar el estado.");
+
+export const duplicarController = conIds(async (req, res, { torneoId }) =>
+  res.status(201).json({ ok: true, mensaje: "Torneo duplicado: quedó en borrador. Revisá las fechas y abrí la inscripción.", data: await duplicarTorneo(torneoId, req.user) }), "No pudimos duplicar el torneo.");
 
 export const eliminarController = conIds(async (req, res, { torneoId }) => {
   await eliminarTorneo(torneoId, req.user);

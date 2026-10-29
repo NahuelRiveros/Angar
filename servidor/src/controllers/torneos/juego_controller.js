@@ -6,6 +6,7 @@ import {
 import { verZonas, generarZonas, moverPareja, cargarResultado, borrarResultado, programarPartido } from "../../services/torneos/zona_service.js";
 import { verLlave, armarLlaveCategoria, deshacerLlave } from "../../services/torneos/llave_service.js";
 import { listarTorneosPublicos, verTorneoPublico, verCategoriaPublica } from "../../services/torneos/publico_service.js";
+import { previsualizarCronograma, aplicarCronograma } from "../../services/torneos/cronograma_service.js";
 import { conIds, responderError } from "./torneo_controller.js";
 
 // ── Organizador: inscripciones ──────────────────────────────────────────────
@@ -40,6 +41,16 @@ export const comprobanteInscripcionController = conIds(async (req, res, { inscri
 
 export const subirComprobanteController = conIds(async (req, res, { inscripcionId }) =>
   res.json({ ok: true, mensaje: "¡Comprobante enviado! La organización lo revisa y confirma tu inscripción.", data: await subirComprobanteInscripcion(req.user, inscripcionId, req.file) }), "No pudimos enviar el comprobante.");
+
+// ── Cronograma automático ───────────────────────────────────────────────────
+export const previsualizarCronogramaController = conIds(async (req, res, { torneoId }) =>
+  res.json({ ok: true, data: await previsualizarCronograma(torneoId, req.user, req.body) }), "No pudimos armar el cronograma.");
+
+export const aplicarCronogramaController = conIds(async (req, res, { torneoId }) => {
+  const data = await aplicarCronograma(torneoId, req.user, req.body);
+  const mensaje = `Cronograma guardado: ${data.asignados.length} partido${data.asignados.length === 1 ? "" : "s"} con horario. Les avisamos a los jugadores.`;
+  return res.json({ ok: true, mensaje, data });
+}, "No pudimos guardar el cronograma.");
 
 // ── Organizador: zonas y resultados ─────────────────────────────────────────
 export const verZonasController = conIds(async (req, res, { torneoId, categoriaId }) =>

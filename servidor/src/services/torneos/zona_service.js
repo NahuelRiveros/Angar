@@ -4,6 +4,7 @@ import { sequelize } from "../../database/sequelize.js";
 import { TorneoCategoria, Inscripcion, Zona, Partido } from "../../models/index.js";
 import { PERMITIDO, ESTADOS_TORNEO } from "../../../../torneo_config.js";
 import { torneoPropio, error } from "./torneo_service.js";
+import { avisarAJugadores } from "../avisos/avisos_jugador_service.js";
 import { armarZonas, fixtureTodosContraTodos, validarResultado, validarProgramacion } from "./zona_reglas.js";
 import { tieneLlave, detalleLlave, cargarResultadoDeLlave, borrarResultadoDeLlave, clasificacionDe } from "./llave_service.js";
 
@@ -147,15 +148,45 @@ export async function cargarResultado(torneoId, partidoId, usuario, sets) {
 
 /** Día, hora y cancha de un partido de zona o de llave. Devuelve la fase como el resultado. */
 export async function programarPartido(torneoId, partidoId, usuario, body) {
-  return sequelize.transaction(async (t) => {
+  let programado = null;
+  const respuesta = await sequelize.transaction(async (t) => {
     const torneo = await torneoPropio(torneoId, usuario, t);
     exigir(torneo, "programarPartidos", "El día y la cancha se cargan con el torneo en inscripción o en juego");
     const { partido, categoria } = await partidoDelTorneo(torneo, partidoId, t);
     const { datos, error: invalido } = validarProgramacion(body);
     if (invalido) throw error(invalido, 400, "PROGRAMACION_INVALIDA");
     await partido.update({ ...datos, actualizado_en: new Date() }, { transaction: t });
+    if (datos.fecha || datos.hora || datos.cancha) programado = { partido: partido.get({ plain: true }), torneo: { id: torneo.id, nombre: torneo.nombre } };
     return partido.fase === "llave" ? { fase: "llave", ...await detalleLlave(categoria, t) } : { fase: "zona", ...await detalleZonas(categoria, t) };
   });
+  if (programado) avisarHorario(programado);
+  return respuesta;
+}
+
+/** "sáb 05/12 18:30 · Cancha 2" con lo que tenga cargado el partido. */
+export function textoDeHorario({ fecha, hora, cancha }) {
+  const dia = fecha && new Intl.DateTimeFormat("es-AR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "America/Argentina/Buenos_Aires" })
+    .formatToParts(new Date(`${fecha}T12:00:00-03:00`)).reduce((a, p) => ({ ...a, [p.type]: p.value }), {});
+  return [dia && `${dia.weekday.replace(".", "")} ${dia.day}/${dia.month}`, hora, cancha].filter(Boolean).join(" · ") || "a confirmar";
+}
+
+/**
+ * Horario cargado o cambiado a mano: solo a la campanita de los jugadores con cuenta de las dos
+ * parejas (por mail serían muchos cuando se cargan de a uno). En segundo plano.
+ */
+function avisarHorario({ partido, torneo }) {
+  const ids = [partido.pareja1_id, partido.pareja2_id].filter(Boolean);
+  if (!ids.length) return;
+  Inscripcion.findAll({ where: { id: ids }, attributes: ["id", "usuario_id", "usuario2_id", "jugador1_nombre", "jugador2_nombre"] })
+    .then((parejas) => {
+      const nombre = (id) => parejas.find((p) => p.id === id);
+      const texto = (p) => (p ? `${p.jugador1_nombre} / ${p.jugador2_nombre}` : "A definir");
+      return avisarAJugadores(parejas.flatMap((p) => [p.usuario_id, p.usuario2_id]), "horario_partido", {
+        torneo: torneo.nombre, torneoId: torneo.id,
+        partido: `${texto(nombre(partido.pareja1_id))} vs ${texto(nombre(partido.pareja2_id))}`, cuando: textoDeHorario(partido),
+      }, { mail: false });
+    })
+    .catch((e) => console.error("No se pudo avisar el horario:", e.message));
 }
 
 export async function borrarResultado(torneoId, partidoId, usuario) {

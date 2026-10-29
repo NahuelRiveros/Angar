@@ -474,6 +474,78 @@ test("avisos por correo: textos con enlace, datos escapados y sin escribir a dom
   for (const prueba of ["organizacion.demo@example.test", "x@example.com", "a@b.test", "", null, "sin-arroba"]) assert.equal(destinoValido(prueba), false, String(prueba));
 });
 
+test("duplicar: solo los campos elegidos, nombre con tope y sin fechas", async () => {
+  const { copiaDeTorneo, copiaDeCategoria } = await import("../src/services/torneos/torneo_reglas.js");
+  const copia = copiaDeTorneo({ id: 4, nombre: "x".repeat(118), estado: "finalizado", fecha_inicio: "2026-07-10", sede: "Club", organizador_id: 9, campo_nuevo_privado: "no" });
+  assert.equal(copia.nombre.length, 120);
+  assert.deepEqual([copia.estado, copia.fecha_inicio, copia.fecha_fin, copia.sede], ["borrador", null, null, "Club"]);
+  for (const campo of ["id", "organizador_id", "campo_nuevo_privado"]) assert.equal(campo in copia, false, campo);
+  assert.equal("torneo_id" in copiaDeCategoria({ id: 1, torneo_id: 4, nivel: 5 }), false);
+});
+
+test("avisos al jugador: lo que guarda la campanita (título, detalle con tope y a dónde lleva)", async () => {
+  const { avisoParaCampanita, armarAviso } = await import("../src/services/common/avisos_reglas.js");
+  const rechazo = avisoParaCampanita("comprobante_rechazado", { torneo: "Copa", categoria: "6ta Mixto", motivo: "No se ve el monto", inscripcionId: 7 });
+  assert.deepEqual([rechazo.tipo, rechazo.titulo, rechazo.ruta], ["comprobante_rechazado", "Revisá el comprobante de Copa", "/mis-inscripciones?pagar=7"]);
+  assert.match(rechazo.detalle, /Motivo: No se ve el monto/);
+  assert.ok(avisoParaCampanita("horarios_torneo", { torneo: "Copa", torneoId: 3, partidos: Array(40).fill("Ana / Bea vs Eli / Flor: sáb 05/12 · 18:30 · Cancha 2") }).detalle.length <= 300);
+  assert.match(armarAviso("inscripcion_confirmada", { torneo: "Copa", categoria: "6ta Mixto", pago: true }, "https://web.test").text, /quedó confirmada \(pago aprobado\)/);
+  assert.throws(() => avisoParaCampanita("inventado", {}), /desconocido/);
+});
+
+test("cronograma automático: turnos, sin superponer parejas, con descanso, llave después de las zonas y lo manual se respeta", async () => {
+  const { validarConfigCronograma, turnosDe, armarCronograma } = await import("../src/services/torneos/cronograma_reglas.js");
+  const { fixtureTodosContraTodos } = await import("../src/services/torneos/zona_reglas.js");
+  const config = validarConfigCronograma({ dias: ["2026-12-06", "2026-12-05"], desde: "18:00", hasta: "23:00", minutos: 60, canchas: 2, descanso: 1 }).datos;
+  assert.deepEqual(config.dias, ["2026-12-05", "2026-12-06"], "los días se ordenan");
+  assert.deepEqual(turnosDe(config).slice(0, 5).map((x) => x.hora), ["18:00", "19:00", "20:00", "21:00", "22:00"]);
+  assert.equal(turnosDe(config).length, 10);
+  assert.match(validarConfigCronograma({ ...config, hasta: "18:30" }).error, /no entra ni un turno/);
+  assert.match(validarConfigCronograma({ ...config, dias: [] }).error, /días/);
+  assert.match(validarConfigCronograma({ ...config, canchas: 0 }).error, /canchas/);
+
+  // Dos categorías: zonas de 3 (todos contra todos) y una llave de 4 (semis + final).
+  let id = 0;
+  const zonaDe = (categoria, zona, parejas) => fixtureTodosContraTodos(parejas).map(([a, b], orden) => ({ id: ++id, categoria_id: categoria, fase: "zona", zona_id: zona, orden, parejas: [a, b] }));
+  const llaveDe = (categoria) => [
+    { id: ++id, categoria_id: categoria, fase: "llave", ronda: 1, orden: 0, parejas: [null, null] },
+    { id: ++id, categoria_id: categoria, fase: "llave", ronda: 1, orden: 1, parejas: [null, null] },
+    { id: ++id, categoria_id: categoria, fase: "llave", ronda: 2, orden: 0, parejas: [null, null] },
+  ];
+  const partidos = [...zonaDe(1, 10, [1, 2, 3]), ...zonaDe(1, 11, [4, 5, 6]), ...zonaDe(2, 20, [7, 8, 9]), ...llaveDe(1)];
+  const turno = (a) => turnosDe(config).findIndex((x) => x.fecha === a.fecha && x.hora === a.hora);
+  const r = armarCronograma({ partidos: structuredClone(partidos), config });
+  assert.deepEqual(r.sinLugar, []);
+  assert.equal(r.asignados.length, partidos.length);
+  const porId = new Map(r.asignados.map((a) => [a.id, a]));
+  const ultimo = new Map();
+  for (const a of [...r.asignados].sort((x, y) => turno(x) - turno(y))) {
+    for (const p of partidos.find((x) => x.id === a.id).parejas.filter(Boolean)) {
+      assert.ok(!ultimo.has(p) || turno(a) - ultimo.get(p) >= 2, `pareja ${p}: descanso de un turno`);
+      ultimo.set(p, turno(a));
+    }
+  }
+  assert.equal(new Set(r.asignados.map((a) => `${turno(a)}|${a.cancha}`)).size, r.asignados.length, "una cancha por turno");
+  const finZonas = Math.max(...partidos.filter((p) => p.fase === "zona" && p.categoria_id === 1).map((p) => turno(porId.get(p.id))));
+  const semis = partidos.filter((p) => p.fase === "llave" && p.ronda === 1).map((p) => turno(porId.get(p.id)));
+  const final = turno(porId.get(partidos.at(-1).id));
+  assert.ok(Math.min(...semis) > finZonas + 1, "la llave espera las zonas y el descanso");
+  assert.ok(final > Math.max(...semis) + 1, "la final después de las semis");
+  assert.deepEqual(armarCronograma({ partidos: structuredClone(partidos), config }), r, "siempre da lo mismo");
+
+  // Lo cargado a mano se respeta: esa cancha y turno quedan tomados y la pareja 1 descansa.
+  const conManual = armarCronograma({ partidos: structuredClone(partidos), config, ocupados: [{ fecha: "2026-12-05", hora: "18:00", cancha: "Cancha 1", parejas: [1, 4], categoria_id: 1, fase: "zona" }] });
+  assert.ok(!conManual.asignados.some((a) => a.fecha === "2026-12-05" && a.hora === "18:00" && a.cancha === "Cancha 1"));
+  assert.ok(conManual.asignados.filter((a) => partidos.find((p) => p.id === a.id).parejas.includes(1)).every((a) => turno(a) >= 2));
+
+  // Sin lugar suficiente: lo que no entra queda listado.
+  const chico = validarConfigCronograma({ dias: ["2026-12-05"], desde: "18:00", hasta: "20:00", minutos: 60, canchas: 1, descanso: 0 }).datos;
+  const corto = armarCronograma({ partidos: structuredClone(partidos), config: chico });
+  assert.equal(corto.asignados.length, 2);
+  assert.equal(corto.sinLugar.length, partidos.length - 2);
+  assert.equal(armarCronograma({ partidos: structuredClone(partidos), config: { ...config, incluir_llave: false } }).asignados.length, partidos.length - 3, "sin llave");
+});
+
 test("programación del partido: día, hora y cancha opcionales y validados", async () => {
   const { validarProgramacion } = await import("../src/services/torneos/zona_reglas.js");
   assert.deepEqual(validarProgramacion({ fecha: "2026-12-05", hora: "18:30", cancha: " Cancha 2 " }).datos, { fecha: "2026-12-05", hora: "18:30", cancha: "Cancha 2" });

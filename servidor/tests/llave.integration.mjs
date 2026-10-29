@@ -163,3 +163,41 @@ test("torneos demo: crearlos dos veces a la vez arma uno solo; borrarlos no toca
   assert.deepEqual(await demo.torneosDemoExistentes(), []);
   assert.ok(await torneos.obtenerTorneo(propio.id, org), "el torneo que no es demo sigue");
 });
+
+test("cronograma automático: vista previa sin guardar, aplicar respeta lo manual y avisa a cada jugador una vez", { skip: sin }, async () => {
+  const crono = await import("../src/services/torneos/cronograma_service.js");
+  const { Partido, AvisoUsuario } = await import("../src/models/index.js");
+  const t = await torneos.crearTorneo(org, { nombre: "Copa Horarios", sede: "Club", fecha_inicio: "2026-12-05" });
+  const cat = (await torneos.crearCategoria(t.id, org, { nivel: 6, rama: "mixto", parejas_por_zona: 3, clasifican_por_zona: 2 })).categorias[0];
+  await torneos.cambiarEstado(t.id, org, "inscripcion");
+  // Una pareja con cuenta (para el aviso) y el resto cargadas a mano.
+  const r = await registrarCliente({ nombre: "Jugadora", apellido: "Horarios", email: "jugadora.horarios@example.test", password: "Clave1234" });
+  const jugadora = { usuario_id: r.usuario_id, persona_id: (await Usuario.findByPk(r.usuario_id)).persona_id, roles: ["jugador"], permisos: [] };
+  const online = await insc.anotarseOnline(jugadora, t.id, { categoria_id: cat.id, jugador2_nombre: "Compa Sin Cuenta" });
+  await insc.confirmarInscripcion(t.id, online.id, org);
+  for (let n = 1; n <= 5; n += 1) await insc.cargarPareja(t.id, org, { categoria_id: cat.id, jugador1_nombre: `Jugador ${n}A`, jugador2_nombre: `Jugador ${n}B` });
+  const armadas = await zonas.generarZonas(t.id, cat.id, org, { azar: () => 0.5 });
+  const manual = armadas.zonas[0].partidos[0];
+  await zonas.programarPartido(t.id, manual.id, org, { fecha: "2026-12-05", hora: "18:00", cancha: "Cancha 1" });
+
+  const config = { dias: ["2026-12-05"], desde: "18:00", hasta: "23:00", minutos: 60, canchas: 2, descanso: 1 };
+  const vista = await crono.previsualizarCronograma(t.id, org, config);
+  assert.equal(vista.ya_programados, 1);
+  assert.equal(vista.asignados.length + vista.sin_lugar.length, 5, "los otros 5 partidos de zona");
+  assert.ok(vista.asignados.every((a) => a.categoria === "6ta Mixto" && /^Zona [AB]$/.test(a.etapa) && a.partido.includes(" vs ")));
+  assert.ok(!vista.asignados.some((a) => a.hora === "18:00" && a.cancha === "Cancha 1"), "la cancha del partido manual queda tomada");
+  assert.equal(await Partido.count({ where: { categoria_id: cat.id, cancha: null } }), 5, "la vista previa no guarda");
+
+  const aplicado = await crono.aplicarCronograma(t.id, org, config);
+  assert.deepEqual(aplicado.asignados.map((a) => [a.id, a.hora, a.cancha]), vista.asignados.map((a) => [a.id, a.hora, a.cancha]), "guarda lo mismo que mostró");
+  const manualDespues = await Partido.findByPk(manual.id);
+  assert.deepEqual([manualDespues.hora, manualDespues.cancha], ["18:00", "Cancha 1"], "lo manual no se toca");
+  assert.equal(await Partido.count({ where: { categoria_id: cat.id, cancha: null } }), vista.sin_lugar.length);
+  await assert.rejects(crono.aplicarCronograma(t.id, org, config), aplicado.sin_lugar.length ? /./ : /No hay partidos sin horario/, "una vez programado no queda nada pendiente");
+  await assert.rejects(crono.previsualizarCronograma(t.id, org, { ...config, canchas: 0 }), /canchas/);
+
+  for (let i = 0; i < 50 && !await AvisoUsuario.count({ where: { usuario_id: jugadora.usuario_id, tipo: "horarios_torneo" } }); i += 1) await new Promise((x) => setTimeout(x, 40));
+  const avisos = await AvisoUsuario.findAll({ where: { usuario_id: jugadora.usuario_id, tipo: "horarios_torneo" } });
+  assert.equal(avisos.length, 1, "un solo aviso con todos sus horarios");
+  assert.match(avisos[0].detalle, /6ta Mixto · Jugadora Horarios \/ Compa Sin Cuenta vs/);
+});

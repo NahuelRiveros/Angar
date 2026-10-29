@@ -8,6 +8,7 @@ import { validarRechazo, validarAvisoTransferencia } from "../suscripciones/susc
 import { subirArchivoPrivado, eliminarArchivoPrivado, enlaceArchivoPrivado } from "../common/upload_service.js";
 import { cobroConfig } from "../../../../cobro_config.js";
 import { avisarSinEsperar, contactoDeUsuario } from "../common/avisos_service.js";
+import { avisarAJugadores } from "../avisos/avisos_jugador_service.js";
 import { usuarioPorCodigo } from "../jugadores/jugador_service.js";
 
 // Del pago se manda el estado y si hay comprobante (para el botón "Ver"), nunca el id del archivo.
@@ -40,6 +41,20 @@ async function exigirCupo(categoria, t) {
   if (!categoria.cupo_parejas) return;
   const confirmadas = await Inscripcion.count({ where: { categoria_id: categoria.id, estado: "confirmada" }, transaction: t });
   if (confirmadas >= categoria.cupo_parejas) throw error(`La categoría ${nombreCategoria(categoria)} ya completó su cupo de ${categoria.cupo_parejas} parejas.`, 409, "CUPO_COMPLETO");
+}
+
+/**
+ * Aviso a los jugadores con cuenta de la inscripción (por defecto, los dos de la pareja). Los
+ * nombres del torneo y la categoría se buscan en segundo plano: no demora la respuesta.
+ */
+function avisarPareja(inscripcion, tipo, extra = {}, { ids = [inscripcion.usuario_id, inscripcion.usuario2_id], mail = true } = {}) {
+  if (!ids.some(Boolean)) return;
+  Promise.all([
+    Torneo.findByPk(inscripcion.torneo_id, { attributes: ["id", "nombre"] }),
+    TorneoCategoria.findByPk(inscripcion.categoria_id, { attributes: ["nivel", "rama", "nombre_personalizado"] }),
+  ])
+    .then(([torneo, categoria]) => avisarAJugadores(ids, tipo, { torneo: torneo?.nombre, torneoId: torneo?.id, categoria: nombreCategoria(categoria ?? {}), inscripcionId: inscripcion.id, ...extra }, { mail }))
+    .catch((e) => console.error(`No se pudo avisar "${tipo}":`, e.message));
 }
 
 // ── El jugador ──────────────────────────────────────────────────────────────
@@ -82,6 +97,7 @@ export async function anotarseOnline(usuario, torneoId, body) {
     throw e;
   }
   avisarAlOrganizador("nueva_inscripcion", inscripcion);
+  if (inscripcion.usuario2_id) avisarPareja(inscripcion, "invitacion_companiero", { quien: inscripcion.jugador1_nombre }, { ids: [inscripcion.usuario2_id] });
   return inscripcion;
 }
 
@@ -201,27 +217,31 @@ export async function editarPareja(torneoId, inscripcionId, usuario, body) {
 }
 
 export async function confirmarInscripcion(torneoId, inscripcionId, usuario) {
-  return sequelize.transaction(async (t) => {
+  const inscripcion = await sequelize.transaction(async (t) => {
     const torneo = await torneoPropio(torneoId, usuario, t);
     exigir(torneo, "cargarParejas", "Ya no se pueden confirmar parejas");
-    const inscripcion = await inscripcionDelTorneo(torneo, inscripcionId, t);
-    if (inscripcion.estado !== "pendiente") throw error("Solo se confirman inscripciones pendientes.", 409, "INSCRIPCION_NO_PENDIENTE");
-    await exigirCupo(await categoriaBloqueada(torneo.id, inscripcion.categoria_id, t), t);
-    await inscripcion.update({ estado: "confirmada", actualizado_en: new Date() }, { transaction: t });
-    return inscripcion;
+    const fila = await inscripcionDelTorneo(torneo, inscripcionId, t);
+    if (fila.estado !== "pendiente") throw error("Solo se confirman inscripciones pendientes.", 409, "INSCRIPCION_NO_PENDIENTE");
+    await exigirCupo(await categoriaBloqueada(torneo.id, fila.categoria_id, t), t);
+    await fila.update({ estado: "confirmada", actualizado_en: new Date() }, { transaction: t });
+    return fila;
   });
+  avisarPareja(inscripcion, "inscripcion_confirmada");
+  return inscripcion;
 }
 
 export async function rechazarInscripcion(torneoId, inscripcionId, usuario, body) {
   const { datos, error: invalido } = validarRechazo(body);
   if (invalido) throw error(invalido, 400, "DATOS_INVALIDOS");
-  return sequelize.transaction(async (t) => {
+  const inscripcion = await sequelize.transaction(async (t) => {
     const torneo = await torneoPropio(torneoId, usuario, t);
-    const inscripcion = await inscripcionDelTorneo(torneo, inscripcionId, t);
-    if (!["pendiente", "esperando"].includes(inscripcion.estado)) throw error("Solo se rechazan inscripciones pendientes.", 409, "INSCRIPCION_NO_PENDIENTE");
-    await inscripcion.update({ estado: "rechazada", motivo_rechazo: datos.motivo, actualizado_en: new Date() }, { transaction: t });
-    return inscripcion;
+    const fila = await inscripcionDelTorneo(torneo, inscripcionId, t);
+    if (!["pendiente", "esperando"].includes(fila.estado)) throw error("Solo se rechazan inscripciones pendientes.", 409, "INSCRIPCION_NO_PENDIENTE");
+    await fila.update({ estado: "rechazada", motivo_rechazo: datos.motivo, actualizado_en: new Date() }, { transaction: t });
+    return fila;
   });
+  avisarPareja(inscripcion, "inscripcion_rechazada", { motivo: inscripcion.motivo_rechazo });
+  return inscripcion;
 }
 
 // ── Pago de la inscripción con comprobante ─────────────────────────────────
@@ -296,30 +316,34 @@ export async function enlaceComprobanteInscripcion(usuario, inscripcionId, { enl
 
 /** Aprobar el comprobante confirma la inscripción (con el cupo controlado, como al confirmar a mano). */
 export async function aprobarPagoInscripcion(torneoId, inscripcionId, usuario) {
-  return sequelize.transaction(async (t) => {
+  const inscripcion = await sequelize.transaction(async (t) => {
     const torneo = await torneoPropio(torneoId, usuario, t);
     exigir(torneo, "cargarParejas", "Ya no se pueden confirmar parejas");
-    const inscripcion = await inscripcionDelTorneo(torneo, inscripcionId, t);
-    if (inscripcion.pago_estado !== "en_revision") throw error("Esta inscripción no tiene un comprobante para revisar.", 409, "SIN_COMPROBANTE");
-    if (inscripcion.estado === "esperando") throw error("Todavía falta que el compañero acepte la invitación: después aprobás el pago y queda confirmada.", 409, "ESPERANDO_COMPANIERO");
-    if (inscripcion.estado !== "pendiente") throw error("Solo se aprueba el pago de una inscripción pendiente.", 409, "INSCRIPCION_NO_PENDIENTE");
-    await exigirCupo(await categoriaBloqueada(torneo.id, inscripcion.categoria_id, t), t);
-    await inscripcion.update({ estado: "confirmada", pago_estado: "aprobado", pago_motivo_rechazo: null, actualizado_en: new Date() }, { transaction: t });
-    return inscripcion;
+    const fila = await inscripcionDelTorneo(torneo, inscripcionId, t);
+    if (fila.pago_estado !== "en_revision") throw error("Esta inscripción no tiene un comprobante para revisar.", 409, "SIN_COMPROBANTE");
+    if (fila.estado === "esperando") throw error("Todavía falta que el compañero acepte la invitación: después aprobás el pago y queda confirmada.", 409, "ESPERANDO_COMPANIERO");
+    if (fila.estado !== "pendiente") throw error("Solo se aprueba el pago de una inscripción pendiente.", 409, "INSCRIPCION_NO_PENDIENTE");
+    await exigirCupo(await categoriaBloqueada(torneo.id, fila.categoria_id, t), t);
+    await fila.update({ estado: "confirmada", pago_estado: "aprobado", pago_motivo_rechazo: null, actualizado_en: new Date() }, { transaction: t });
+    return fila;
   });
+  avisarPareja(inscripcion, "inscripcion_confirmada", { pago: true });
+  return inscripcion;
 }
 
 /** Rechazar el comprobante no rechaza la inscripción: la pareja ve el motivo y manda otro. */
 export async function rechazarPagoInscripcion(torneoId, inscripcionId, usuario, body) {
   const { datos, error: invalido } = validarRechazo(body);
   if (invalido) throw error(invalido, 400, "DATOS_INVALIDOS");
-  return sequelize.transaction(async (t) => {
+  const inscripcion = await sequelize.transaction(async (t) => {
     const torneo = await torneoPropio(torneoId, usuario, t);
-    const inscripcion = await inscripcionDelTorneo(torneo, inscripcionId, t);
-    if (inscripcion.pago_estado !== "en_revision") throw error("Esta inscripción no tiene un comprobante para revisar.", 409, "SIN_COMPROBANTE");
-    await inscripcion.update({ pago_estado: "rechazado", pago_motivo_rechazo: datos.motivo, actualizado_en: new Date() }, { transaction: t });
-    return inscripcion;
+    const fila = await inscripcionDelTorneo(torneo, inscripcionId, t);
+    if (fila.pago_estado !== "en_revision") throw error("Esta inscripción no tiene un comprobante para revisar.", 409, "SIN_COMPROBANTE");
+    await fila.update({ pago_estado: "rechazado", pago_motivo_rechazo: datos.motivo, actualizado_en: new Date() }, { transaction: t });
+    return fila;
   });
+  avisarPareja(inscripcion, "comprobante_rechazado", { motivo: inscripcion.pago_motivo_rechazo });
+  return inscripcion;
 }
 
 /** Baja de una pareja confirmada o pendiente. Si ya está en una zona, primero hay que rearmarlas. */

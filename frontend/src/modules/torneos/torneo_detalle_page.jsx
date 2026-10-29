@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Trash2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Copy, ExternalLink, Printer, Trash2 } from "lucide-react";
 import AdminSpinner from "../../controls/ui/admin_spinner.jsx";
 import ConfirmDialog from "../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../controls/ui/error_banner.jsx";
 import { useToast } from "../../controls/toast/toast_context.jsx";
 import { useMiSuscripcion } from "../../hooks/use_mi_suscripcion.js";
 import { ESTADOS_TORNEO } from "../../../../torneo_config.js";
-import { getTorneo, cambiarEstadoTorneo, eliminarTorneo } from "./api/torneos_api.js";
+import { getTorneo, cambiarEstadoTorneo, eliminarTorneo, duplicarTorneo } from "./api/torneos_api.js";
 import { EstadoTorneo } from "./torneo_ui.jsx";
 import AvisoSoloLectura from "./aviso_solo_lectura.jsx";
 import { claveTorneo, mensajeDe, useCambioTorneo } from "./detalle/use_cambio_torneo.js";
@@ -65,11 +65,19 @@ export default function TorneoDetallePage() {
           <EstadoTorneo estado={t.estado} />
         </div>
         <p className="text-sm text-(--kt-ink-soft)">{ESTADOS_TORNEO[t.estado]?.descripcion}</p>
-        {t.estado !== "borrador" && t.estado !== "cancelado" && (
-          <Link to={`/torneos/${t.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-(--kt-teal-700) hover:underline">
-            <ExternalLink size={16} aria-hidden="true" /> Ver la página pública (para compartir con los jugadores)
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-x-4">
+          {t.estado !== "borrador" && t.estado !== "cancelado" && (
+            <Link to={`/torneos/${t.id}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-(--kt-teal-700) hover:underline">
+              <ExternalLink size={16} aria-hidden="true" /> Ver la página pública (para compartir con los jugadores)
+            </Link>
+          )}
+          {t.categorias.length > 0 && (
+            <Link to={`/mis-torneos/${t.id}/imprimir`} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-(--kt-teal-700) hover:underline">
+              <Printer size={16} aria-hidden="true" /> Imprimir fixture y llave
+            </Link>
+          )}
+          {!soloLectura && <BotonDuplicar torneo={t} />}
+        </div>
         {/* Cambia la clave cuando cambia lo que se pide para avanzar: un error viejo ("falta una categoría") no queda a la vista. */}
         {!soloLectura && <AccionesEstado key={[t.estado, t.sede, t.fecha_inicio, t.categorias.length].join("|")} torneo={t} />}
       </div>
@@ -93,6 +101,37 @@ export default function TorneoDetallePage() {
         {seccion === "llave" && <LlaveSeccion torneo={t} editable={puede("datos")} />}
       </section>
     </div>
+  );
+}
+
+/** Copia el torneo (datos, cobro, categorías y premios) a uno nuevo en borrador y lo abre. */
+function BotonDuplicar({ torneo }) {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [confirmar, setConfirmar] = useState(false);
+  const duplicar = useMutation({
+    mutationFn: () => duplicarTorneo(torneo.id),
+    onSuccess: async (r) => {
+      toast.success(r.mensaje);
+      setConfirmar(false);
+      queryClient.setQueryData(claveTorneo(r.data.id), r.data);
+      await queryClient.invalidateQueries({ queryKey: ["torneos", "mios"] });
+      navigate(`/mis-torneos/${r.data.id}`);
+    },
+    onError: (e) => { setConfirmar(false); toast.error(mensajeDe(e, "No pudimos duplicar el torneo.")); },
+  });
+  return (
+    <>
+      <button type="button" onClick={() => setConfirmar(true)} disabled={duplicar.isPending}
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-(--kt-teal-700) hover:underline disabled:opacity-50">
+        <Copy size={16} aria-hidden="true" /> Duplicar torneo
+      </button>
+      <ConfirmDialog open={confirmar} loading={duplicar.isPending} variant="warning" confirmLabel="Duplicar"
+        title={`¿Duplicar "${torneo.nombre}"?`}
+        message="Se crea un torneo nuevo en borrador con los mismos datos, reglamento, cobro, categorías y premios. Las fechas quedan vacías y no se copian parejas ni resultados."
+        onClose={() => setConfirmar(false)} onConfirm={() => duplicar.mutate()} />
+    </>
   );
 }
 

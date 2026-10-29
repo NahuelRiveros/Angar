@@ -2,12 +2,13 @@ import { Router } from "express";
 import { requireAuth } from "../../middleware/auth_middleware.js";
 import { requireSuscripcionVigente } from "../../middleware/suscripcion_middleware.js";
 import {
-  listarController, crearController, obtenerController, actualizarController, estadoController, eliminarController,
+  listarController, crearController, obtenerController, actualizarController, estadoController, eliminarController, duplicarController,
   crearCategoriaController, actualizarCategoriaController, eliminarCategoriaController, premiosController,
 } from "../../controllers/torneos/torneo_controller.js";
 import {
   aprobarPagoController, rechazarPagoController, comprobanteInscripcionController,
   listarInscripcionesController, cargarParejaController, editarParejaController, confirmarController, rechazarController, bajaController,
+  previsualizarCronogramaController, aplicarCronogramaController,
   verZonasController, generarZonasController, moverParejaController, resultadoController, borrarResultadoController, programarController,
   verLlaveController, armarLlaveController, deshacerLlaveController,
 } from "../../controllers/torneos/juego_controller.js";
@@ -30,6 +31,7 @@ torneoRouter.post("/", escribir, crearController);
 torneoRouter.patch("/:torneoId", escribir, actualizarController);
 torneoRouter.patch("/:torneoId/estado", escribir, estadoController);
 torneoRouter.delete("/:torneoId", escribir, eliminarController);
+torneoRouter.post("/:torneoId/duplicar", escribir, duplicarController);
 torneoRouter.post("/:torneoId/categorias", escribir, crearCategoriaController);
 torneoRouter.patch("/:torneoId/categorias/:categoriaId", escribir, actualizarCategoriaController);
 torneoRouter.delete("/:torneoId/categorias/:categoriaId", escribir, eliminarCategoriaController);
@@ -50,3 +52,6 @@ torneoRouter.post("/:torneoId/categorias/:categoriaId/llave/deshacer", escribir,
 torneoRouter.put("/:torneoId/partidos/:partidoId/resultado", escribir, resultadoController);
 torneoRouter.delete("/:torneoId/partidos/:partidoId/resultado", escribir, borrarResultadoController);
 torneoRouter.put("/:torneoId/partidos/:partidoId/programacion", escribir, programarController);
+// Cronograma automático: la vista previa no guarda nada; aplicar sí (pide el plan vigente).
+torneoRouter.post("/:torneoId/cronograma/previsualizar", previsualizarCronogramaController);
+torneoRouter.post("/:torneoId/cronograma", escribir, aplicarCronogramaController);

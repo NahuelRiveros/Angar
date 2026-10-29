@@ -176,6 +176,22 @@ cascada, `/api/admin/demo`) o con `servidor/scripts/demo_torneos.mjs`. Crea con 
 (`@example.test`, contraseña al azar): uno finalizado y otro en juego (mixto en llave, caballeros en zonas, Suma 9
 con zonas terminadas). Solo toca torneos de esa cuenta con la marca `DEMO:` en la descripción.
 
+Herramientas del organizador: duplicar torneo (`POST /api/torneos/:id/duplicar`, campos copiables explícitos en
+`torneo_reglas.js`: queda en borrador, sin fechas ni parejas), Excel de inscriptos armado en el navegador
+(`detalle/exportar_inscripciones.js`, `;` + BOM y celdas a prueba de fórmulas) y `/mis-torneos/:id/imprimir`
+(fixture y llave para imprimir o guardar PDF; el marco del sitio se oculta con `print:hidden`).
+
+Avisos al jugador (campanita + mail): tabla `aviso_usuario` y `usuario.recibir_mails` (preferencia en Mi perfil).
+`services/avisos/avisos_jugador_service.js` (`avisarAJugadores`, en segundo plano; borra lo de más de 90 días): inscripción
+confirmada o rechazada, comprobante rechazado, invitación (con mail) y horario cargado a mano (solo campanita). Textos en
+`avisos_reglas.js`. Rutas `/api/avisos` (mis avisos, `POST /leidos`, `PUT /preferencias`). La campanita suma lo pendiente
+(calculado) y las novedades no leídas; al abrirla se marcan leídas.
+
+Cronograma automático: reglas puras en `services/torneos/cronograma_reglas.js` (turnos por día y franja, una pareja no juega
+dos a la vez, descanso en turnos, llave después de las zonas y ronda por ronda, lo cargado a mano se respeta, sin azar) y
+`cronograma_service.js`: `POST /api/torneos/:id/cronograma/previsualizar` (no guarda) y `POST /cronograma` (guarda y manda
+un solo aviso por jugador con todos sus horarios). Botón "Armar cronograma" en la pestaña Zonas (`detalle/cronograma_modal.jsx`).
+
 Lista pública `/torneos`: `GET /api/publico/torneos?q&estado&rama&nivel` (filtros con allowlist en
 `publico_reglas.js`; rama/nivel = alguna categoría que lo juegue) trae por torneo categorías, formato, parejas,
 lugares libres y premio del campeón en dos consultas por página; los filtros viven en la URL (`tarjeta_torneo.jsx`).

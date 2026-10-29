@@ -26,6 +26,23 @@ export async function cambiarEstadoTorneo(id, estado) {
   return r.data;
 }
 
+/** Cronograma automático: cómo quedaría (no guarda) y guardarlo. config = { dias, desde, hasta, canchas, minutos, descanso, incluir_llave }. */
+export async function previsualizarCronograma(torneoId, config) {
+  const r = await http.post(`/torneos/${torneoId}/cronograma/previsualizar`, config);
+  return r.data.data;
+}
+
+export async function aplicarCronograma(torneoId, config) {
+  const r = await http.post(`/torneos/${torneoId}/cronograma`, config);
+  return r.data;
+}
+
+/** Copia el torneo a uno nuevo en borrador (sin fechas ni parejas); devuelve el detalle del nuevo. */
+export async function duplicarTorneo(id) {
+  const r = await http.post(`/torneos/${id}/duplicar`);
+  return r.data;
+}
+
 export async function eliminarTorneo(id) {
   const r = await http.delete(`/torneos/${id}`);
   return r.data;

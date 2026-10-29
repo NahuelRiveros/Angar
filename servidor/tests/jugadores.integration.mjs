@@ -151,3 +151,49 @@ test("usuarios registrados para el super admin: totales y solo nombre y fecha, s
   assert.deepEqual(Object.keys(despues.data[0]).sort(), ["apellido", "creado_en", "id", "nombre"], "nada de email, teléfono ni DNI");
   assert.equal(despues.data[0].nombre, "Nueva", "los más nuevos primero");
 });
+
+test("avisos al jugador: invitación, confirmación y rechazo llegan a la campanita; se marcan leídos y se pueden apagar los mails", { skip: sin }, async () => {
+  const { AvisoUsuario } = await import("../src/models/index.js");
+  const avisos = await import("../src/services/avisos/avisos_jugador_service.js");
+  // Los avisos se guardan en segundo plano: se espera a que aparezcan.
+  // Cuenta desde lo que cada uno ya tenía (otros tests de este archivo también avisan).
+  const base = Object.fromEntries(await Promise.all(["Ana", "Caro", "Dani"].map(async (n) => [u[n].usuario_id, await AvisoUsuario.count({ where: { usuario_id: u[n].usuario_id } })])));
+  const esperar = async (usuarioId, nuevos) => {
+    for (let i = 0; i < 50 && await AvisoUsuario.count({ where: { usuario_id: usuarioId } }) < base[usuarioId] + nuevos; i += 1) await new Promise((r) => setTimeout(r, 40));
+    return (await AvisoUsuario.findAll({ where: { usuario_id: usuarioId }, order: [["id", "ASC"]] })).slice(base[usuarioId]);
+  };
+  const otro = await torneos.crearTorneo(u.Orga, { nombre: "Copa Avisos", sede: "Club", fecha_inicio: "2026-12-12" });
+  const cat = (await torneos.crearCategoria(otro.id, u.Orga, { nivel: 6, rama: "mixto" })).categorias[0];
+  await torneos.cambiarEstado(otro.id, u.Orga, "inscripcion");
+
+  const invitacion = await insc.anotarseOnline(u.Caro, otro.id, { categoria_id: cat.id, codigo_companiero: u.Dani.codigo });
+  let deDani = await esperar(u.Dani.usuario_id, 1);
+  assert.deepEqual([deDani[0].tipo, deDani[0].ruta], ["invitacion_companiero", "/mis-inscripciones"]);
+  assert.match(deDani[0].titulo, /te invitó a jugar Copa Avisos/);
+  assert.equal(await AvisoUsuario.count({ where: { usuario_id: u.Caro.usuario_id } }), base[u.Caro.usuario_id], "la invitación es solo para el invitado");
+
+  await insc.responderInvitacion(u.Dani, invitacion.id, true);
+  await insc.confirmarInscripcion(otro.id, invitacion.id, u.Orga);
+  deDani = await esperar(u.Dani.usuario_id, 2);
+  const deCaro = await esperar(u.Caro.usuario_id, 1);
+  assert.equal(deDani[1].tipo, "inscripcion_confirmada");
+  assert.match(deCaro[0].titulo, /Estás confirmado en Copa Avisos/, "les llega a los dos de la pareja");
+
+  const sola = await insc.anotarseOnline(u.Ana, otro.id, { categoria_id: cat.id, jugador2_nombre: "Sin Cuenta" });
+  await insc.rechazarInscripcion(otro.id, sola.id, u.Orga, { motivo: "Categoría equivocada" });
+  const deAna = (await esperar(u.Ana.usuario_id, 1)).at(-1);
+  assert.equal(deAna.tipo, "inscripcion_rechazada");
+  assert.match(deAna.detalle, /Motivo: Categoría equivocada/);
+
+  const lista = await avisos.misAvisos(u.Dani);
+  assert.equal(lista.no_leidos, base[u.Dani.usuario_id] + 2);
+  assert.equal(await avisos.marcarAvisosLeidos(u.Dani), base[u.Dani.usuario_id] + 2);
+  assert.equal((await avisos.misAvisos(u.Dani)).no_leidos, 0);
+  assert.ok((await avisos.misAvisos(u.Ana)).no_leidos >= 1, "cada uno ve solo los suyos");
+
+  assert.equal((await jugadores.miPerfil(u.Dani.usuario_id)).recibir_mails, true);
+  await avisos.cambiarRecibirMails(u.Dani, false);
+  assert.equal((await jugadores.miPerfil(u.Dani.usuario_id)).recibir_mails, false);
+  await assert.rejects(avisos.cambiarRecibirMails(u.Dani, "no"), /Indicá si querés/);
+  assert.equal("recibir_mails" in await jugadores.perfilPublico(u.Dani.codigo), false, "no sale en el perfil público");
+});
