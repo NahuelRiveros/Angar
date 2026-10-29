@@ -170,7 +170,9 @@ por tarjeta (`secciones_inscripciones.js`).
 Usuarios registrados (inicio del panel, solo `super_admin` con `requireRole`): `GET /api/admin/registrados`
 (`registrados_service.js`): totales (todos, 7 y 30 días) y los últimos con nombre y fecha, sin contacto ni cuentas de prueba.
 
-Demo: `servidor/scripts/demo_torneos.mjs` crea con los servicios dos torneos de la cuenta "Organización Demo"
+Demo: la lógica vive en `services/demo/demo_torneos_service.js` (una creación a la vez). Se crea sola al arrancar con
+`DEMO_AL_INICIAR=si` (después del listen; si ya existe no hace nada), desde `/panel` (super admin: crear y borrar en
+cascada, `/api/admin/demo`) o con `servidor/scripts/demo_torneos.mjs`. Crea con los servicios dos torneos de la cuenta "Organización Demo"
 (`@example.test`, contraseña al azar): uno finalizado y otro en juego (mixto en llave, caballeros en zonas, Suma 9
 con zonas terminadas). Solo toca torneos de esa cuenta con la marca `DEMO:` en la descripción.
 

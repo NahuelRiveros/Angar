@@ -115,4 +115,8 @@ export const env = {
   // ── Avisos por correo (nuevo organizador, inscripciones, comprobantes) ──
   // Van a SUPERADMIN_EMAIL y al organizador de cada torneo. "no" los apaga (los tests y la demo lo hacen).
   AVISOS_POR_CORREO: String(process.env.AVISOS_POR_CORREO || "si").toLowerCase() !== "no",
+
+  // ── Torneos demo ──────────────────────────────────────────────
+  // "si": al arrancar (cada deploy) crea los torneos DEMO si todavía no existen. Vacío o "no": nada.
+  DEMO_AL_INICIAR: ["si", "true"].includes(String(process.env.DEMO_AL_INICIAR || "").toLowerCase()),
 };

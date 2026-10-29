@@ -4,6 +4,7 @@ import { sequelize } from "../database/sequelize.js";
 import { authRouter } from "./usuarios/auth_router.js";
 import { adminUsuariosRouter } from "./usuarios/admin_usuarios_router.js";
 import { registradosRouter } from "./usuarios/registrados_router.js";
+import { demoRouter } from "./sistema/demo_router.js";
 import { catalogosRouter } from "./sistema/catalogos_router.js";
 import { staffRouter } from "./usuarios/staff_router.js";
 import { permisosRouter } from "./usuarios/permisos_router.js";
@@ -50,6 +51,7 @@ router.get("/health", async (req, res) => {
 router.use("/catalogos", catalogosRouter);
 router.use("/admin/usuarios", adminUsuariosRouter);
 router.use("/admin/registrados", registradosRouter);
+router.use("/admin/demo", demoRouter);
 router.use("/auth", authRouter);
 router.use("/staff", staffRouter);
 router.use("/permisos", permisosRouter);                // ← roles y permisos del equipo

@@ -144,3 +144,22 @@ test("vista pública: zonas, fixture y llave sin cuenta; nada de borradores ni t
   await assert.rejects(publico.verCategoriaPublica(borrador.id, cat.id), /No encontramos/, "un borrador no se ve");
 });
 
+
+test("torneos demo: crearlos dos veces a la vez arma uno solo; borrarlos no toca los demás", { skip: sin }, async () => {
+  const demo = await import("../src/services/demo/demo_torneos_service.js");
+  const propio = await torneos.crearTorneo(org, { nombre: "No es demo", sede: "Club", fecha_inicio: "2026-12-12" });
+  const [a, b] = await Promise.all([demo.crearTorneosDemo({ log: () => {} }), demo.crearTorneosDemo({ log: () => {} })]);
+  assert.equal(a, b, "la segunda llamada espera a la primera");
+  const existentes = await demo.torneosDemoExistentes();
+  assert.deepEqual(existentes.map((t) => t.estado).sort(), ["en_juego", "finalizado"]);
+  assert.equal((await demo.crearTorneosDemo({ log: () => {} })).creados, false, "si ya existen no crea nada");
+  const finalizado = existentes.find((t) => t.estado === "finalizado");
+  const caballeros = (await publico.verTorneoPublico(finalizado.id)).categorias.find((c) => c.nombre === "5ta Caballeros");
+  const vista = await publico.verCategoriaPublica(finalizado.id, caballeros.id);
+  assert.ok(vista.llave.podio.campeon, "el finalizado tiene campeón");
+  assert.equal(vista.zonas.flatMap((z) => z.tabla.filter((f) => f.mejor)).length, 2, "con mejores terceros");
+
+  assert.equal(await demo.borrarTorneosDemo(), 2);
+  assert.deepEqual(await demo.torneosDemoExistentes(), []);
+  assert.ok(await torneos.obtenerTorneo(propio.id, org), "el torneo que no es demo sigue");
+});

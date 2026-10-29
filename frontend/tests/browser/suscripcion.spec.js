@@ -290,6 +290,31 @@ test("inicio del panel: el super admin ve cuántos usuarios hay y los últimos (
   await otra.close();
 });
 
+test("inicio del panel: el super admin ve los torneos demo, los borra con confirmación y los vuelve a crear", async ({ page }, info) => {
+  const DEMOS = [{ id: 12, nombre: "DEMO · Copa Primavera (finalizado)", estado: "finalizado" }, { id: 13, nombre: "DEMO · Torneo de Otoño (en juego)", estado: "en_juego" }];
+  let demos = DEMOS;
+  const pedidos = await entrarComo(page, ["super_admin"], {
+    "GET /suscripcion/admin": LISTA, "GET /suscripcion/admin/transferencias": TRANSFERENCIAS,
+    "GET /admin/registrados": { ok: true, page: 1, limit: 10, total: 0, totalPages: 0, resumen: { total: 0, ultimos_7: 0, ultimos_30: 0 }, data: [] },
+    "GET /admin/demo": (route) => route.fulfill({ json: { ok: true, data: demos } }),
+    "DELETE /admin/demo": (route) => { demos = []; return route.fulfill({ json: { ok: true, mensaje: "Torneos demo borrados: 2.", data: [] } }); },
+    "POST /admin/demo": (route) => { demos = DEMOS; return route.fulfill({ json: { ok: true, mensaje: "Torneos demo creados.", data: DEMOS } }); },
+  });
+  await page.goto("/panel");
+  const tarjeta = page.getByRole("region", { name: "Torneos demo" });
+  await expect(tarjeta.getByRole("link", { name: /Página pública/ }).first()).toHaveAttribute("href", "/torneos/12");
+  await noOverflow(page);
+  await tarjeta.screenshot({ path: info.outputPath("panel_demo.png") });
+  await tarjeta.getByRole("button", { name: "Borrar torneos demo" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Borrar", exact: true }).click();
+  await expect(page.getByText("Torneos demo borrados: 2.")).toBeVisible();
+  await expect(tarjeta.getByText("No hay torneos demo creados.")).toBeVisible();
+  await tarjeta.getByRole("button", { name: "Crear torneos demo" }).click();
+  await expect(page.getByText("Torneos demo creados.")).toBeVisible();
+  await expect(tarjeta.getByText("DEMO · Torneo de Otoño (en juego)")).toBeVisible();
+  expect(pedidos.filter((x) => ["DELETE /admin/demo", "POST /admin/demo"].includes(x.clave)).map((x) => x.clave)).toEqual(["DELETE /admin/demo", "POST /admin/demo"]);
+});
+
 test("inicio del panel: si no carga el resumen se puede reintentar", async ({ page }) => {
   let fallar = true;
   await entrarComo(page, ["admin"], {
