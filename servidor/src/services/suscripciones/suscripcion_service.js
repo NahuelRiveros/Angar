@@ -1,6 +1,6 @@
 import { QueryTypes } from "sequelize";
 import { sequelize } from "../../database/sequelize.js";
-import { env } from "../../configuracion_servidor/env.js";
+import { env, SUPERADMIN_EMAIL_FIJO } from "../../configuracion_servidor/env.js";
 import { Suscripcion, PagoSuscripcion, Rol, UsuarioRol, Usuario } from "../../models/index.js";
 import { normalizarPaginacion, armarPaginacion } from "../common/pagination.js";
 import { avisarSinEsperar, contactoDeUsuario } from "../common/avisos_service.js";
@@ -78,7 +78,7 @@ export async function empezarAOrganizar(usuarioId) {
   if (resultado.creada) {
     avisarSinEsperar("nuevo_organizador", async () => {
       const contacto = await contactoDeUsuario(usuarioId);
-      return contacto && destinoValido(contacto.email) && { para: env.SUPERADMIN_EMAIL, datos: contacto };
+      return contacto && destinoValido(contacto.email) && { para: SUPERADMIN_EMAIL_FIJO, datos: contacto };
     });
   }
   return resultado;
@@ -197,7 +197,7 @@ export async function avisarTransferencia(usuarioId, { archivo, nota }, { subir 
     });
     avisarSinEsperar("transferencia_plan", async () => {
       const contacto = await contactoDeUsuario(usuarioId);
-      return contacto && destinoValido(contacto.email) && { para: env.SUPERADMIN_EMAIL, datos: contacto };
+      return contacto && destinoValido(contacto.email) && { para: SUPERADMIN_EMAIL_FIJO, datos: contacto };
     });
     return pago;
   } catch (e) {

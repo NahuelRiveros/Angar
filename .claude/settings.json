@@ -26,6 +26,8 @@
       "Read(./**/.env.local)",
       "Read(./.env.production)",
       "Read(./**/.env.production)",
+      "Read(./.env.produccion)",
+      "Read(./**/.env.produccion)",
       "Read(./.env.test)",
       "Read(./**/.env.test)",
       "Read(./DEPLOY-ENV.txt)",

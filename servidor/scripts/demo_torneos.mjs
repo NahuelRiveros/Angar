@@ -1,5 +1,5 @@
 // Torneos de DEMOSTRACIÓN con datos ficticios, para ver cómo se ve cada etapa (también en producción).
-// Corre contra la base que indiquen las variables (.env en tu PC, Environment en Render). No crea ni
+// Corre contra la base que indiquen las variables (.env.local en tu PC, Environment en Render). No crea ni
 // altera tablas: usa los mismos servicios que la app, así que antes el servidor tiene que haber
 // arrancado al menos una vez con esta versión.
 //

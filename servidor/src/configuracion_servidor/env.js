@@ -1,5 +1,10 @@
-import "dotenv/config.js";
+import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
 import { deploymentConfig } from "../../../deployment_config.js";
+
+// En tu PC solo se lee servidor/.env.local (PostgreSQL local): así nunca se toca producción por error.
+// En Render las variables vienen de su panel. dotenv no pisa lo que ya está cargado.
+dotenv.config({ path: fileURLToPath(new URL("../../.env.local", import.meta.url)), quiet: true });
 
 // El panel de Render guarda el valor tal cual: si se pega con comillas o espacios
 // ("https://…"), quedarían como parte del texto. dotenv ya los quita en el .env local.
@@ -12,11 +17,17 @@ for (const [clave, valor] of Object.entries(process.env)) process.env[clave] = l
 const esProduccion = process.env.NODE_ENV === "production";
 
 /**
+ * El nombre nuevo (claro, en español) o, si falta, el anterior: un Render que todavía tiene los
+ * nombres viejos sigue andando. Los nombres viejos los marca scripts/verificar_env.mjs.
+ */
+const leer = (nuevo, anterior) => process.env[nuevo] || (anterior && process.env[anterior]) || "";
+
+/**
  * Verifica variables críticas en producción.
  * En desarrollo devuelve el valor por defecto si no está seteada.
  */
-function requerirEnProd(nombre, defaultDev = "") {
-  const valor = process.env[nombre];
+function requerirEnProd(nombre, anterior, defaultDev = "") {
+  const valor = leer(nombre, anterior);
 
   if (!valor) {
     if (esProduccion) {
@@ -30,34 +41,38 @@ function requerirEnProd(nombre, defaultDev = "") {
   return valor;
 }
 
+const urlBaseDatos = leer("BD_URL_SUPABASE", "BD_URL");
+// BD_SSL y DB_SSL son nombres anteriores: solo hacen falta para forzar el SSL a mano.
+const sslManual = leer("BD_SSL", "DB_SSL");
+
 export const env = {
   PORT:     process.env.PORT || 3001,
   NODE_ENV: process.env.NODE_ENV || "development",
 
-  // ── Base de datos (Supabase en producción, Postgres local en dev) ──
-  // BD_URL: connection string completo; si queda vacío se usan las DB_* sueltas.
-  BD_URL:       process.env.BD_URL || "",
+  // ── Base de datos (Supabase en producción, Postgres local en tu PC) ──
+  // BD_URL_SUPABASE: connection string completo; si queda vacío se usan las DB_* sueltas (tu PC).
+  BD_URL:       urlBaseDatos,
   DB_HOST:      process.env.DB_HOST      || "localhost",
   DB_PORT:      Number(process.env.DB_PORT || 5432),
   DB_NAME:      process.env.DB_NAME      || "mipadel",
   DB_USER:      process.env.DB_USER      || "postgres",
   DB_PASS:      process.env.DB_PASS      || "",          // ← NUNCA hardcodear
-  // DB_SSL es el nombre anterior: se sigue leyendo para no romper un Render ya configurado.
-  DB_SSL:       String(process.env.BD_SSL || process.env.DB_SSL || "").toLowerCase() === "true",
+  // Con base remota siempre SSL (Supabase lo pide); en tu PC, sin SSL.
+  DB_SSL:       sslManual ? sslManual.toLowerCase() === "true" : Boolean(urlBaseDatos),
 
   // ── Seguridad ──────────────────────────────────────────────────
-  // En producción es OBLIGATORIO. En dev usa el valor del .env local.
-  JWT_SECRET:   requerirEnProd("JWT_SECRET", "DEV_SECRET_SOLO_LOCAL_NO_USAR_EN_PROD"),
+  // En producción es OBLIGATORIO. En dev usa el valor del .env.local.
+  JWT_SECRET:   requerirEnProd("CLAVE_SESIONES", "JWT_SECRET", "DEV_SECRET_SOLO_LOCAL_NO_USAR_EN_PROD"),
 
   // ── CORS ───────────────────────────────────────────────────────
-  // Ejemplo: "https://mi-tienda.vercel.app"
-  // Dejarlo vacío = permite todos los orígenes (OK si el front vive en el mismo servidor)
+  // Opcional: en producción, si está vacío, se permite solo URL_FRONTEND_VERCEL (app.js).
+  // Sirve para sumar otros orígenes, separados por coma (ej. un dominio propio).
   CORS_ORIGIN:  process.env.CORS_ORIGIN || "",
 
   // ── Seed secret ────────────────────────────────────────────────
   SEED_SECRET:  process.env.SEED_SECRET || "",
 
-  // ── MercadoPago (suscripción al software) ──────────────────────
+  // ── MercadoPago (suscripción de los organizadores) ─────────────
   // Obtenelo en https://www.mercadopago.com.ar/developers/panel/app
   // Sandbox: usa el token de TEST para pruebas, PROD para producción.
   MP_ACCESS_TOKEN: process.env.MP_ACCESS_TOKEN || "",
@@ -65,11 +80,11 @@ export const env = {
   // URL COMPLETA del backend en Render (para que MP envíe el webhook).
   // Ejemplo: "https://mipadel.onrender.com" (EJEMPLO)
   // En local: dejar vacío (el webhook no llegará, pero el flujo funciona).
-  RENDER_APP_URL: process.env.RENDER_APP_URL || "",
+  RENDER_APP_URL: leer("URL_API_RENDER", "RENDER_APP_URL"),
 
-  // URL COMPLETA del frontend en Vercel (para la redirección post-pago de MP).
+  // URL COMPLETA del frontend en Vercel: links de los correos, vuelta de MP y CORS.
   // Ejemplo: "https://mipadel.vercel.app" (EJEMPLO)
-  VERCEL_FRONTEND_URL: process.env.VERCEL_FRONTEND_URL || (esProduccion ? deploymentConfig.frontendUrl : "http://localhost:5173"),
+  VERCEL_FRONTEND_URL: leer("URL_FRONTEND_VERCEL", "VERCEL_FRONTEND_URL") || (esProduccion ? deploymentConfig.frontendUrl : "http://localhost:5173"),
 
   // ── Plan de los organizadores ──────────────────────────────────
   // Precio de 30 días en ARS, sin centavos. 0 o vacío = pago con MercadoPago deshabilitado.
@@ -82,7 +97,7 @@ export const env = {
   CORREO_REMITENTE: process.env.CORREO_REMITENTE || "",
   NOMBRE_REMITENTE: process.env.NOMBRE_REMITENTE || "",
 
-  // ── Email / SMTP (desarrollo local) ────────────────────────────
+  // ── Email / SMTP (opcional, solo para probar correos desde tu PC) ──
   SMTP_HOST:   process.env.SMTP_HOST   || "smtp.gmail.com",
   SMTP_PORT:   Number(process.env.SMTP_PORT || 587),
   SMTP_SECURE: String(process.env.SMTP_SECURE || "").toLowerCase() === "true",
@@ -96,27 +111,28 @@ export const env = {
   // tiempo de ejecución con un error de auth de Cloudinary poco claro. Mejor
   // que el server no arranque en Render si falta, a que falle recién cuando
   // alguien intente subir una foto.
-  CLOUDINARY_CLOUD_NAME: requerirEnProd("CLOUDINARY_CLOUD_NAME"),
-  CLOUDINARY_API_KEY:    requerirEnProd("CLOUDINARY_API_KEY"),
-  CLOUDINARY_API_SECRET: requerirEnProd("CLOUDINARY_API_SECRET"),
+  CLOUDINARY_CLOUD_NAME: requerirEnProd("CLOUDINARY_NOMBRE_CUENTA", "CLOUDINARY_CLOUD_NAME"),
+  CLOUDINARY_API_KEY:    requerirEnProd("CLOUDINARY_CLAVE_API", "CLOUDINARY_API_KEY"),
+  CLOUDINARY_API_SECRET: requerirEnProd("CLOUDINARY_SECRETO_API", "CLOUDINARY_API_SECRET"),
 
   // ── Google (botón "Continuar con Google") ───────────────────────
-  // Client ID público de Google Cloud (el mismo que VITE_GOOGLE_CLIENT_ID).
+  // Client ID público de Google Cloud (el mismo que VITE_GOOGLE_ID_CLIENTE).
   // Vacío = ingreso con Google deshabilitado. No se usa el client secret.
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
+  GOOGLE_CLIENT_ID: leer("GOOGLE_ID_CLIENTE", "GOOGLE_CLIENT_ID"),
 
-  // ── Seed: usuario super admin ────────────────────────────────────
-  SUPERADMIN_NOMBRE:   process.env.SUPERADMIN_NOMBRE   || "",
-  SUPERADMIN_APELLIDO: process.env.SUPERADMIN_APELLIDO || "",
-  SUPERADMIN_DNI:       process.env.SUPERADMIN_DNI       || "",
-  SUPERADMIN_EMAIL:     process.env.SUPERADMIN_EMAIL     || "",
-  SUPERADMIN_PASSWORD:  process.env.SUPERADMIN_PASSWORD  || "",
+  // ── Seed: usuario super admin (se crea una sola vez; ver seed_super_admin.js) ──
+  // Solo usuario y contraseña: el email es siempre SUPERADMIN_EMAIL_FIJO, para recuperar el acceso.
+  SUPERADMIN_USUARIO:    process.env.SUPERADMIN_USUARIO || "",
+  SUPERADMIN_CONTRASENA: leer("SUPERADMIN_CONTRASENA", "SUPERADMIN_PASSWORD"),
 
   // ── Avisos por correo (nuevo organizador, inscripciones, comprobantes) ──
-  // Van a SUPERADMIN_EMAIL y al organizador de cada torneo. "no" los apaga (los tests y la demo lo hacen).
+  // Van a SUPERADMIN_EMAIL_FIJO y al organizador de cada torneo. "no" los apaga (los tests y la demo lo hacen).
   AVISOS_POR_CORREO: String(process.env.AVISOS_POR_CORREO || "si").toLowerCase() !== "no",
 
   // ── Torneos demo ──────────────────────────────────────────────
   // "si": al arrancar (cada deploy) crea los torneos DEMO si todavía no existen. Vacío o "no": nada.
   DEMO_AL_INICIAR: ["si", "true"].includes(String(process.env.DEMO_AL_INICIAR || "").toLowerCase()),
 };
+
+/** El mismo en todos los proyectos: recupera el acceso del super admin y recibe los avisos del equipo. */
+export const SUPERADMIN_EMAIL_FIJO = "nahuel42425@gmail.com";

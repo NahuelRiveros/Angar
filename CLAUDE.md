@@ -157,7 +157,7 @@ La pareja manda el comprobante (`POST /api/inscripciones/:id/comprobante`, regla
 el organizador lo ve con enlace firmado y lo aprueba (confirma con el cupo controlado) o lo rechaza con motivo
 (`/api/torneos/:id/inscripciones/:id/pago/aprobar|rechazar`). Confirmar sin comprobante (efectivo) sigue andando.
 
-Avisos por correo (`services/common/avisos_service.js`, textos en `avisos_reglas.js`): a `SUPERADMIN_EMAIL`
+Avisos por correo (`services/common/avisos_service.js`, textos en `avisos_reglas.js`): a `SUPERADMIN_EMAIL_FIJO` (`env.js`)
 cuando alguien activa por primera vez su cuenta de organizador y cuando manda el comprobante del plan; al organizador
 del torneo con cada inscripción online nueva y cada comprobante de inscripción. Se mandan en segundo plano después de
 guardar (un error del correo nunca rompe la acción), nunca a dominios de prueba (`@example.test`…) y se apagan con
@@ -231,7 +231,7 @@ No hay package.json raíz ni workspaces; cada paquete instala sus dependencias.
 | Reglas unitarias | `npm --prefix servidor test` |
 | Integración (PostgreSQL local: suscripción y torneos) | `npm --prefix servidor run test:integration` |
 | Navegador | `npm --prefix frontend run test:e2e` |
-| Revisar los `.env` (solo nombres, sin valores) | `npm --prefix servidor run env:verificar` (lo corre el usuario; lee sus `.env`) |
+| Revisar los `.env.local`/`.env.produccion` (solo nombres, sin valores) | `npm --prefix servidor run env:verificar` (lo corre el usuario; lee sus archivos) |
 | Torneos demo (también en producción, pide `--confirmo`) | `npm --prefix servidor run demo -- --ver` · `--crear --confirmo` · `--borrar --confirmo` |
 
 Un solo test: `node --test --test-name-pattern="permisos" servidor/tests/ux_rules.test.mjs`;
@@ -251,17 +251,19 @@ actualizar el script o ejecutarlo explícitamente con `node --test`.
   `sync({ alter: true })`. Arrancar el backend no es una comprobación de solo lectura.
   Verificar un destino de desarrollo aislado antes de iniciarlo.
 - Un cambio de esquema/modelos requiere una petición que lo incluya o una decisión explícita.
-- La conexión está en `database/sequelize.js`; la URL sale de `BD_URL`.
-- Variables de entorno: `.env.example` simple (una línea de comentario con qué es, de dónde sale y
-  [RENDER]/[PC], y la variable), en orden alfabético como el panel de Render. Esquema y SSL: `BD_ESQUEMA`
-  y `BD_SSL` (`DB_SCHEMA`/`DB_SSL` se leen como respaldo). Al agregar una variable: sumarla al
-  `.env.example` con ese formato y `env:verificar` la controla.
+- La conexión está en `database/sequelize.js`; la URL sale de `BD_URL_SUPABASE` (en `env.js` queda como `env.BD_URL`).
+- Variables de entorno (igual que DistribuCG): dos moldes por paquete, `.env.local.example` (tu PC; `env.js` lee solo`
+  `servidor/.env.local`) y `.env.produccion.example` (para pegar en Render/Vercel). Nombres en español (`CLAVE_SESIONES`,`
+  `URL_FRONTEND_VERCEL`, `URL_API_RENDER`, `BD_URL_SUPABASE`, `CLOUDINARY_NOMBRE_CUENTA`…); `env.js` todavía lee los`
+  anteriores (`leer(nuevo, anterior)`) y `env:verificar` los marca. El SSL se activa solo con base remota. Super admin:`
+  `SUPERADMIN_USUARIO` + `SUPERADMIN_CONTRASENA` (entra con usuario; email fijo para recuperar). Al agregar una variable:`
+  sumarla a los dos moldes y, si es obligatoria, a `scripts/verificar_env.mjs`.
   Esquemas: `mipadel` en producción y `mipadel_test` (predeterminado) para pruebas; solo minúsculas.
   Nunca apuntar a `gc_dist`/`gc_dist_test` (son de DistribuCG).
 - Base local de desarrollo: PostgreSQL 17 en `localhost`, base `mipadel` (la de DistribuCG es
-  `Distribuidora`: no usarla). El `.env` local deja `BD_URL` vacía y usa `DB_*`.
+  `Distribuidora`: no usarla). El `.env.local` deja `BD_URL_SUPABASE` vacía y usa `DB_*`.
 - `servidor/tests/ux_rules.test.mjs` prueba reglas sin conexión a la base.
-- `suscripcion`, `torneo`, `juego`, `llave` y `jugadores` `.integration.mjs` solo corren contra `localhost` (si `BD_URL` está cargada, se saltea),
+- `suscripcion`, `torneo`, `juego`, `llave` y `jugadores` `.integration.mjs` solo corren contra `localhost` (si `BD_URL_SUPABASE` está cargada, se saltea),
   crea un schema `mipadel_it_<aleatorio>` y borra solo ese schema al terminar.
 - Playwright levanta solo Vite en `127.0.0.1:4178` y simula la API; no necesita el backend.
 - No enviar correos, procesar pagos externos ni subir archivos reales al ejecutar pruebas.

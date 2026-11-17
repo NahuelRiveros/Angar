@@ -16,7 +16,8 @@ const { sequelize } = await import("../src/database/sequelize.js");
 const { bootstrap_database } = await import("../src/database/bootstrap.js");
 const { seed_catalogos } = await import("../src/database/seed/seed_catalogos.js");
 const { seed_rbac } = await import("../src/database/seed/seed_rbac.js");
-const { registrarCliente } = await import("../src/services/usuarios/auth_service.js");
+const { registrarCliente, login } = await import("../src/services/usuarios/auth_service.js");
+const { seed_super_admin } = await import("../src/database/seed/seed_super_admin.js");
 const { Usuario } = await import("../src/models/index.js");
 const torneos = await import("../src/services/torneos/torneo_service.js");
 const insc = await import("../src/services/torneos/inscripcion_service.js");
@@ -196,4 +197,21 @@ test("avisos al jugador: invitación, confirmación y rechazo llegan a la campan
   assert.equal((await jugadores.miPerfil(u.Dani.usuario_id)).recibir_mails, false);
   await assert.rejects(avisos.cambiarRecibirMails(u.Dani, "no"), /Indicá si querés/);
   assert.equal("recibir_mails" in await jugadores.perfilPublico(u.Dani.codigo), false, "no sale en el perfil público");
+});
+
+test("super admin: se crea con SUPERADMIN_USUARIO y entra con ese usuario; un deploy nuevo no pisa su contraseña", { skip: sin }, async () => {
+  assert.equal(await seed_super_admin({ config: { SUPERADMIN_USUARIO: "admin@mal", SUPERADMIN_CONTRASENA: "Clave1234" } }), null, "con @ no es un usuario");
+  assert.equal(await seed_super_admin({ config: { SUPERADMIN_USUARIO: "", SUPERADMIN_CONTRASENA: "Clave1234" } }), null);
+
+  const admin = await seed_super_admin({ config: { SUPERADMIN_USUARIO: " Dueno.Admin ", SUPERADMIN_CONTRASENA: "Clave1234" } });
+  assert.equal(admin.nombre_usuario, "dueno.admin");
+  const sesion = await login({ identificador: "dueno.admin", password: "Clave1234" });
+  assert.equal(sesion.ok, true, sesion.mensaje);
+  assert.deepEqual([...sesion.usuario.roles].sort(), ["admin", "super_admin"]);
+
+  // Otro arranque con otra contraseña en Render: la cuenta es la misma y su contraseña se conserva.
+  const otraVez = await seed_super_admin({ config: { SUPERADMIN_USUARIO: "dueno.admin", SUPERADMIN_CONTRASENA: "OtraClave99" } });
+  assert.equal(otraVez.id, admin.id);
+  assert.equal((await login({ identificador: "dueno.admin", password: "OtraClave99" })).ok, false);
+  assert.equal((await login({ identificador: "dueno.admin", password: "Clave1234" })).ok, true);
 });

@@ -1,4 +1,7 @@
 node_modules
+# Variables reales (.env.local, .env.produccion): nunca a git. Solo los moldes *.example.
 .env
+.env.*
+!.env.*.example
 GymApp-3-3-26.sql
 data/

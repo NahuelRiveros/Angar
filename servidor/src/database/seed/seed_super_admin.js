@@ -1,60 +1,59 @@
 import bcrypt from "bcrypt";
+import { randomBytes } from "node:crypto";
 import { sequelize } from "../sequelize.js";
-import { env } from "../../configuracion_servidor/env.js";
+import { env, SUPERADMIN_EMAIL_FIJO } from "../../configuracion_servidor/env.js";
 import { Persona, Usuario, UsuarioRol, Rol, TipoDocumento } from "../../models/index.js";
+import { esNombreUsuarioValido, normalizarNombreUsuario } from "../../services/common/nombre_usuario.js";
 
-// Depende de que el rol "admin"/"super_admin" ya exista (ver seed_rbac.js) —
-// el orquestador (./index.js) lo llama después.
-export async function seed_super_admin() {
-  const { SUPERADMIN_NOMBRE, SUPERADMIN_APELLIDO, SUPERADMIN_DNI, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD } = env;
-
-  if (!SUPERADMIN_EMAIL || !SUPERADMIN_PASSWORD || !SUPERADMIN_DNI) {
-    const faltantes = ["SUPERADMIN_EMAIL", "SUPERADMIN_PASSWORD", "SUPERADMIN_DNI"].filter((clave) => !env[clave]);
-    console.log(`⏭️ Super admin: faltan ${faltantes.join(", ")} — se omite su creación`);
-    return;
+/**
+ * Crea el super admin una sola vez, con SUPERADMIN_USUARIO y SUPERADMIN_CONTRASENA. El email es
+ * siempre SUPERADMIN_EMAIL_FIJO, para recuperar el acceso.
+ * Si la cuenta ya existe, no se cambia la contraseña: un deploy nunca pisa una clave cambiada desde la app.
+ * Depende de que el rol "admin"/"super_admin" ya exista (ver seed_rbac.js); lo llama ./index.js.
+ */
+export async function seed_super_admin({ config = env } = {}) {
+  const nombre_usuario = normalizarNombreUsuario(config.SUPERADMIN_USUARIO);
+  const contrasena = config.SUPERADMIN_CONTRASENA;
+  if (!nombre_usuario || !contrasena) {
+    console.log("⏭️ Super admin: faltan SUPERADMIN_USUARIO o SUPERADMIN_CONTRASENA — se omite su creación");
+    return null;
+  }
+  if (!esNombreUsuarioValido(nombre_usuario)) {
+    console.warn("⚠️ SUPERADMIN_USUARIO no es válido: 3 a 30 letras, números, punto, guion o guion bajo (sin @). Se omite.");
+    return null;
   }
 
-  const documento = String(SUPERADMIN_DNI).replace(/[.\s]/g, "").trim();
-  const email = String(SUPERADMIN_EMAIL).trim().toLowerCase();
-
-  await sequelize.transaction(async (t) => {
-    const tipoDocumentoDni = await TipoDocumento.findOne({ where: { descripcion: "DNI" }, transaction: t });
-
-    let persona = await Persona.findOne({ where: { documento }, transaction: t });
-    if (!persona) {
-      persona = await Persona.create({
-        nombre: SUPERADMIN_NOMBRE,
-        apellido: SUPERADMIN_APELLIDO,
-        documento,
-        email,
-        tipo_documento_id: tipoDocumentoDni?.id ?? null,
-      }, { transaction: t });
-    }
-
-    let usuario = await Usuario.findOne({ where: { persona_id: persona.id }, transaction: t });
-    const nuevo = !usuario;
+  return sequelize.transaction(async (transaction) => {
+    let usuario = await Usuario.findOne({ where: { nombre_usuario }, transaction });
+    let nuevo = false;
     if (!usuario) {
-      const contrasena = await bcrypt.hash(SUPERADMIN_PASSWORD, 10);
-      usuario = await Usuario.create(
-        { persona_id: persona.id, contrasena, activo: true },
-        { transaction: t }
-      );
-    } else if (!usuario.activo) {
-      await usuario.update({ activo: true }, { transaction: t });
-    }
-
-    for (const codigo of ["super_admin", "admin"]) {
-      const rol = await Rol.findOne({ where: { codigo }, transaction: t });
-      if (rol) {
-        await UsuarioRol.findOrCreate({
-          where: { usuario_id: usuario.id, rol_id: rol.id },
-          transaction: t,
-        });
+      // Si ya hay una persona con el email fijo (un admin de antes), se usa esa en vez de duplicarla.
+      let persona = await Persona.findOne({ where: { email: SUPERADMIN_EMAIL_FIJO }, transaction });
+      if (!persona) {
+        // documento es obligatorio y el admin no carga DNI: va uno sintético, como en el registro.
+        const tipoDocumentoDni = await TipoDocumento.findOne({ where: { descripcion: "DNI" }, transaction });
+        persona = await Persona.create({
+          nombre: "Super", apellido: "Admin", email: SUPERADMIN_EMAIL_FIJO,
+          documento: `ADM${randomBytes(8).toString("hex")}`, tipo_documento_id: tipoDocumentoDni?.id ?? null,
+        }, { transaction });
+      }
+      usuario = await Usuario.findOne({ where: { persona_id: persona.id }, transaction });
+      if (usuario) {
+        if (!usuario.nombre_usuario) await usuario.update({ nombre_usuario }, { transaction });
+        else console.warn(`⚠️ El admin con el email fijo ya entra con otro usuario ("${usuario.nombre_usuario}"): no se cambia.`);
+      } else {
+        usuario = await Usuario.create({ persona_id: persona.id, nombre_usuario, contrasena: await bcrypt.hash(String(contrasena), 10), activo: true }, { transaction });
+        nuevo = true;
       }
     }
+    if (!usuario.activo) await usuario.update({ activo: true }, { transaction });
 
-    console.log(`✅ Super admin listo: ${persona.email} (usuario_id=${usuario.id}, activo=true, contraseña ${nuevo ? "creada" : "conservada"})`);
-    if (persona.email !== email) console.warn("⚠️ SUPERADMIN_EMAIL difiere del email guardado de la persona encontrada por DNI. El seed conserva el email existente.");
-    if (!nuevo) console.log("ℹ️ SUPERADMIN_PASSWORD no reemplaza la contraseña existente. Diagnóstico: npm run admin:verificar");
+    for (const codigo of ["super_admin", "admin"]) {
+      const rol = await Rol.findOne({ where: { codigo }, transaction });
+      if (rol) await UsuarioRol.findOrCreate({ where: { usuario_id: usuario.id, rol_id: rol.id }, transaction });
+    }
+    console.log(`✅ Super admin listo: usuario "${usuario.nombre_usuario}" (contraseña ${nuevo ? "creada" : "conservada"})`);
+    if (!nuevo) console.log("ℹ️ SUPERADMIN_CONTRASENA no reemplaza la contraseña existente. Diagnóstico: npm run admin:verificar");
+    return usuario;
   });
 }

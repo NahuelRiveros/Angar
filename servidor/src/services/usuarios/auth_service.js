@@ -16,7 +16,7 @@ function safeStr(v) {
 
 function crearToken({ usuario_id, persona_id, roles, contrasena }) {
   const secret = env.JWT_SECRET;
-  if (!secret) throw new Error("Falta JWT_SECRET en .env");
+  if (!secret) throw new Error("Falta CLAVE_SESIONES en .env.local");
 
   return jwt.sign({ sub: String(usuario_id), persona_id, roles, pv: passwordVersion(contrasena) }, secret, {
     expiresIn: env.JWT_EXPIRES_IN ?? "24h",

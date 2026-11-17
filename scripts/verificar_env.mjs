@@ -1,7 +1,8 @@
-// Revisa servidor/.env y frontend/.env contra sus .env.example SIN mostrar ningún valor:
-// solo nombres y si están completos. Uso: npm --prefix servidor run env:verificar
+// Revisa los .env.local (tu PC) y .env.produccion (lo que se pega en Render y Vercel) del servidor
+// y del frontend contra sus moldes *.example, SIN mostrar ningún valor: solo nombres y si están
+// completos. Uso: npm --prefix servidor run env:verificar
 //
-//   ✅ bien   ⚠️ nombre anterior (renombrar)   ❔ no figura en el .env.example   ❌ falta o hay que corregirla
+//   ✅ bien   ⚠️ nombre anterior (renombrar) u obsoleta   ❔ no figura en el molde   ❌ falta o hay que corregirla
 //
 // Opcional: una carpeta raíz distinta como argumento (la usan los tests con archivos falsos).
 import { existsSync, readFileSync } from "node:fs";
@@ -10,16 +11,35 @@ import { fileURLToPath } from "node:url";
 
 const RAIZ = process.argv[2] ? resolve(process.argv[2]) : join(dirname(fileURLToPath(import.meta.url)), "..");
 
-// Nombre anterior → nombre actual.
+// Nombre anterior → nombre actual. El servidor todavía lee los anteriores (env.js), pero conviene renombrarlos.
 const ANTERIORES = {
-  NEON_DATABASE_URL: "BD_URL",
-  NEON_DATABASE_URL_MIGRACION: "BD_URL",
-  SOFTWARE_PRECIO: "PRECIO_SUSCRIPCION_MENSUAL",
+  NEON_DATABASE_URL: "BD_URL_SUPABASE",
+  NEON_DATABASE_URL_MIGRACION: "BD_URL_SUPABASE",
+  BD_URL: "BD_URL_SUPABASE",
   DB_SCHEMA: "BD_ESQUEMA",
-  DB_SSL: "BD_SSL",
+  SOFTWARE_PRECIO: "PRECIO_SUSCRIPCION_MENSUAL",
+  JWT_SECRET: "CLAVE_SESIONES",
+  RENDER_APP_URL: "URL_API_RENDER",
+  VERCEL_FRONTEND_URL: "URL_FRONTEND_VERCEL",
+  CLOUDINARY_CLOUD_NAME: "CLOUDINARY_NOMBRE_CUENTA",
+  CLOUDINARY_API_KEY: "CLOUDINARY_CLAVE_API",
+  CLOUDINARY_API_SECRET: "CLOUDINARY_SECRETO_API",
+  GOOGLE_CLIENT_ID: "GOOGLE_ID_CLIENTE",
+  VITE_GOOGLE_CLIENT_ID: "VITE_GOOGLE_ID_CLIENTE",
+  SUPERADMIN_PASSWORD: "SUPERADMIN_CONTRASENA",
 };
 
-// Restos de los .env.example que no pueden llegar a un entorno real.
+// Ya no se usan: se pueden borrar.
+const OBSOLETAS = {
+  BD_SSL: "el SSL se activa solo cuando hay BD_URL_SUPABASE",
+  DB_SSL: "el SSL se activa solo cuando hay BD_URL_SUPABASE",
+  SUPERADMIN_NOMBRE: "el super admin ahora es solo SUPERADMIN_USUARIO y SUPERADMIN_CONTRASENA",
+  SUPERADMIN_APELLIDO: "el super admin ahora es solo SUPERADMIN_USUARIO y SUPERADMIN_CONTRASENA",
+  SUPERADMIN_DNI: "el super admin ahora es solo SUPERADMIN_USUARIO y SUPERADMIN_CONTRASENA",
+  SUPERADMIN_EMAIL: "el email del super admin es fijo (env.js)",
+};
+
+// Restos de los moldes que no pueden llegar a un entorno real.
 const VALORES_DE_EJEMPLO = ["[COMPLETAR]", "TU_PASSWORD_AQUI", "CAMBIA_ESTE_VALOR"];
 
 /** { NOMBRE: valor } de un archivo .env (el valor nunca se imprime). */
@@ -34,10 +54,14 @@ function leerEnv(ruta) {
   return variables;
 }
 
-function revisar({ nombre, archivo, ejemplo, obligatorias }) {
+function revisar({ nombre, archivo, ejemplo, obligatorias, opcional = false }) {
   const ruta = join(RAIZ, archivo);
   console.log(`\n── ${nombre} (${archivo}) ──`);
   if (!existsSync(ruta)) {
+    if (opcional) {
+      console.log(`ℹ️  No existe (opcional). Si querés tenerlo listo para pegar, copiá ${ejemplo} como ${archivo}.`);
+      return 0;
+    }
     console.log(`❌ No existe. Copiá ${ejemplo} como ${archivo} y completalo.`);
     return 1;
   }
@@ -49,8 +73,11 @@ function revisar({ nombre, archivo, ejemplo, obligatorias }) {
     if (VALORES_DE_EJEMPLO.some((ej) => valor.includes(ej))) {
       console.log(`❌ ${clave} → todavía tiene un valor de ejemplo`);
       problemas++;
-    } else if (ANTERIORES[clave]) {
-      console.log(`⚠️  ${clave} → renombrar a ${ANTERIORES[clave]} (con el nombre viejo no se lee)`);
+    } else if (ANTERIORES[clave] && !esperadas.includes(clave)) {
+      console.log(`⚠️  ${clave} → renombrar a ${ANTERIORES[clave]} (todavía se lee, pero el nombre viejo va a dejar de usarse)`);
+      problemas++;
+    } else if (OBSOLETAS[clave]) {
+      console.log(`⚠️  ${clave} → ya no se usa, borrala: ${OBSOLETAS[clave]}`);
       problemas++;
     } else if (esperadas.includes(clave)) {
       console.log(`✅ ${clave}${valor ? "" : " (vacía)"}`);
@@ -67,36 +94,72 @@ function revisar({ nombre, archivo, ejemplo, obligatorias }) {
   return problemas;
 }
 
+// Los .env de antes ya no se leen: lo que tengan hay que pasarlo a .env.local o .env.produccion.
+function revisarViejos() {
+  let problemas = 0;
+  for (const viejo of ["servidor/.env", "frontend/.env"]) {
+    if (existsSync(join(RAIZ, viejo))) {
+      console.log(`⚠️  ${viejo} ya no se usa: pasá lo de tu PC a .env.local y lo de producción a .env.produccion, y después borralo.`);
+      problemas++;
+    }
+  }
+  return problemas;
+}
+
+// Nombre nuevo o, si no está, el anterior (como los lee el servidor).
+const url = (v) => v.BD_URL_SUPABASE || v.BD_URL || "";
+const esquema = (v) => v.BD_ESQUEMA || v.DB_SCHEMA || "";
+const schemaValido = (v) => !esquema(v) || /^[a-z][a-z0-9_]*$/.test(esquema(v));
+const urlCompleta = (v) => !url(v) || /^postgres(ql)?:\/\/[^@\s]+@[^\s]+$/.test(url(v));
+const deDistribuCG = (v) => esquema(v).startsWith("gc_dist");
+const tiene = (nuevo, anterior) => (v) => Boolean(v[nuevo] || v[anterior]);
+
 const problemas =
+  revisarViejos() +
   revisar({
-    nombre: "Servidor",
-    archivo: "servidor/.env",
-    ejemplo: "servidor/.env.example",
+    nombre: "Servidor en tu PC",
+    archivo: "servidor/.env.local",
+    ejemplo: "servidor/.env.local.example",
     obligatorias: [
-      {
-        mensaje: "Falta la base de datos: BD_URL (Supabase) o DB_NAME (Postgres local)",
-        cumple: (v) => Boolean(v.BD_URL || v.DB_NAME),
-      },
-      {
-        mensaje: "BD_URL tiene que ser la dirección completa (postgresql://usuario:contraseña@host:5432/postgres), no solo el host",
-        cumple: (v) => !v.BD_URL || /^postgres(ql)?:\/\/[^@\s]+@[^\s]+$/.test(v.BD_URL),
-      },
-      {
-        mensaje: "BD_ESQUEMA inválido: solo minúsculas, números y _ (ej. mipadel_test)",
-        cumple: (v) => !v.BD_ESQUEMA || /^[a-z][a-z0-9_]*$/.test(v.BD_ESQUEMA),
-      },
-      {
-        mensaje: "Con BD_URL (Supabase) hace falta BD_SSL=true",
-        cumple: (v) => !v.BD_URL || v.BD_SSL?.toLowerCase() === "true",
-      },
+      { mensaje: "BD_URL_SUPABASE tiene que quedar vacía: en tu PC se usa el PostgreSQL local, nunca la base de producción", cumple: (v) => !url(v) },
+      { mensaje: "Falta DB_NAME: el nombre de tu base en el PostgreSQL local (mipadel)", cumple: (v) => Boolean(v.DB_NAME) },
+      { mensaje: "BD_ESQUEMA inválido: solo minúsculas, números y _ (ej. mipadel_test)", cumple: schemaValido },
+      { mensaje: "BD_ESQUEMA no puede ser mipadel (el de producción) en tu PC", cumple: (v) => esquema(v) !== "mipadel" },
+      { mensaje: "BD_ESQUEMA no puede ser de DistribuCG (gc_dist…)", cumple: (v) => !deDistribuCG(v) },
     ],
   }) +
   revisar({
-    nombre: "Frontend",
-    archivo: "frontend/.env",
-    ejemplo: "frontend/.env.example",
+    nombre: "Servidor en producción, para Render",
+    archivo: "servidor/.env.produccion",
+    ejemplo: "servidor/.env.produccion.example",
+    opcional: true,
+    obligatorias: [
+      { mensaje: "NODE_ENV tiene que ser production", cumple: (v) => v.NODE_ENV === "production" },
+      { mensaje: "Falta CLAVE_SESIONES (larga y al azar)", cumple: tiene("CLAVE_SESIONES", "JWT_SECRET") },
+      { mensaje: "Falta URL_FRONTEND_VERCEL (la dirección https de la web)", cumple: tiene("URL_FRONTEND_VERCEL", "VERCEL_FRONTEND_URL") },
+      { mensaje: "Falta BD_URL_SUPABASE (Supabase → Connect → Session pooler)", cumple: (v) => Boolean(url(v)) },
+      { mensaje: "BD_URL_SUPABASE tiene que ser la dirección completa (postgresql://usuario:contraseña@host:5432/postgres), no solo el host", cumple: urlCompleta },
+      { mensaje: "Falta BD_ESQUEMA: sin ella se usaría mipadel_test", cumple: (v) => Boolean(esquema(v)) },
+      { mensaje: "BD_ESQUEMA inválido: solo minúsculas, números y _ (ej. mipadel)", cumple: schemaValido },
+      { mensaje: "BD_ESQUEMA no puede ser de DistribuCG (gc_dist…)", cumple: (v) => !deDistribuCG(v) },
+      { mensaje: "Faltan las 3 de Cloudinary (sin ellas el servidor no arranca)", cumple: (v) => tiene("CLOUDINARY_NOMBRE_CUENTA", "CLOUDINARY_CLOUD_NAME")(v) && tiene("CLOUDINARY_CLAVE_API", "CLOUDINARY_API_KEY")(v) && tiene("CLOUDINARY_SECRETO_API", "CLOUDINARY_API_SECRET")(v) },
+    ],
+  }) +
+  revisar({
+    nombre: "Web en tu PC",
+    archivo: "frontend/.env.local",
+    ejemplo: "frontend/.env.local.example",
     obligatorias: [
       { mensaje: "Falta VITE_API_URL (en tu PC: http://localhost:3001/api)", cumple: (v) => Boolean(v.VITE_API_URL) },
+    ],
+  }) +
+  revisar({
+    nombre: "Web en producción, para Vercel",
+    archivo: "frontend/.env.produccion",
+    ejemplo: "frontend/.env.produccion.example",
+    opcional: true,
+    obligatorias: [
+      { mensaje: "VITE_API_URL tiene que ser la dirección https de la API en Render, con /api", cumple: (v) => /^https:\/\/.+\/api$/.test(v.VITE_API_URL ?? "") },
     ],
   });
 

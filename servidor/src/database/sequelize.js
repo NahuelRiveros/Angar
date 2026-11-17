@@ -54,11 +54,11 @@ const baseConfig = {
   },
 };
 
-// Sin esto, un host suelto en BD_URL rompe adentro de Sequelize con
+// Sin esto, un host suelto en BD_URL_SUPABASE rompe adentro de Sequelize con
 // "Cannot read properties of null". El valor no se muestra: lleva la contraseña.
 if (env.BD_URL && !/^postgres(ql)?:\/\/[^@\s]+@[^\s]+$/.test(env.BD_URL)) {
   throw new Error(
-    "BD_URL tiene que ser la dirección COMPLETA de la base (postgresql://usuario:contraseña@host:5432/postgres), " +
+    "BD_URL_SUPABASE tiene que ser la dirección COMPLETA de la base (postgresql://usuario:contraseña@host:5432/postgres), " +
     "no solo el host. En Supabase: Connect → Session pooler."
   );
 }
