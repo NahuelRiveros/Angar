@@ -1,4 +1,4 @@
-import { deploymentConfig } from "../../../deployment_config.js";
+import { deploymentConfig } from "../../../proyecto/deployment_config.js";
 
 export function resolverApiUrl(valor, desarrollo = false) {
   const configurada = String(valor ?? "").trim().replace(/^(["'])(.*)\1$/, "$2").replace(/\/+$/, "");

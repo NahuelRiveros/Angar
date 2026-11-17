@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Copy, Trophy } from "lucide-react";
 import { useToast } from "../../controls/toast/toast_context.jsx";
-import { PUESTOS_ALCANZADOS } from "../../../../torneo_config.js";
+import { PUESTOS_ALCANZADOS } from "../../../../rubros/torneos/torneo_config.js";
 import { formatearFechaAR } from "../../utils/formatear_fecha.js";
 
 // Más copas que esto se resumen con "+N" para no romper la fila en el celular.

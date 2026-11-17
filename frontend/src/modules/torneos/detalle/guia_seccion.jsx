@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, Lightbulb } from "lucide-react";
-import { EDICION_POR_ESTADO, PERMITIDO } from "../../../../../torneo_config.js";
+import { EDICION_POR_ESTADO, PERMITIDO } from "../../../../../rubros/torneos/torneo_config.js";
 
 // Las pestañas siguen el orden en que se arma un torneo: cada guía dice su paso.
 const GUIAS = {

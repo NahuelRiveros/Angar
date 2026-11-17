@@ -7,7 +7,7 @@ import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
 import { useMiSuscripcion } from "../../../hooks/use_mi_suscripcion.js";
-import { ESTADOS_TORNEO } from "../../../../../torneo_config.js";
+import { ESTADOS_TORNEO } from "../../../../../rubros/torneos/torneo_config.js";
 import { getTorneo, cambiarEstadoTorneo, eliminarTorneo, duplicarTorneo } from "../api/torneos_api.js";
 import { EstadoTorneo } from "../comun/torneo_ui.jsx";
 import AvisoSoloLectura from "../comun/aviso_solo_lectura.jsx";

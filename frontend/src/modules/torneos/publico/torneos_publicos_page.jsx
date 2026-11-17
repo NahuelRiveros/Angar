@@ -7,7 +7,7 @@ import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import Pagination from "../../../controls/ui/pagination.jsx";
 import SearchField from "../../../controls/ui/search_field.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
-import { NIVELES, RAMAS, nombreNivel } from "../../../../../torneo_config.js";
+import { NIVELES, RAMAS, nombreNivel } from "../../../../../rubros/torneos/torneo_config.js";
 import { getTorneosPublicos } from "../api/torneos_api.js";
 import TarjetaTorneo from "./tarjeta_torneo.jsx";
 

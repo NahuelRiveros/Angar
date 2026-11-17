@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { EDICION_POR_ESTADO, TRANSICIONES } from "../../../torneo_config.js";
+import { EDICION_POR_ESTADO, TRANSICIONES } from "../../../rubros/torneos/torneo_config.js";
 
 const PLAN = { es_organizador: true, vigente: true, estado: "activo", dias_restantes: 20, mensaje: "Plan activo.", medios_pago: { mercadopago: false, transferencia: null } };
 const TORNEO = {

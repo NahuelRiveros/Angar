@@ -8,7 +8,7 @@ import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import InputField from "../../../controls/ui/input_field.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
-import { NIVELES, RAMAS, PUESTOS, LIMITES, ZONAS, FORMATOS_PARTIDO, nombreNivel, cuposConZonasIguales } from "../../../../../torneo_config.js";
+import { NIVELES, RAMAS, PUESTOS, LIMITES, ZONAS, FORMATOS_PARTIDO, nombreNivel, cuposConZonasIguales } from "../../../../../rubros/torneos/torneo_config.js";
 import { crearCategoria, actualizarCategoria, eliminarCategoria } from "../api/torneos_api.js";
 import { useCambioTorneo, mensajeDe } from "./use_cambio_torneo.js";
 import PremiosModal from "./premios_modal.jsx";

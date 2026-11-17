@@ -1,4 +1,4 @@
-import { FORMATOS_PARTIDO } from "../../../../../torneo_config.js";
+import { FORMATOS_PARTIDO } from "../../../../../rubros/torneos/torneo_config.js";
 
 // Modelos de reglamento para empezar: redactados con las reglas habituales del pádel (no son textos
 // oficiales de ninguna federación). El organizador los edita; lo propio de cada torneo va como [COMPLETAR].

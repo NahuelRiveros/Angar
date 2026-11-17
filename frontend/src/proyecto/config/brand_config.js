@@ -1,20 +1,23 @@
 /**
- * Identidad del cliente: nombre, logo y fuentes. La paleta está en theme_config.js.
+ * Identidad de MiPadel: nombre, logo, fuentes y frases del menú. La paleta está en theme_config.js.
  * Se elige con `id` de proyecto/client_config.js.
  */
 import { clientConfig } from "../../../../proyecto/client_config.js";
 
 export const clientes = {
-  ejemplo: {
-    nombre: "[COMPLETAR nombre]",
-    nombreCorto: "[COMPLETAR]",
-    rubro: "[COMPLETAR rubro]",
-    tagline: "[COMPLETAR frase corta].",
-    // "gc-mark" muestra las imágenes de logo_config.js; "simbolo-y-texto" muestra el símbolo
-    // (logo_config.js o el favicon) y el nombre escrito, con `acento` en otro color (ej. texto "Mi", acento "Marca").
-    logo: { tipo: "gc-mark", texto: "[COMPLETAR]", ariaLabel: "[COMPLETAR nombre]" },
-    // Frases del menú del celular (opcionales; sin ellas se usan textos neutros):
-    // menuMovil: { lema: "Arriba de los links", titulo: "Tarjeta de ingreso", texto: "Debajo del título", pie: "Al final" },
+  mipadel: {
+    nombre: "MiPadelCup",
+    nombreCorto: "MiPadelCup",
+    rubro: "Gestión de torneos de pádel",
+    tagline: "Organizá tu torneo de pádel de punta a punta.",
+    // Símbolo de pádel (el favicon, ver logo_config.js) y el nombre con "Cup" resaltado.
+    logo: { tipo: "simbolo-y-texto", texto: "MiPadel", acento: "Cup", ariaLabel: "MiPadelCup" },
+    menuMovil: {
+      lema: "Tu próximo partido empieza acá",
+      titulo: "Nos vemos en la cancha.",
+      texto: "Entrá a tu cuenta y viví tu próximo torneo.",
+      pie: "Pádel. Comunidad. Competencia.",
+    },
     fuentes: {
       display: "'Bricolage Grotesque', sans-serif",
       body: "'Plus Jakarta Sans', sans-serif",

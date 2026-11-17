@@ -9,7 +9,7 @@ import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import InputField from "../../../controls/ui/input_field.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import { crearRol, eliminarRol, getPermisos, guardarPermisosRol } from "../../../api/permisos_api.js";
-import { conRequeridos, dependientesDe } from "../../../../../permisos_config.js";
+import { conRequeridos, dependientesDe } from "../../../../../core/permisos_config.js";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const mensajeDe = (error, porDefecto) => error?.response?.data?.mensaje || porDefecto;

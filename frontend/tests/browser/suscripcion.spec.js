@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { test, expect } from "@playwright/test";
-import { permisosConfig, permisosEfectivos } from "../../../permisos_config.js";
+import { permisosConfig, permisosEfectivos } from "../../../core/permisos_config.js";
 
 const porDefecto = (rol) => permisosConfig.permisos.filter((p) => p.porDefecto.includes(rol)).map((p) => p.codigo);
 const conPermisos = (usuario) => ({ ...usuario, permisos: permisosEfectivos(usuario.roles, usuario.roles.flatMap(porDefecto)) });

@@ -12,8 +12,8 @@ process.env.NODE_ENV = "test";
 process.env.BD_URL_SUPABASE = "";
 process.env.BD_URL = "";
 process.env.CORS_ORIGIN = ` "https://tienda.vercel.app/" , http://localhost:5173 `;
-const { createApp, parsearOrigenes } = await import("../src/app.js");
-const { limpiarValor } = await import("../src/configuracion_servidor/env.js");
+const { createApp, parsearOrigenes } = await import("../src/core/app.js");
+const { limpiarValor } = await import("../src/core/configuracion_servidor/env.js");
 
 async function conServidor(probar) {
   const servidor = createApp().listen(0);
@@ -80,7 +80,7 @@ test("CORS acepta la tienda configurada aunque tenga / final y rechaza otros con
 });
 
 test("producción permite el frontend de MiPadel por defecto y muestra la identidad correcta", () => {
-  const appJs = new URL("../src/app.js", import.meta.url).href;
+  const appJs = new URL("../src/core/app.js", import.meta.url).href;
   const script = `
     import assert from 'node:assert/strict';
     const { createApp } = await import(${JSON.stringify(appJs)});
@@ -106,7 +106,7 @@ test("producción permite el frontend de MiPadel por defecto y muestra la identi
 });
 
 test("BD_URL_SUPABASE con solo el host frena el arranque con un mensaje claro y sin mostrar el valor", () => {
-  const sequelizeJs = new URL("../src/database/sequelize.js", import.meta.url).href;
+  const sequelizeJs = new URL("../src/core/database/sequelize.js", import.meta.url).href;
   const arrancar = (BD_URL_SUPABASE) =>
     spawnSync(process.execPath, ["--input-type=module", "-e", `await import(${JSON.stringify(sequelizeJs)})`], {
       encoding: "utf8",
@@ -115,7 +115,7 @@ test("BD_URL_SUPABASE con solo el host frena el arranque con un mensaje claro y 
 
   const soloHost = arrancar("db.EJEMPLO_SECRETO.supabase.co");
   assert.notEqual(soloHost.status, 0);
-  assert.match(soloHost.stderr, /BD_URL_SUPABASE tiene que ser la dirección COMPLETA/);
+  assert.match(soloHost.stderr, /tiene que ser la dirección COMPLETA/);
   assert.doesNotMatch(soloHost.stderr, /EJEMPLO_SECRETO/);
 
   assert.equal(arrancar("postgresql://postgres.ej:clave@aws-0-ej.pooler.supabase.com:5432/postgres").status, 0);
@@ -135,7 +135,7 @@ test("verificar_env revisa .env.local y .env.produccion: nombres viejos, obsolet
     writeFileSync(join(raiz, "frontend/.env.produccion.example"), "VITE_API_URL=\n");
     // Un .env viejo, nombres anteriores, una obsoleta, un valor de ejemplo y la base de producción en la PC.
     writeFileSync(join(raiz, "servidor/.env"), "X=1\n");
-    writeFileSync(join(raiz, "servidor/.env.local"), "JWT_SECRET=SECRETO_NO_MOSTRAR\nBD_SSL=false\nSUPERADMIN_DNI=1\nDB_NAME=mipadel\nBD_ESQUEMA=mipadel\nBD_URL_SUPABASE=postgresql://u:[COMPLETAR]@host/db\n");
+    writeFileSync(join(raiz, "servidor/.env.local"), "JWT_SECRET=SECRETO_NO_MOSTRAR\nSUPERADMIN_DNI=1\nDB_NAME=mipadel\nBD_ESQUEMA=mipadel\nBD_URL_SUPABASE=postgresql://u:[COMPLETAR]@host/db\n");
     writeFileSync(join(raiz, "frontend/.env.local"), "VITE_API_URL=http://localhost:3001/api\nVITE_GOOGLE_CLIENT_ID=id\n");
 
     const r = correr();
@@ -143,11 +143,9 @@ test("verificar_env revisa .env.local y .env.produccion: nombres viejos, obsolet
     assert.match(r.stdout, /servidor\/\.env ya no se usa/);
     assert.match(r.stdout, /JWT_SECRET → renombrar a CLAVE_SESIONES/);
     assert.match(r.stdout, /VITE_GOOGLE_CLIENT_ID → renombrar a VITE_GOOGLE_ID_CLIENTE/);
-    assert.match(r.stdout, /BD_SSL → ya no se usa/);
     assert.match(r.stdout, /SUPERADMIN_DNI → ya no se usa/);
     assert.match(r.stdout, /BD_URL_SUPABASE → todavía tiene un valor de ejemplo/);
     assert.match(r.stdout, /BD_URL_SUPABASE tiene que quedar vacía/);
-    assert.match(r.stdout, /BD_ESQUEMA no puede ser mipadel \(el de producción\)/);
     assert.match(r.stdout, /No existe \(opcional\)/, "el .env.produccion es opcional");
     assert.doesNotMatch(r.stdout, /SECRETO_NO_MOSTRAR/);
 

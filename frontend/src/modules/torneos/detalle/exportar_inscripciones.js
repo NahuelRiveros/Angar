@@ -1,4 +1,4 @@
-import { ESTADOS_INSCRIPCION, ESTADOS_PAGO_INSCRIPCION } from "../../../../../torneo_config.js";
+import { ESTADOS_INSCRIPCION, ESTADOS_PAGO_INSCRIPCION } from "../../../../../rubros/torneos/torneo_config.js";
 import { formatearMomento } from "../../suscripcion/estado_plan.js";
 
 // Excel en español usa ";" para separar columnas; el BOM hace que lea bien los acentos.

@@ -11,7 +11,7 @@ import InputField from "../../../controls/ui/input_field.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
-import { ESTADOS_INSCRIPCION, ESTADOS_PAGO_INSCRIPCION, PERMITIDO } from "../../../../../torneo_config.js";
+import { ESTADOS_INSCRIPCION, ESTADOS_PAGO_INSCRIPCION, PERMITIDO } from "../../../../../rubros/torneos/torneo_config.js";
 import { getInscripciones, cargarPareja, editarPareja, resolverInscripcion, getEnlaceComprobanteInscripcion } from "../api/torneos_api.js";
 import { abrirEnPestania } from "../../../utils/abrir_en_pestania.js";
 import { formatearPesos } from "../../suscripcion/estado_plan.js";

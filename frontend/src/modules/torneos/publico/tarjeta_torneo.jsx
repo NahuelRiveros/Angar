@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Award, CalendarDays, Layers, MapPin, Users } from "lucide-react";
-import { FORMATOS_PARTIDO } from "../../../../../torneo_config.js";
+import { FORMATOS_PARTIDO } from "../../../../../rubros/torneos/torneo_config.js";
 import { formatearFechaAR } from "../../../utils/formatear_fecha.js";
 import { EstadoTorneo } from "../comun/torneo_ui.jsx";
 

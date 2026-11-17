@@ -8,21 +8,21 @@ process.env.NODE_ENV = "test";
 process.env.BD_ESQUEMA = SCHEMA;
 process.env.AVISOS_POR_CORREO = "no"; // las pruebas no mandan correos
 
-const { env } = await import("../src/configuracion_servidor/env.js");
+const { env } = await import("../src/core/configuracion_servidor/env.js");
 // Nunca contra una base remota: esta prueba crea y borra tablas.
 const esLocal = !env.BD_URL && ["localhost", "127.0.0.1"].includes(env.DB_HOST);
 
-const { sequelize } = await import("../src/database/sequelize.js");
-const { bootstrap_database } = await import("../src/database/bootstrap.js");
-const { seed_catalogos } = await import("../src/database/seed/seed_catalogos.js");
-const { seed_rbac } = await import("../src/database/seed/seed_rbac.js");
-const { registrarCliente } = await import("../src/services/usuarios/auth_service.js");
-const { Usuario } = await import("../src/models/index.js");
-const torneos = await import("../src/services/torneos/torneo_service.js");
-const insc = await import("../src/services/torneos/inscripcion_service.js");
-const zonas = await import("../src/services/torneos/zona_service.js");
-const llave = await import("../src/services/torneos/llave_service.js");
-const publico = await import("../src/services/torneos/publico_service.js");
+const { sequelize } = await import("../src/core/database/sequelize.js");
+const { bootstrap_database } = await import("../src/core/database/bootstrap.js");
+const { seed_catalogos } = await import("../src/core/database/seed/seed_catalogos.js");
+const { seed_rbac } = await import("../src/core/database/seed/seed_rbac.js");
+const { registrarCliente } = await import("../src/core/services/usuarios/auth_service.js");
+const { Usuario } = await import("../src/modulos/torneos/models/index.js");
+const torneos = await import("../src/modulos/torneos/services/torneos/torneo_service.js");
+const insc = await import("../src/modulos/torneos/services/torneos/inscripcion_service.js");
+const zonas = await import("../src/modulos/torneos/services/torneos/zona_service.js");
+const llave = await import("../src/modulos/torneos/services/torneos/llave_service.js");
+const publico = await import("../src/modulos/torneos/services/torneos/publico_service.js");
 
 const sin = !esLocal && "sin PostgreSQL local";
 let org;
@@ -146,7 +146,7 @@ test("vista pública: zonas, fixture y llave sin cuenta; nada de borradores ni t
 
 
 test("torneos demo: crearlos dos veces a la vez arma uno solo; borrarlos no toca los demás", { skip: sin }, async () => {
-  const demo = await import("../src/services/demo/demo_torneos_service.js");
+  const demo = await import("../src/modulos/torneos/services/demo/demo_torneos_service.js");
   const propio = await torneos.crearTorneo(org, { nombre: "No es demo", sede: "Club", fecha_inicio: "2026-12-12" });
   const [a, b] = await Promise.all([demo.crearTorneosDemo({ log: () => {} }), demo.crearTorneosDemo({ log: () => {} })]);
   assert.equal(a, b, "la segunda llamada espera a la primera");
@@ -165,8 +165,8 @@ test("torneos demo: crearlos dos veces a la vez arma uno solo; borrarlos no toca
 });
 
 test("cronograma automático: vista previa sin guardar, aplicar respeta lo manual y avisa a cada jugador una vez", { skip: sin }, async () => {
-  const crono = await import("../src/services/torneos/cronograma_service.js");
-  const { Partido, AvisoUsuario } = await import("../src/models/index.js");
+  const crono = await import("../src/modulos/torneos/services/torneos/cronograma_service.js");
+  const { Partido, AvisoUsuario } = await import("../src/modulos/torneos/models/index.js");
   const t = await torneos.crearTorneo(org, { nombre: "Copa Horarios", sede: "Club", fecha_inicio: "2026-12-05" });
   const cat = (await torneos.crearCategoria(t.id, org, { nivel: 6, rama: "mixto", parejas_por_zona: 3, clasifican_por_zona: 2 })).categorias[0];
   await torneos.cambiarEstado(t.id, org, "inscripcion");

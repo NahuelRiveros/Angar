@@ -6,7 +6,7 @@ import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import InputField from "../../../controls/ui/input_field.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
-import { PUESTOS, LIMITES } from "../../../../../torneo_config.js";
+import { PUESTOS, LIMITES } from "../../../../../rubros/torneos/torneo_config.js";
 import { guardarPremios } from "../api/torneos_api.js";
 import { useCambioTorneo, mensajeDe } from "./use_cambio_torneo.js";
 

@@ -1,13 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createResetToken, verifyResetToken, passwordVersion } from "../src/services/common/auth_tokens.js";
-import { CODIGOS_PERMISO, dependientesDe, permisosConfig, permisosEfectivos, tienePermiso } from "../../permisos_config.js";
+import { createResetToken, verifyResetToken, passwordVersion } from "../src/core/services/common/auth_tokens.js";
+import { CODIGOS_PERMISO, dependientesDe, permisosConfig, permisosEfectivos, tienePermiso } from "../../core/permisos_config.js";
 import { cumpleAcceso } from "../../frontend/src/controls/acceso/acceso.js";
-import { env } from "../src/configuracion_servidor/env.js";
-import { enviarEmail, mailConfigured } from "../src/services/common/mail_service.js";
+import { env } from "../src/core/configuracion_servidor/env.js";
+import { enviarEmail, mailConfigured } from "../src/core/services/common/mail_service.js";
 import { safeReturnTo } from "../../frontend/src/controls/acceso/return_to.js";
 import { filtrarNavbarPorRol } from "../../frontend/src/controls/layout/navbar/navbar_permissions.js";
-import { clasificarIdentificador, esNombreUsuarioValido } from "../src/services/common/nombre_usuario.js";
+import { clasificarIdentificador, esNombreUsuarioValido } from "../src/core/services/common/nombre_usuario.js";
 
 test("login distingue email de nombre de usuario y valida el usuario sin consultar la base", () => {
   assert.deepEqual(clasificarIdentificador("  Ana@Example.TEST "), { tipo: "email", valor: "ana@example.test" });
@@ -105,14 +105,14 @@ test("permisos: admin y super admin tienen todo; el resto, solo lo asignado y co
   for (const p of permisosConfig.permisos) assert.ok(permisosConfig.grupos.some((g) => g.codigo === p.grupo), p.codigo);
 });
 
-test("roles: el registro crea jugadores y los roles fuera del equipo no aparecen como editables", async () => {
-  const { ROLES_BASE } = await import("../src/services/usuarios/permisos_service.js");
-  for (const rol of ["super_admin", "admin", "soporte", "organizador", "jugador"]) assert.ok(ROLES_BASE.includes(rol), rol);
-  assert.deepEqual(permisosConfig.rolesFuera, ["organizador", "jugador"]);
+test("MIG-03: el registro crea jugadores y jugador y organizador no son roles del equipo", () => {
+  assert.equal(permisosConfig.rolAlRegistrarse, "jugador");
+  assert.deepEqual(permisosConfig.rolesFuera, ["cliente", "jugador", "organizador"]);
+  for (const rol of ["jugador", "organizador"]) assert.ok(permisosConfig.nombresRol[rol], `${rol} se crea al arrancar`);
 });
 
 test("plan: 14 días de prueba, estados por fecha argentina y aviso 7 días antes", async () => {
-  const r = await import("../src/services/suscripciones/suscripcion_reglas.js");
+  const r = await import("../src/modulos/torneos/services/suscripciones/suscripcion_reglas.js");
   // 02:30 UTC del 28/10 todavía es 27/10 en Argentina (UTC-3).
   assert.equal(r.hoyArgentina(new Date("2026-10-28T02:30:00Z")), "2026-10-27");
   assert.equal(r.vencimientoDePrueba("2026-10-27"), "2026-11-09");
@@ -128,7 +128,7 @@ test("plan: 14 días de prueba, estados por fecha argentina y aviso 7 días ante
 });
 
 test("plan: cada pago suma 30 días al final, o desde hoy si ya había vencido", async () => {
-  const { nuevoVencimiento, sumarDias, diasEntre } = await import("../src/services/suscripciones/suscripcion_reglas.js");
+  const { nuevoVencimiento, sumarDias, diasEntre } = await import("../src/modulos/torneos/services/suscripciones/suscripcion_reglas.js");
   assert.equal(nuevoVencimiento("2026-11-05", "2026-10-27", 30), "2026-12-05", "pagar antes no hace perder días");
   assert.equal(nuevoVencimiento("2026-10-27", "2026-10-27", 30), "2026-11-26");
   assert.equal(nuevoVencimiento("2026-09-01", "2026-10-27", 30), "2026-11-25", "vencido: hoy es el día 1 de 30");
@@ -138,7 +138,7 @@ test("plan: cada pago suma 30 días al final, o desde hoy si ya había vencido",
 });
 
 test("MercadoPago: solo un pago aprobado, en pesos y por el precio suma días al usuario de la referencia", async () => {
-  const { evaluarPagoMercadoPago, referenciaDeUsuario, usuarioDeReferencia } = await import("../src/services/suscripciones/suscripcion_reglas.js");
+  const { evaluarPagoMercadoPago, referenciaDeUsuario, usuarioDeReferencia } = await import("../src/modulos/torneos/services/suscripciones/suscripcion_reglas.js");
   const pago = { id: 1, estado: "approved", monto: 15000, moneda: "ARS", external_reference: referenciaDeUsuario(42) };
   assert.deepEqual(evaluarPagoMercadoPago(pago, 15000), { aplicar: true, usuarioId: 42, estado: "aprobado" });
   assert.equal(evaluarPagoMercadoPago({ ...pago, monto: 100 }, 15000).estado, "monto_insuficiente");
@@ -151,7 +151,7 @@ test("MercadoPago: solo un pago aprobado, en pesos y por el precio suma días al
 });
 
 test("plan: extensión manual y ajuste de fecha validan días, fecha y nota", async () => {
-  const { validarExtensionManual, validarAjusteFecha } = await import("../src/services/suscripciones/suscripcion_reglas.js");
+  const { validarExtensionManual, validarAjusteFecha } = await import("../src/modulos/torneos/services/suscripciones/suscripcion_reglas.js");
   assert.deepEqual(validarExtensionManual({ dias: 30, nota: "  transferencia  " }).datos, { dias: 30, nota: "transferencia" });
   for (const dias of [0, -1, 1.5, 366, "abc", undefined]) assert.ok(validarExtensionManual({ dias }).error, String(dias));
   assert.ok(validarExtensionManual({ dias: 3, nota: "x".repeat(301) }).error);
@@ -160,8 +160,8 @@ test("plan: extensión manual y ajuste de fecha validan días, fecha y nota", as
 });
 
 test("transferencia: el comprobante se reconoce por su contenido y se validan tamaño, nota y motivo", async () => {
-  const { detectarFormatoComprobante, validarAvisoTransferencia, validarRechazo } = await import("../src/services/suscripciones/suscripcion_reglas.js");
-  const { cobroConfig, transferenciaLista } = await import("../../cobro_config.js");
+  const { detectarFormatoComprobante, validarAvisoTransferencia, validarRechazo } = await import("../src/modulos/torneos/services/suscripciones/suscripcion_reglas.js");
+  const { cobroConfig, transferenciaLista } = await import("../../rubros/torneos/cobro_config.js");
   const relleno = Buffer.alloc(16);
   const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), relleno]);
   const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), relleno]);
@@ -186,7 +186,7 @@ test("transferencia: el comprobante se reconoce por su contenido y se validan ta
 });
 
 test("torneo: datos con lista blanca, textos recortados, fechas válidas y en orden", async () => {
-  const { validarDatosTorneo, fechasCoherentes } = await import("../src/services/torneos/torneo_reglas.js");
+  const { validarDatosTorneo, fechasCoherentes } = await import("../src/modulos/torneos/services/torneos/torneo_reglas.js");
   const { datos } = validarDatosTorneo({ nombre: "  Abierto de Verano ", sede: " Club Norte ", fecha_inicio: "2026-12-05", estado: "finalizado", organizador_id: 99 }, { crear: true });
   assert.deepEqual(datos, { nombre: "Abierto de Verano", sede: "Club Norte", fecha_inicio: "2026-12-05" }, "estado y dueño no se aceptan del cuerpo");
   assert.match(validarDatosTorneo({}, { crear: true }).error, /nombre/);
@@ -201,8 +201,8 @@ test("torneo: datos con lista blanca, textos recortados, fechas válidas y en or
 });
 
 test("torneo: estados en orden y requisitos para abrir la inscripción", async () => {
-  const { puedePasar, faltantesPara } = await import("../src/services/torneos/torneo_reglas.js");
-  const { TRANSICIONES, EDICION_POR_ESTADO, ESTADOS_TORNEO } = await import("../../torneo_config.js");
+  const { puedePasar, faltantesPara } = await import("../src/modulos/torneos/services/torneos/torneo_reglas.js");
+  const { TRANSICIONES, EDICION_POR_ESTADO, ESTADOS_TORNEO } = await import("../../rubros/torneos/torneo_config.js");
   assert.ok(puedePasar("borrador", "inscripcion"));
   assert.ok(puedePasar("inscripcion", "borrador"), "se puede despublicar mientras se inscribe");
   assert.ok(puedePasar("en_juego", "finalizado"));
@@ -222,8 +222,8 @@ test("torneo: estados en orden y requisitos para abrir la inscripción", async (
 });
 
 test("categorías: nivel y rama de la lista o nombre propio, cupo opcional y sin repetidas", async () => {
-  const { validarCategoria, claveCategoria } = await import("../src/services/torneos/torneo_reglas.js");
-  const { nombreCategoria } = await import("../../torneo_config.js");
+  const { validarCategoria, claveCategoria } = await import("../src/modulos/torneos/services/torneos/torneo_reglas.js");
+  const { nombreCategoria } = await import("../../rubros/torneos/torneo_config.js");
   const cuarta = validarCategoria({ nivel: "4", rama: "caballeros", cupo_parejas: "16" }).datos;
   const ZONA_POR_DEFECTO = { parejas_por_zona: 3, clasifican_por_zona: 2, formato_zona: "un_set_6", formato_llave: "mejor_de_3_stb" };
   assert.deepEqual(cuarta, { nivel: 4, rama: "caballeros", nombre_personalizado: null, cupo_parejas: 16, monto_inscripcion: null, ...ZONA_POR_DEFECTO });
@@ -245,7 +245,7 @@ test("categorías: nivel y rama de la lista o nombre propio, cupo opcional y sin
 });
 
 test("premios: puesto conocido, descripción obligatoria, 'Otro' con nombre y tope por categoría", async () => {
-  const { validarPremios } = await import("../src/services/torneos/torneo_reglas.js");
+  const { validarPremios } = await import("../src/modulos/torneos/services/torneos/torneo_reglas.js");
   const { datos } = validarPremios([
     { puesto: "campeon", descripcion: " $200.000 + trofeo " },
     { puesto: "otro", etiqueta: "Fair play", descripcion: "Paletas", id: 5, categoria_id: 99 },
@@ -263,7 +263,7 @@ test("premios: puesto conocido, descripción obligatoria, 'Otro' con nombre y to
 });
 
 test("marcadores: sets a 6 y a 9, mejor de 3 y super tie-break; rechaza lo imposible", async () => {
-  const { validarResultado } = await import("../src/services/torneos/zona_reglas.js");
+  const { validarResultado } = await import("../src/modulos/torneos/services/torneos/zona_reglas.js");
   const ok = (sets, formato) => validarResultado(sets, formato).datos?.ganador;
   const mal = (sets, formato) => validarResultado(sets, formato).error;
   assert.equal(ok([[6, 3]], "un_set_6"), 1);
@@ -287,7 +287,7 @@ test("marcadores: sets a 6 y a 9, mejor de 3 y super tie-break; rechaza lo impos
 });
 
 test("zonas: tamaños parejos, nunca una zona de 2, cabezas de serie separadas y sorteo reproducible", async () => {
-  const { tamaniosDeZonas, armarZonas, nombreZona } = await import("../src/services/torneos/zona_reglas.js");
+  const { tamaniosDeZonas, armarZonas, nombreZona } = await import("../src/modulos/torneos/services/torneos/zona_reglas.js");
   assert.deepEqual(tamaniosDeZonas(9, 3), [3, 3, 3]);
   assert.deepEqual(tamaniosDeZonas(10, 3), [4, 3, 3]);
   assert.deepEqual(tamaniosDeZonas(11, 3), [4, 4, 3]);
@@ -318,7 +318,7 @@ test("zonas: tamaños parejos, nunca una zona de 2, cabezas de serie separadas y
 });
 
 test("fixture: todos contra todos una vez y nadie juega dos veces en la misma fecha", async () => {
-  const { fixtureTodosContraTodos } = await import("../src/services/torneos/zona_reglas.js");
+  const { fixtureTodosContraTodos } = await import("../src/modulos/torneos/services/torneos/zona_reglas.js");
   for (const n of [2, 3, 4, 5, 6]) {
     const ids = Array.from({ length: n }, (_, i) => i + 1);
     const partidos = fixtureTodosContraTodos(ids);
@@ -334,7 +334,7 @@ test("fixture: todos contra todos una vez y nadie juega dos veces en la misma fe
 });
 
 test("posiciones: ganados, diferencia de sets, de games, entre ellas; clasificados al terminar la zona", async () => {
-  const { tablaDeZona } = await import("../src/services/torneos/zona_reglas.js");
+  const { tablaDeZona } = await import("../src/modulos/torneos/services/torneos/zona_reglas.js");
   const p = (pareja1_id, pareja2_id, sets, formato = "mejor_de_3") => ({
     pareja1_id, pareja2_id, sets, formato, ganador_id: sets.filter(([a, b]) => a > b).length > sets.length / 2 ? pareja1_id : pareja2_id,
   });
@@ -378,7 +378,7 @@ test("posiciones: ganados, diferencia de sets, de games, entre ellas; clasificad
 });
 
 test("inscripciones: nombres completos, teléfono limpio, nota acotada y cabeza de serie solo si es true", async () => {
-  const { validarInscripcionOnline, validarParejaOrganizador } = await import("../src/services/torneos/inscripcion_reglas.js");
+  const { validarInscripcionOnline, validarParejaOrganizador } = await import("../src/modulos/torneos/services/torneos/inscripcion_reglas.js");
   assert.deepEqual(validarInscripcionOnline({ categoria_id: "7", jugador2_nombre: "  Juan   Pérez ", telefono: "+54 9 370 400-0000", usuario_id: 1, estado: "confirmada" }).datos,
     { categoria_id: 7, jugador2_nombre: "Juan Pérez", telefono: "+54 9 370 400-0000", nota: null }, "estado y dueño no se aceptan del cuerpo");
   assert.match(validarInscripcionOnline({ categoria_id: 7, jugador2_nombre: "J" }).error, /compañero/);
@@ -392,7 +392,7 @@ test("inscripciones: nombres completos, teléfono limpio, nota acotada y cabeza 
 
 
 test("llave: siembra clásica, 1ºA contra 2ºB y los de la misma zona en mitades opuestas", async () => {
-  const { ordenDeSiembra, armarLlave, nombreRonda } = await import("../src/services/torneos/llave_reglas.js");
+  const { ordenDeSiembra, armarLlave, nombreRonda } = await import("../src/modulos/torneos/services/torneos/llave_reglas.js");
   assert.deepEqual(ordenDeSiembra(4), [1, 4, 2, 3]);
   assert.deepEqual(ordenDeSiembra(8), [1, 8, 4, 5, 2, 7, 3, 6]);
   // Zona A: 1º=101, 2º=102; zona B: 1º=201, 2º=202.
@@ -404,7 +404,7 @@ test("llave: siembra clásica, 1ºA contra 2ºB y los de la misma zona en mitade
 });
 
 test("llave: con 6 clasificados los 1º de A y B pasan sin jugar y nadie cruza a su zona en primera ronda", async () => {
-  const { armarLlave, partidosDeLlave } = await import("../src/services/torneos/llave_reglas.js");
+  const { armarLlave, partidosDeLlave } = await import("../src/modulos/torneos/services/torneos/llave_reglas.js");
   const zonas = ["A", "B", "C"].map((nombre, i) => ({ nombre, clasificados: [(i + 1) * 100 + 1, (i + 1) * 100 + 2] }));
   const llave = armarLlave(zonas);
   assert.equal(llave.tamanio, 8);
@@ -419,7 +419,7 @@ test("llave: con 6 clasificados los 1º de A y B pasan sin jugar y nadie cruza a
 });
 
 test("lista pública: filtros con allowlist y resumen de la tarjeta", async () => {
-  const { normalizarFiltros, resumirTorneo } = await import("../src/services/torneos/publico_reglas.js");
+  const { normalizarFiltros, resumirTorneo } = await import("../src/modulos/torneos/services/torneos/publico_reglas.js");
   assert.deepEqual(normalizarFiltros({ q: "  Copa  ", estado: "en_juego", rama: "mixto", nivel: "5" }), { busqueda: "Copa", estado: "en_juego", rama: "mixto", nivel: 5 });
   assert.deepEqual(normalizarFiltros({ estado: "borrador", rama: "otra", nivel: "9", q: "" }), { busqueda: null, estado: null, rama: null, nivel: null }, "lo desconocido se ignora: nunca muestra borradores");
   assert.equal(normalizarFiltros({ q: "50%_off" }).busqueda, "50\\%\\_off", "escapa los comodines del ILIKE");
@@ -438,8 +438,8 @@ test("lista pública: filtros con allowlist y resumen de la tarjeta", async () =
 });
 
 test("cobro de la inscripción: monto, CBU/CVU y alias del torneo; cuándo la pareja puede mandar el comprobante", async () => {
-  const { validarDatosTorneo, validarCategoria, validarMonto } = await import("../src/services/torneos/torneo_reglas.js");
-  const { motivoParaNoSubirComprobante } = await import("../src/services/torneos/inscripcion_reglas.js");
+  const { validarDatosTorneo, validarCategoria, validarMonto } = await import("../src/modulos/torneos/services/torneos/torneo_reglas.js");
+  const { motivoParaNoSubirComprobante } = await import("../src/modulos/torneos/services/torneos/inscripcion_reglas.js");
   assert.deepEqual(validarDatosTorneo({ monto_inscripcion: "15000", cobro_titular: " Club Norte ", cobro_banco: "Banco EJEMPLO", cobro_cbu: "0000 0031 0000 0000 0000 01", cobro_alias: "mipadel.ejemplo" }).datos,
     { monto_inscripcion: 15000, cobro_titular: "Club Norte", cobro_banco: "Banco EJEMPLO", cobro_cbu: "0000003100000000000001", cobro_alias: "mipadel.ejemplo" });
   assert.deepEqual(validarDatosTorneo({ monto_inscripcion: "", cobro_cbu: "", cobro_alias: "" }).datos, { monto_inscripcion: null, cobro_cbu: null, cobro_alias: null }, "vacío = sin cobro");
@@ -460,7 +460,7 @@ test("cobro de la inscripción: monto, CBU/CVU y alias del torneo; cuándo la pa
 });
 
 test("avisos por correo: textos con enlace, datos escapados y sin escribir a dominios de prueba", async () => {
-  const { armarAviso, destinoValido } = await import("../src/services/common/avisos_reglas.js");
+  const { armarAviso, destinoValido } = await import("../src/modulos/torneos/services/common/avisos_reglas.js");
   const nueva = armarAviso("nueva_inscripcion", { torneo: "Copa <Verano>", torneoId: 4, categoria: "6ta Mixto", pareja: "Ana / Beto", estado: "pendiente" }, "https://mipadelcup.vercel.app/");
   assert.equal(nueva.subject, "MiPadel · Nueva inscripción en Copa <Verano>");
   assert.match(nueva.text, /Ana \/ Beto se anotó en 6ta Mixto\.\nQuedó pendiente/);
@@ -475,7 +475,7 @@ test("avisos por correo: textos con enlace, datos escapados y sin escribir a dom
 });
 
 test("duplicar: solo los campos elegidos, nombre con tope y sin fechas", async () => {
-  const { copiaDeTorneo, copiaDeCategoria } = await import("../src/services/torneos/torneo_reglas.js");
+  const { copiaDeTorneo, copiaDeCategoria } = await import("../src/modulos/torneos/services/torneos/torneo_reglas.js");
   const copia = copiaDeTorneo({ id: 4, nombre: "x".repeat(118), estado: "finalizado", fecha_inicio: "2026-07-10", sede: "Club", organizador_id: 9, campo_nuevo_privado: "no" });
   assert.equal(copia.nombre.length, 120);
   assert.deepEqual([copia.estado, copia.fecha_inicio, copia.fecha_fin, copia.sede], ["borrador", null, null, "Club"]);
@@ -484,7 +484,7 @@ test("duplicar: solo los campos elegidos, nombre con tope y sin fechas", async (
 });
 
 test("avisos al jugador: lo que guarda la campanita (título, detalle con tope y a dónde lleva)", async () => {
-  const { avisoParaCampanita, armarAviso } = await import("../src/services/common/avisos_reglas.js");
+  const { avisoParaCampanita, armarAviso } = await import("../src/modulos/torneos/services/common/avisos_reglas.js");
   const rechazo = avisoParaCampanita("comprobante_rechazado", { torneo: "Copa", categoria: "6ta Mixto", motivo: "No se ve el monto", inscripcionId: 7 });
   assert.deepEqual([rechazo.tipo, rechazo.titulo, rechazo.ruta], ["comprobante_rechazado", "Revisá el comprobante de Copa", "/mis-inscripciones?pagar=7"]);
   assert.match(rechazo.detalle, /Motivo: No se ve el monto/);
@@ -494,8 +494,8 @@ test("avisos al jugador: lo que guarda la campanita (título, detalle con tope y
 });
 
 test("cronograma automático: turnos, sin superponer parejas, con descanso, llave después de las zonas y lo manual se respeta", async () => {
-  const { validarConfigCronograma, turnosDe, armarCronograma } = await import("../src/services/torneos/cronograma_reglas.js");
-  const { fixtureTodosContraTodos } = await import("../src/services/torneos/zona_reglas.js");
+  const { validarConfigCronograma, turnosDe, armarCronograma } = await import("../src/modulos/torneos/services/torneos/cronograma_reglas.js");
+  const { fixtureTodosContraTodos } = await import("../src/modulos/torneos/services/torneos/zona_reglas.js");
   const config = validarConfigCronograma({ dias: ["2026-12-06", "2026-12-05"], desde: "18:00", hasta: "23:00", minutos: 60, canchas: 2, descanso: 1 }).datos;
   assert.deepEqual(config.dias, ["2026-12-05", "2026-12-06"], "los días se ordenan");
   assert.deepEqual(turnosDe(config).slice(0, 5).map((x) => x.hora), ["18:00", "19:00", "20:00", "21:00", "22:00"]);
@@ -547,7 +547,7 @@ test("cronograma automático: turnos, sin superponer parejas, con descanso, llav
 });
 
 test("programación del partido: día, hora y cancha opcionales y validados", async () => {
-  const { validarProgramacion } = await import("../src/services/torneos/zona_reglas.js");
+  const { validarProgramacion } = await import("../src/modulos/torneos/services/torneos/zona_reglas.js");
   assert.deepEqual(validarProgramacion({ fecha: "2026-12-05", hora: "18:30", cancha: " Cancha 2 " }).datos, { fecha: "2026-12-05", hora: "18:30", cancha: "Cancha 2" });
   assert.deepEqual(validarProgramacion({}).datos, { fecha: null, hora: null, cancha: null }, "vacío borra la programación");
   assert.deepEqual(validarProgramacion({ fecha: "", hora: "", cancha: "" }).datos, { fecha: null, hora: null, cancha: null });
@@ -559,7 +559,7 @@ test("programación del partido: día, hora y cancha opcionales y validados", as
 });
 
 test("desempate: games a favor y después el sorteo guardado; los mejores terceros por promedio", async () => {
-  const { tablaDeZona, mejoresDelPuesto, clasificacionDeCategoria } = await import("../src/services/torneos/zona_reglas.js");
+  const { tablaDeZona, mejoresDelPuesto, clasificacionDeCategoria } = await import("../src/modulos/torneos/services/torneos/zona_reglas.js");
   const p = (pareja1_id, pareja2_id, sets) => ({ pareja1_id, pareja2_id, sets, formato: "un_set_6", ganador_id: sets[0][0] > sets[0][1] ? pareja1_id : pareja2_id });
   // Triangular perfecto: cada una gana 6-4 y pierde 4-6. Todo igual, games a favor iguales: decide el sorteo.
   const triangular = [p(1, 2, [[6, 4]]), p(2, 3, [[6, 4]]), p(3, 1, [[6, 4]])];
@@ -597,7 +597,7 @@ test("desempate: games a favor y después el sorteo guardado; los mejores tercer
 });
 
 test("llave con mejores terceros: entran en las últimas semillas y nadie cruza a su zona en primera ronda", async () => {
-  const { armarLlave, partidosDeLlave } = await import("../src/services/torneos/llave_reglas.js");
+  const { armarLlave, partidosDeLlave } = await import("../src/modulos/torneos/services/torneos/llave_reglas.js");
   // 7 zonas: 14 directos + 2 mejores terceros = octavos completos.
   const zonas = Array.from({ length: 7 }, (_, z) => ({ nombre: String(z), clasificados: [(z + 1) * 100 + 1, (z + 1) * 100 + 2] }));
   const mejores = [{ id: 303, zona: 2 }, { id: 603, zona: 5 }];
@@ -614,9 +614,9 @@ test("llave con mejores terceros: entran en las últimas semillas y nadie cruza 
 });
 
 test("cálculo de la llave: lo que ve el organizador coincide con el sorteo y la llave reales", async () => {
-  const { planDeLlave, zonasIguales, cuposConZonasIguales, llaveJusta } = await import("../../torneo_config.js");
-  const { armarZonas } = await import("../src/services/torneos/zona_reglas.js");
-  const { armarLlave, partidosDeLlave } = await import("../src/services/torneos/llave_reglas.js");
+  const { planDeLlave, zonasIguales, cuposConZonasIguales, llaveJusta } = await import("../../rubros/torneos/torneo_config.js");
+  const { armarZonas } = await import("../src/modulos/torneos/services/torneos/zona_reglas.js");
+  const { armarLlave, partidosDeLlave } = await import("../src/modulos/torneos/services/torneos/llave_reglas.js");
   assert.deepEqual(planDeLlave(20, 3, 2), { zonas: [4, 4, 3, 3, 3, 3], clasificados: 12, llave: { tamanio: 16, mejores: 4, pases: 0, puestoMejores: 3, primeraRonda: "Octavos de final" } });
   assert.deepEqual(planDeLlave(21, 3, 2).llave, { tamanio: 16, mejores: 2, pases: 0, puestoMejores: 3, primeraRonda: "Octavos de final" }, "21: los 2 mejores terceros completan los octavos");
   assert.ok(llaveJusta(planDeLlave(24, 3, 2)), "24 parejas llenan los octavos justos");
@@ -653,7 +653,7 @@ test("cálculo de la llave: lo que ve el organizador coincide con el sorteo y la
 });
 
 test("llave: de 1 a 8 zonas, con 1 o 2 clasificados, todos entran una vez y ningún 2º cruza a su 1º en primera ronda", async () => {
-  const { armarLlave, partidosDeLlave, potenciaDeDos } = await import("../src/services/torneos/llave_reglas.js");
+  const { armarLlave, partidosDeLlave, potenciaDeDos } = await import("../src/modulos/torneos/services/torneos/llave_reglas.js");
   for (let cantidadZonas = 1; cantidadZonas <= 8; cantidadZonas += 1) {
     for (const clasifican of [1, 2]) {
       if (cantidadZonas * clasifican < 2) continue;
@@ -683,7 +683,7 @@ test("llave: de 1 a 8 zonas, con 1 o 2 clasificados, todos entran una vez y ning
 });
 
 test("llave: el ganador avanza al lugar correcto y el podio sale de la final y las semis", async () => {
-  const { destinoDelGanador, podio } = await import("../src/services/torneos/llave_reglas.js");
+  const { destinoDelGanador, podio } = await import("../src/modulos/torneos/services/torneos/llave_reglas.js");
   assert.deepEqual(destinoDelGanador({ ronda: 1, orden: 0 }, 3), { ronda: 2, orden: 0, lado: "pareja1_id" });
   assert.deepEqual(destinoDelGanador({ ronda: 1, orden: 3 }, 3), { ronda: 2, orden: 1, lado: "pareja2_id" });
   assert.deepEqual(destinoDelGanador({ ronda: 2, orden: 1 }, 3), { ronda: 3, orden: 0, lado: "pareja2_id" });
@@ -698,7 +698,7 @@ test("llave: el ganador avanza al lugar correcto y el podio sale de la final y l
 });
 
 test("código de jugador: formato MP-XXXXX sin letras confusas y se acepta escrito de varias formas", async () => {
-  const { generarCodigoJugador, normalizarCodigoJugador } = await import("../src/services/common/codigo_jugador.js");
+  const { generarCodigoJugador, normalizarCodigoJugador } = await import("../src/modulos/torneos/services/common/codigo_jugador.js");
   for (let i = 0; i < 200; i += 1) assert.match(generarCodigoJugador(), /^MP-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{5}$/);
   assert.equal(generarCodigoJugador(() => 0), "MP-22222", "el azar es inyectable");
   for (const escrito of ["MP-7K3QX", "mp-7k3qx", " 7k3qx ", "MP7K3QX", "mp 7k3qx"]) assert.equal(normalizarCodigoJugador(escrito), "MP-7K3QX", escrito);
@@ -706,7 +706,7 @@ test("código de jugador: formato MP-XXXXX sin letras confusas y se acepta escri
 });
 
 test("inscripción online: con nombre del compañero o con su código (que se normaliza)", async () => {
-  const { validarInscripcionOnline } = await import("../src/services/torneos/inscripcion_reglas.js");
+  const { validarInscripcionOnline } = await import("../src/modulos/torneos/services/torneos/inscripcion_reglas.js");
   assert.deepEqual(validarInscripcionOnline({ categoria_id: 3, codigo_companiero: "mp-7k3qx", jugador2_nombre: "Ignorado" }).datos,
     { categoria_id: 3, codigo_companiero: "MP-7K3QX", telefono: null, nota: null }, "con código se ignora el nombre");
   assert.match(validarInscripcionOnline({ categoria_id: 3, codigo_companiero: "XYZ" }).error, /MP-XXXXX/);
@@ -714,7 +714,7 @@ test("inscripción online: con nombre del compañero o con su código (que se no
 });
 
 test("historial: puesto alcanzado por ronda de llave y resumen con títulos, finales y mejor puesto", async () => {
-  const { puestoAlcanzado, resumirHistorial } = await import("../src/services/jugadores/jugador_reglas.js");
+  const { puestoAlcanzado, resumirHistorial } = await import("../src/modulos/torneos/services/jugadores/jugador_reglas.js");
   assert.equal(puestoAlcanzado({ rondas: 3, alcanzada: 3, campeon: true }), "campeon");
   assert.equal(puestoAlcanzado({ rondas: 3, alcanzada: 3, campeon: false }), "final");
   assert.equal(puestoAlcanzado({ rondas: 3, alcanzada: 2, campeon: false }), "semifinal");

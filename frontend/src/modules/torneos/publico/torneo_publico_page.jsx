@@ -11,7 +11,7 @@ import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import InputField from "../../../controls/ui/input_field.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
-import { PUESTOS } from "../../../../../torneo_config.js";
+import { PUESTOS } from "../../../../../rubros/torneos/torneo_config.js";
 import { formatearFechaAR } from "../../../utils/formatear_fecha.js";
 import { getTorneoPublico, anotarme } from "../api/torneos_api.js";
 import { EstadoTorneo } from "../comun/torneo_ui.jsx";

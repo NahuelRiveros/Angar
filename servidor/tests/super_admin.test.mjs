@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import bcrypt from "bcrypt";
 import { spawnSync } from "node:child_process";
-import { diagnosticarSuperAdmin } from "../src/services/common/diagnostico_super_admin.js";
+import { diagnosticarSuperAdmin } from "../src/core/services/common/diagnostico_super_admin.js";
 
 // El super admin se configura con SUPERADMIN_USUARIO y SUPERADMIN_CONTRASENA (el email es fijo, en env.js).
 const config = { SUPERADMIN_USUARIO: "dueno.admin", SUPERADMIN_CONTRASENA: "ClaveInicial123" };
@@ -47,7 +47,7 @@ test("diagnóstico admin: informa variables faltantes, cuenta ausente y estados 
 
 // env.js en un proceso aparte: lee process.env al importarse.
 function leerEnv(variables) {
-  const envJs = new URL("../src/configuracion_servidor/env.js", import.meta.url).href;
+  const envJs = new URL("../src/core/configuracion_servidor/env.js", import.meta.url).href;
   const r = spawnSync(process.execPath, ["--input-type=module", "-e", `const { env } = await import(${JSON.stringify(envJs)}); console.log(JSON.stringify(env));`], {
     encoding: "utf8",
     // Sin las variables de esta PC (ni su .env.local, que no pisa lo ya cargado): solo lo de la prueba.
@@ -82,11 +82,11 @@ test("env: un Render con los nombres anteriores sigue andando; el nuevo gana si 
   assert.equal(env.GOOGLE_CLIENT_ID, "id-viejo");
   assert.equal(env.SUPERADMIN_CONTRASENA, "clave-vieja");
   assert.equal(leerEnv({ CLAVE_SESIONES: "nueva", JWT_SECRET: "vieja" }).JWT_SECRET, "nueva");
-  assert.equal(leerEnv({ BD_URL: "postgresql://u:c@h:5432/p", BD_SSL: "false" }).DB_SSL, false, "BD_SSL todavía fuerza el valor a mano");
+  assert.equal(leerEnv({ BD_URL: "postgresql://u:c@h:5432/p", DB_SSL: "false" }).DB_SSL, false, "DB_SSL fuerza el valor a mano");
 });
 
 test("env: en producción sin CLAVE_SESIONES (ni JWT_SECRET) el servidor no arranca", () => {
-  const envJs = new URL("../src/configuracion_servidor/env.js", import.meta.url).href;
+  const envJs = new URL("../src/core/configuracion_servidor/env.js", import.meta.url).href;
   const r = spawnSync(process.execPath, ["--input-type=module", "-e", `await import(${JSON.stringify(envJs)})`], {
     encoding: "utf8",
     env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, NODE_ENV: "production", CLAVE_SESIONES: "", JWT_SECRET: "", CLOUDINARY_NOMBRE_CUENTA: "x", CLOUDINARY_CLAVE_API: "x", CLOUDINARY_SECRETO_API: "x" },

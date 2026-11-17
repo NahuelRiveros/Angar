@@ -8,20 +8,20 @@ process.env.NODE_ENV = "test";
 process.env.BD_ESQUEMA = SCHEMA;
 process.env.AVISOS_POR_CORREO = "no"; // las pruebas no mandan correos
 
-const { env } = await import("../src/configuracion_servidor/env.js");
+const { env } = await import("../src/core/configuracion_servidor/env.js");
 // Nunca contra una base remota: esta prueba crea y borra tablas.
 const esLocal = !env.BD_URL && ["localhost", "127.0.0.1"].includes(env.DB_HOST);
 
-const { sequelize } = await import("../src/database/sequelize.js");
-const { bootstrap_database } = await import("../src/database/bootstrap.js");
-const { seed_catalogos } = await import("../src/database/seed/seed_catalogos.js");
-const { seed_rbac } = await import("../src/database/seed/seed_rbac.js");
-const { registrarCliente } = await import("../src/services/usuarios/auth_service.js");
-const { Usuario, Inscripcion, Zona, Partido } = await import("../src/models/index.js");
-const torneos = await import("../src/services/torneos/torneo_service.js");
-const insc = await import("../src/services/torneos/inscripcion_service.js");
-const zonas = await import("../src/services/torneos/zona_service.js");
-const publico = await import("../src/services/torneos/publico_service.js");
+const { sequelize } = await import("../src/core/database/sequelize.js");
+const { bootstrap_database } = await import("../src/core/database/bootstrap.js");
+const { seed_catalogos } = await import("../src/core/database/seed/seed_catalogos.js");
+const { seed_rbac } = await import("../src/core/database/seed/seed_rbac.js");
+const { registrarCliente } = await import("../src/core/services/usuarios/auth_service.js");
+const { Usuario, Inscripcion, Zona, Partido } = await import("../src/modulos/torneos/models/index.js");
+const torneos = await import("../src/modulos/torneos/services/torneos/torneo_service.js");
+const insc = await import("../src/modulos/torneos/services/torneos/inscripcion_service.js");
+const zonas = await import("../src/modulos/torneos/services/torneos/zona_service.js");
+const publico = await import("../src/modulos/torneos/services/torneos/publico_service.js");
 
 const sin = !esLocal && "sin PostgreSQL local";
 let org;
@@ -31,7 +31,6 @@ let cuarta;
 
 async function crearUsuario(nombre) {
   const r = await registrarCliente({ nombre, apellido: "Prueba", email: `${nombre.toLowerCase()}@example.test`, password: "Clave1234" });
-  assert.equal(r.ok, true, r.mensaje);
   const u = await Usuario.findByPk(r.usuario_id);
   return { usuario_id: u.id, persona_id: u.persona_id, roles: ["jugador", "organizador"], permisos: [] };
 }

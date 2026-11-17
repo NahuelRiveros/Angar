@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Medal, RefreshCw, Trophy } from "lucide-react";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
-import { FORMATOS_PARTIDO } from "../../../../../torneo_config.js";
+import { FORMATOS_PARTIDO } from "../../../../../rubros/torneos/torneo_config.js";
 import { getCategoriaPublica } from "../api/torneos_api.js";
 import { AvisoMejores, HorarioPartido, MarcasDeFila } from "../comun/torneo_ui.jsx";
 

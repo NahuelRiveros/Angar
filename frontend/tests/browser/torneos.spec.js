@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { EDICION_POR_ESTADO, TRANSICIONES, nombreCategoria } from "../../../torneo_config.js";
+import { EDICION_POR_ESTADO, TRANSICIONES, nombreCategoria } from "../../../rubros/torneos/torneo_config.js";
 
 const PLAN_VIGENTE = { es_organizador: true, vigente: true, estado: "activo", dias_restantes: 20, mensaje: "Plan activo: te quedan 20 días.", fecha_vencimiento: "2026-11-16", medios_pago: { mercadopago: false, transferencia: null } };
 const PLAN_VENCIDO = { ...PLAN_VIGENTE, vigente: false, estado: "vencido", dias_restantes: 0, mensaje: "Tu plan venció: podés ver tus torneos pero no crear ni editar. Renovalo para seguir organizando." };

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Trophy } from "lucide-react";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
-import { PUESTOS_ALCANZADOS } from "../../../../../torneo_config.js";
+import { PUESTOS_ALCANZADOS } from "../../../../../rubros/torneos/torneo_config.js";
 import { getParticipantes } from "../../jugadores/jugadores_api.js";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold";

@@ -3,7 +3,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Printer } from "lucide-react";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
-import { FORMATOS_PARTIDO } from "../../../../../torneo_config.js";
+import { FORMATOS_PARTIDO } from "../../../../../rubros/torneos/torneo_config.js";
 import { formatearFechaAR } from "../../../utils/formatear_fecha.js";
 import { getTorneo, getZonas, getLlave } from "../api/torneos_api.js";
 import { claveTorneo, mensajeDe } from "../detalle/use_cambio_torneo.js";

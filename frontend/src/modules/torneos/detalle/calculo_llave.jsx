@@ -1,7 +1,7 @@
 import { AlertTriangle, Calculator } from "lucide-react";
 import InputField from "../../../controls/ui/input_field.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
-import { LIMITES, ZONAS, planDeLlave, zonasIguales, cuposConZonasIguales, llaveJusta } from "../../../../../torneo_config.js";
+import { LIMITES, ZONAS, planDeLlave, zonasIguales, cuposConZonasIguales, llaveJusta } from "../../../../../rubros/torneos/torneo_config.js";
 
 const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
 const rondaEnMinuscula = (ronda) => ronda.charAt(0).toLowerCase() + ronda.slice(1);

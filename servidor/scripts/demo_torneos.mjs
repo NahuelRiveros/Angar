@@ -13,8 +13,8 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
 process.chdir(fileURLToPath(new URL("../", import.meta.url)));
-const { sequelize, DB_SCHEMA } = await import("../src/database/sequelize.js");
-const demo = await import("../src/services/demo/demo_torneos_service.js");
+const { sequelize, DB_SCHEMA } = await import("../src/core/database/sequelize.js");
+const demo = await import("../src/modulos/torneos/services/demo/demo_torneos_service.js");
 
 async function main() {
   const [modo] = process.argv.slice(2);

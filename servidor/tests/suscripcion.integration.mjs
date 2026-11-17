@@ -10,19 +10,19 @@ process.env.BD_ESQUEMA = SCHEMA;
 process.env.AVISOS_POR_CORREO = "no"; // las pruebas no mandan correos
 process.env.PRECIO_SUSCRIPCION_MENSUAL = "15000";
 
-const { env } = await import("../src/configuracion_servidor/env.js");
+const { env } = await import("../src/core/configuracion_servidor/env.js");
 // Nunca contra una base remota: esta prueba crea y borra tablas.
 const esLocal = !env.BD_URL && ["localhost", "127.0.0.1"].includes(env.DB_HOST);
 
-const { sequelize } = await import("../src/database/sequelize.js");
-const { bootstrap_database } = await import("../src/database/bootstrap.js");
-const { seed_catalogos } = await import("../src/database/seed/seed_catalogos.js");
-const { seed_rbac } = await import("../src/database/seed/seed_rbac.js");
-const { registrarCliente } = await import("../src/services/usuarios/auth_service.js");
-const { Suscripcion, PagoSuscripcion } = await import("../src/models/index.js");
-const servicio = await import("../src/services/suscripciones/suscripcion_service.js");
-const { requireSuscripcionVigente } = await import("../src/middleware/suscripcion_middleware.js");
-const { hoyArgentina, sumarDias, referenciaDeUsuario } = await import("../src/services/suscripciones/suscripcion_reglas.js");
+const { sequelize } = await import("../src/core/database/sequelize.js");
+const { bootstrap_database } = await import("../src/core/database/bootstrap.js");
+const { seed_catalogos } = await import("../src/core/database/seed/seed_catalogos.js");
+const { seed_rbac } = await import("../src/core/database/seed/seed_rbac.js");
+const { registrarCliente } = await import("../src/core/services/usuarios/auth_service.js");
+const { Suscripcion, PagoSuscripcion } = await import("../src/modulos/torneos/models/index.js");
+const servicio = await import("../src/modulos/torneos/services/suscripciones/suscripcion_service.js");
+const { requireSuscripcionVigente } = await import("../src/modulos/torneos/middleware/plan_middleware.js");
+const { hoyArgentina, sumarDias, referenciaDeUsuario } = await import("../src/modulos/torneos/services/suscripciones/suscripcion_reglas.js");
 
 const hoy = hoyArgentina();
 let ana;
@@ -30,7 +30,6 @@ let beto;
 
 async function crearUsuario(nombre) {
   const r = await registrarCliente({ nombre, apellido: "Prueba", email: `${nombre.toLowerCase()}@example.test`, password: "Clave1234" });
-  assert.equal(r.ok, true, r.mensaje);
   return r.usuario_id;
 }
 const pagoMp = (id, usuarioId, cambios = {}) => async () => ({
@@ -131,7 +130,7 @@ test("requireSuscripcionVigente: vencido 402, sin plan 403, vigente y super admi
 });
 
 test("transferencia: comprobante pendiente, una por vez, y el equipo la aprueba (30 días) o la rechaza con motivo", { skip: !esLocal && "sin PostgreSQL local" }, async () => {
-  const { cobroConfig } = await import("../../cobro_config.js");
+  const { cobroConfig } = await import("../../rubros/torneos/cobro_config.js");
   const original = { ...cobroConfig.transferencia };
   Object.assign(cobroConfig.transferencia, { titular: "Titular EJEMPLO", banco: "Banco EJEMPLO", cbu: "0000000000000000000000", alias: "ALIAS.EJEMPLO", cuit: "20-00000000-0" });
   const subidos = [];

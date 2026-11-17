@@ -6,7 +6,7 @@ import { Copy, CreditCard, Hourglass, Upload } from "lucide-react";
 import { useAuth } from "../../auth/auth_context.jsx";
 import { useToast } from "../../controls/toast/toast_context.jsx";
 import ErrorBanner from "../../controls/ui/error_banner.jsx";
-import { cobroConfig } from "../../../../cobro_config.js";
+import { cobroConfig } from "../../../../rubros/torneos/cobro_config.js";
 import { crearPagoSuscripcion, avisarTransferencia } from "../../api/suscripcion_api.js";
 import { claveMiSuscripcion } from "../../hooks/use_mi_suscripcion.js";
 import { formatearPesos, formatearMomento } from "./estado_plan.js";

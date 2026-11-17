@@ -1,4 +1,4 @@
-import { clientConfig } from "../../../client_config.js";
+import { clientConfig } from "../../../proyecto/client_config.js";
 export const authConfig = {
   storageKey: "token", ...clientConfig.auth,
   defaultDestination: "/",

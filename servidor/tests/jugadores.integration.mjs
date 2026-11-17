@@ -8,22 +8,22 @@ process.env.NODE_ENV = "test";
 process.env.BD_ESQUEMA = SCHEMA;
 process.env.AVISOS_POR_CORREO = "no"; // las pruebas no mandan correos
 
-const { env } = await import("../src/configuracion_servidor/env.js");
+const { env } = await import("../src/core/configuracion_servidor/env.js");
 // Nunca contra una base remota: esta prueba crea y borra tablas.
 const esLocal = !env.BD_URL && ["localhost", "127.0.0.1"].includes(env.DB_HOST);
 
-const { sequelize } = await import("../src/database/sequelize.js");
-const { bootstrap_database } = await import("../src/database/bootstrap.js");
-const { seed_catalogos } = await import("../src/database/seed/seed_catalogos.js");
-const { seed_rbac } = await import("../src/database/seed/seed_rbac.js");
-const { registrarCliente, login } = await import("../src/services/usuarios/auth_service.js");
-const { seed_super_admin } = await import("../src/database/seed/seed_super_admin.js");
-const { Usuario } = await import("../src/models/index.js");
-const torneos = await import("../src/services/torneos/torneo_service.js");
-const insc = await import("../src/services/torneos/inscripcion_service.js");
-const zonas = await import("../src/services/torneos/zona_service.js");
-const llave = await import("../src/services/torneos/llave_service.js");
-const jugadores = await import("../src/services/jugadores/jugador_service.js");
+const { sequelize } = await import("../src/core/database/sequelize.js");
+const { bootstrap_database } = await import("../src/core/database/bootstrap.js");
+const { seed_catalogos } = await import("../src/core/database/seed/seed_catalogos.js");
+const { seed_rbac } = await import("../src/core/database/seed/seed_rbac.js");
+const { registrarCliente, login } = await import("../src/core/services/usuarios/auth_service.js");
+const { seed_super_admin } = await import("../src/core/database/seed/seed_super_admin.js");
+const { Usuario, Jugador } = await import("../src/modulos/torneos/models/index.js");
+const torneos = await import("../src/modulos/torneos/services/torneos/torneo_service.js");
+const insc = await import("../src/modulos/torneos/services/torneos/inscripcion_service.js");
+const zonas = await import("../src/modulos/torneos/services/torneos/zona_service.js");
+const llave = await import("../src/modulos/torneos/services/torneos/llave_service.js");
+const jugadores = await import("../src/modulos/torneos/services/jugadores/jugador_service.js");
 
 const sin = !esLocal && "sin PostgreSQL local";
 const u = {};
@@ -32,9 +32,8 @@ let categoria;
 
 async function crearUsuario(nombre) {
   const r = await registrarCliente({ nombre, apellido: "Prueba", email: `${nombre.toLowerCase()}@example.test`, password: "Clave1234" });
-  assert.equal(r.ok, true, r.mensaje);
   const usuario = await Usuario.findByPk(r.usuario_id);
-  return { usuario_id: usuario.id, persona_id: usuario.persona_id, codigo: usuario.codigo_jugador, roles: ["jugador", "organizador"], permisos: [] };
+  return { usuario_id: usuario.id, persona_id: usuario.persona_id, codigo: (await Jugador.findOne({ where: { usuario_id: usuario.id } })).codigo, roles: ["jugador", "organizador"], permisos: [] };
 }
 
 before(async () => {
@@ -56,9 +55,9 @@ after(async () => {
 test("cada cuenta nace con su código; las que no lo tienen lo reciben al arrancar", { skip: sin }, async () => {
   assert.match(u.Ana.codigo, /^MP-[A-Z0-9]{5}$/);
   assert.notEqual(u.Ana.codigo, u.Bea.codigo);
-  await Usuario.update({ codigo_jugador: null }, { where: { id: u.Dani.usuario_id } });
+  await Jugador.destroy({ where: { usuario_id: u.Dani.usuario_id } });
   assert.equal(await jugadores.asignarCodigosFaltantes(), 1);
-  u.Dani.codigo = (await Usuario.findByPk(u.Dani.usuario_id)).codigo_jugador;
+  u.Dani.codigo = (await Jugador.findOne({ where: { usuario_id: u.Dani.usuario_id } })).codigo;
   assert.match(u.Dani.codigo, /^MP-/);
   assert.equal(await jugadores.asignarCodigosFaltantes(), 0, "sin pendientes no hace nada");
 });
@@ -142,11 +141,10 @@ test("historial: torneos, títulos y mejor puesto para los dos jugadores registr
 });
 
 test("usuarios registrados para el super admin: totales y solo nombre y fecha, sin cuentas de prueba", { skip: sin }, async () => {
-  const { resumenRegistrados } = await import("../src/services/usuarios/registrados_service.js");
+  const { resumenRegistrados } = await import("../src/modulos/torneos/services/usuarios/registrados_service.js");
   const antes = await resumenRegistrados();
   // Un dominio común en un esquema temporal: no se manda ningún correo al registrarse.
   const r = await registrarCliente({ nombre: "Nueva", apellido: "Cuenta", email: `nueva.${randomBytes(3).toString("hex")}@correo.com.ar`, password: "Clave1234" });
-  assert.equal(r.ok, true, r.mensaje);
   const despues = await resumenRegistrados({ page: 1, limit: 5 });
   assert.deepEqual([despues.resumen.total - antes.resumen.total, despues.resumen.ultimos_7 - antes.resumen.ultimos_7], [1, 1], "las cuentas @example.test no cuentan; la nueva sí");
   assert.deepEqual(Object.keys(despues.data[0]).sort(), ["apellido", "creado_en", "id", "nombre"], "nada de email, teléfono ni DNI");
@@ -154,8 +152,8 @@ test("usuarios registrados para el super admin: totales y solo nombre y fecha, s
 });
 
 test("avisos al jugador: invitación, confirmación y rechazo llegan a la campanita; se marcan leídos y se pueden apagar los mails", { skip: sin }, async () => {
-  const { AvisoUsuario } = await import("../src/models/index.js");
-  const avisos = await import("../src/services/avisos/avisos_jugador_service.js");
+  const { AvisoUsuario } = await import("../src/modulos/torneos/models/index.js");
+  const avisos = await import("../src/modulos/torneos/services/avisos/avisos_jugador_service.js");
   // Los avisos se guardan en segundo plano: se espera a que aparezcan.
   // Cuenta desde lo que cada uno ya tenía (otros tests de este archivo también avisan).
   const base = Object.fromEntries(await Promise.all(["Ana", "Caro", "Dani"].map(async (n) => [u[n].usuario_id, await AvisoUsuario.count({ where: { usuario_id: u[n].usuario_id } })])));
@@ -206,12 +204,12 @@ test("super admin: se crea con SUPERADMIN_USUARIO y entra con ese usuario; un de
   const admin = await seed_super_admin({ config: { SUPERADMIN_USUARIO: " Dueno.Admin ", SUPERADMIN_CONTRASENA: "Clave1234" } });
   assert.equal(admin.nombre_usuario, "dueno.admin");
   const sesion = await login({ identificador: "dueno.admin", password: "Clave1234" });
-  assert.equal(sesion.ok, true, sesion.mensaje);
+  assert.ok(sesion.token);
   assert.deepEqual([...sesion.usuario.roles].sort(), ["admin", "super_admin"]);
 
   // Otro arranque con otra contraseña en Render: la cuenta es la misma y su contraseña se conserva.
   const otraVez = await seed_super_admin({ config: { SUPERADMIN_USUARIO: "dueno.admin", SUPERADMIN_CONTRASENA: "OtraClave99" } });
   assert.equal(otraVez.id, admin.id);
-  assert.equal((await login({ identificador: "dueno.admin", password: "OtraClave99" })).ok, false);
-  assert.equal((await login({ identificador: "dueno.admin", password: "Clave1234" })).ok, true);
+  await assert.rejects(login({ identificador: "dueno.admin", password: "OtraClave99" }), /incorrect/i);
+  assert.ok((await login({ identificador: "dueno.admin", password: "Clave1234" })).token);
 });

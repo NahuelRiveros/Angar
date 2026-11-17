@@ -1,8 +1,6 @@
-// Logos del cliente: reemplazar assets/logo.svg (o importar otras imágenes acá).
-import logo from "../assets/logo.svg";
-
+// El símbolo de MiPadel es el mismo SVG del favicon (frontend/public/favicon.svg).
 export const logoConfig = {
-  navbar: logo,
-  footer: logo,
-  home: logo,
+  navbar: "/favicon.svg",
+  footer: "/favicon.svg",
+  home: "/favicon.svg",
 };

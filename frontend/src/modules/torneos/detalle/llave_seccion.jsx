@@ -6,7 +6,7 @@ import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
-import { FORMATOS_PARTIDO, PERMITIDO } from "../../../../../torneo_config.js";
+import { FORMATOS_PARTIDO, PERMITIDO } from "../../../../../rubros/torneos/torneo_config.js";
 import { getLlave, cambiarLlave, guardarResultado, borrarResultado, programarPartido } from "../api/torneos_api.js";
 import { HorarioPartido } from "../comun/torneo_ui.jsx";
 import ProgramacionModal from "./programacion_modal.jsx";

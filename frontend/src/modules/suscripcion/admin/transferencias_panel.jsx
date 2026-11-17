@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Check, FileText, X } from "lucide-react";
 import { useAuth } from "../../../auth/auth_context.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
-import { tienePermiso } from "../../../../../permisos_config.js";
+import { tienePermiso } from "../../../../../core/permisos_config.js";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";

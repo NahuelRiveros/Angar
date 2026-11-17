@@ -7,7 +7,7 @@ import { z } from "zod";
 import { CalendarClock, History, PlusCircle } from "lucide-react";
 import { useAuth } from "../../../auth/auth_context.jsx";
 import { useToast } from "../../../controls/toast/toast_context.jsx";
-import { tienePermiso } from "../../../../../permisos_config.js";
+import { tienePermiso } from "../../../../../core/permisos_config.js";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import DataGrid from "../../../controls/ui/data_grid.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";

@@ -6,7 +6,7 @@ import { useToast } from "../../../controls/toast/toast_context.jsx";
 import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../../controls/ui/error_banner.jsx";
-import { ESTADOS_INSCRIPCION, PERMITIDO } from "../../../../../torneo_config.js";
+import { ESTADOS_INSCRIPCION, PERMITIDO } from "../../../../../rubros/torneos/torneo_config.js";
 import { formatearFechaAR } from "../../../utils/formatear_fecha.js";
 import { cancelarMiInscripcion } from "../api/torneos_api.js";
 import { useMisInscripciones } from "./use_mis_inscripciones.js";

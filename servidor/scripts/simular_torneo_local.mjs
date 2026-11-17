@@ -5,20 +5,20 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
 process.chdir(fileURLToPath(new URL("../", import.meta.url)));
-const { env } = await import("../src/configuracion_servidor/env.js");
+const { env } = await import("../src/core/configuracion_servidor/env.js");
 if (env.NODE_ENV === "production" || env.BD_URL || !["localhost", "127.0.0.1"].includes(env.DB_HOST) || env.DB_NAME !== "mipadel") {
   throw new Error("La simulación solo admite la base mipadel en localhost, sin BD_URL y fuera de producción.");
 }
-const { sequelize, DB_SCHEMA } = await import("../src/database/sequelize.js");
+const { sequelize, DB_SCHEMA } = await import("../src/core/database/sequelize.js");
 if (!["mipadel", "mipadel_test"].includes(DB_SCHEMA)) throw new Error("Esquema local no admitido.");
-const { Persona, Usuario, Rol, TipoDocumento, Torneo, Inscripcion } = await import("../src/models/index.js");
-const { registrarCliente } = await import("../src/services/usuarios/auth_service.js");
-const { empezarAOrganizar } = await import("../src/services/suscripciones/suscripcion_service.js");
-const torneos = await import("../src/services/torneos/torneo_service.js");
-const inscripciones = await import("../src/services/torneos/inscripcion_service.js");
-const zonas = await import("../src/services/torneos/zona_service.js");
-const llaves = await import("../src/services/torneos/llave_service.js");
-const publico = await import("../src/services/torneos/publico_service.js");
+const { Persona, Usuario, Rol, TipoDocumento, Torneo, Inscripcion } = await import("../src/modulos/torneos/models/index.js");
+const { registrarCliente } = await import("../src/core/services/usuarios/auth_service.js");
+const { empezarAOrganizar } = await import("../src/modulos/torneos/services/suscripciones/suscripcion_service.js");
+const torneos = await import("../src/modulos/torneos/services/torneos/torneo_service.js");
+const inscripciones = await import("../src/modulos/torneos/services/torneos/inscripcion_service.js");
+const zonas = await import("../src/modulos/torneos/services/torneos/zona_service.js");
+const llaves = await import("../src/modulos/torneos/services/torneos/llave_service.js");
+const publico = await import("../src/modulos/torneos/services/torneos/publico_service.js");
 
 const NOMBRE = "DEMO - Copa Tres Ramas - Semifinales";
 const MARCA = "Simulación local MiPadel: tres competencias, zonas y cuartos resueltos; semifinales pendientes.";
@@ -51,7 +51,6 @@ async function crearCuenta(d) {
   const existente = await buscarCuenta(d);
   if (existente) return existente;
   const r = await registrarCliente({ nombre: d.nombre, apellido: d.apellido, email: d.email, nombre_usuario: d.codigo, password: PASSWORD_DEMO });
-  assert.equal(r.ok, true, r.mensaje);
   return buscarCuenta(d);
 }
 

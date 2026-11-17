@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/auth_context.jsx";
-import { tienePermiso } from "../../../../permisos_config.js";
+import { tienePermiso } from "../../../../core/permisos_config.js";
 import ResumenSuscripciones from "../suscripcion/admin/resumen_suscripciones.jsx";
 import RegistradosResumen from "../usuarios/admin/registrados_resumen.jsx";
 import DemoTorneosTarjeta from "./demo_torneos_tarjeta.jsx";

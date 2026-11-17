@@ -1,4 +1,4 @@
-import { tienePermiso } from "../../../../permisos_config.js";
+import { tienePermiso } from "../../../../core/permisos_config.js";
 
 /**
  * Regla única de menús y rutas. Sin requisitos, pasa. Si no, alcanza con uno de
