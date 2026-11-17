@@ -1,0 +1,59 @@
+# Lo que se sube al repo del core (CoreSistem) con: node scripts/core_subir.mjs (ver ese archivo)
+#
+# Funciona como un .gitignore al revés: TODO queda afuera, salvo lo que se habilita con "!".
+# Una línea sin "!" vuelve a sacar algo que estaba adentro. Gana la última línea que coincide.
+# Terminado en "/" = la carpeta entera. Solo entran archivos ya commiteados en este repo.
+# Nunca entran proyecto/, los rubros, .env reales ni archivos del cliente (lo controla el script).
+
+# Raíz
+!README.md
+!core_lista.txt
+!.gitignore
+!.nvmrc
+!core/
+!plantilla_proyecto/
+!scripts/
+!.githooks/
+
+# Instrucciones y skills para Claude (menos el skill del rubro)
+!.claude/agents/
+!.claude/skills/
+!.claude/settings.json
+.claude/skills/dominio-distribuidora/
+
+# Especificaciones del core
+!docs/facturacion-arca.md
+!docs/specs/README.md
+!docs/specs/_plantilla_cambio.md
+!docs/specs/_plantilla_modulo.md
+!docs/specs/core/
+!docs/specs/cambios/2026-11-home-tienda.md
+!docs/specs/cambios/2026-11-personal-con-usuario.md
+!docs/specs/cambios/2026-11-indices-unicos.md
+
+# Frontend: esqueleto y core
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/vite.config.js
+!frontend/eslint.config.js
+!frontend/tailwind.config.js
+!frontend/playwright.config.js
+!frontend/vercel.json
+!frontend/.gitignore
+!frontend/.env.local.example
+!frontend/src/main.jsx
+!frontend/src/index.css
+!frontend/src/core/
+
+# Servidor: esqueleto, core y sus tests
+!servidor/package.json
+!servidor/package-lock.json
+!servidor/.gitignore
+!servidor/.env.local.example
+!servidor/src/server.js
+!servidor/src/core/
+!servidor/tests/core_estructura.test.mjs
+!servidor/tests/core_seguridad.test.mjs
+!servidor/tests/core_roles.test.mjs
+!servidor/tests/core_banners.test.mjs
+!servidor/tests/core_api.test.mjs

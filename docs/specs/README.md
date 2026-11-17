@@ -1,30 +1,35 @@
-# Especificaciones de MiPadel (SDD)
+# Especificaciones (SDD)
 
-Acá vive **qué tiene que hacer** MiPadel, escrito en lenguaje del negocio. Cada regla tiene un código
-(`TOR-03`, `JUE-14`…) que también va en el nombre del test que la comprueba: buscando el código en el
-proyecto se encuentran juntas la regla, su test y su implementación.
-
-> Estado (2026-11-17): primera versión, escrita a partir del código y los tests que ya existen. Los
-> tests todavía no llevan el código de la regla en su nombre; cada regla dice cuál la cubre. Lo que
-> está marcado ❓ espera una respuesta del dueño (sección "Preguntas abiertas" de cada spec).
+Acá vive **qué tiene que hacer** el sistema, escrito antes que el código. Cada regla tiene un
+código (`USU-03`, `PED-12`…) que también aparece en el test que la comprueba: buscando el código
+en el proyecto se encuentran juntas la regla, su test y su implementación.
 
 ## Dos tipos de spec
 
 | Tipo | Dónde | Cuándo se escribe | Molde |
 | --- | --- | --- | --- |
-| **De módulo** | `torneos/<tema>.md` (y `core/<modulo>.md` cuando llegue el core) | Una vez; se actualiza cuando cambia una regla | [_plantilla_modulo.md](_plantilla_modulo.md) |
+| **De módulo** | `core/<modulo>.md` o `<rubro>/<tema>.md` | Una vez; se actualiza cuando cambia una regla | [_plantilla_modulo.md](_plantilla_modulo.md) |
 | **De cambio** | `cambios/AAAA-MM-<nombre>.md` | Antes de programar cada trabajo nuevo | [_plantilla_cambio.md](_plantilla_cambio.md) |
+
+`core/` vale para cualquier proyecto que use esta base (login, usuarios, permisos, panel). Cada
+rubro tiene su carpeta (`eccomerce_distribuidora/`): al copiar la base para otro rubro, se borra.
 
 ## Cómo se trabaja
 
-1. **Spec de cambio.** Qué se quiere (requisitos con código), cómo (API, tablas, pantallas) y en qué
-   pasos. Las decisiones de negocio se marcan ❓ y se le preguntan al dueño.
-2. **Aprobación.** El dueño lee la spec y la aprueba. Sin esto no se programa.
-3. **Tests primero.** Un test por requisito, con su código en el nombre.
-4. **Código** hasta que los tests pasan.
-5. **Cierre.** Las reglas nuevas o cambiadas pasan a la spec del módulo; la de cambio queda como historia.
+1. **Spec de cambio.** Se escribe qué se quiere (requisitos con código), cómo (API, tablas,
+   pantallas) y en qué pasos. Las decisiones de negocio se marcan ❓ y se le preguntan al dueño.
+2. **Aprobación.** El dueño del proyecto lee la spec y la aprueba. Sin esto no se programa.
+3. **Tests primero.** Un test por requisito, con su código en el nombre. Al principio fallan.
+4. **Código** hasta que los tests pasan (`node scripts/verificar.mjs`).
+5. **Cierre.** Las reglas nuevas o cambiadas pasan a la spec del módulo y la de cambio queda
+   como historia (estado: hecha).
 
-Una pregunta ❓ se responde en el chat o escribiendo en la línea **Respuesta:** debajo de ella.
+## Cómo se responde una pregunta ❓
+
+En el chat, o escribiendo en la línea **Respuesta:** debajo de la pregunta, en la sección
+"Preguntas abiertas" de la spec (sirve para que la conteste el cliente). Después la respuesta pasa
+a la tabla "Decisiones" con su fecha, la regla se actualiza y, si cambia código, se escribe su
+spec de cambio.
 
 ## Estado de cada regla
 
@@ -32,35 +37,28 @@ Una pregunta ❓ se responde en el chat o escribiendo en la línea **Respuesta:*
 | --- | --- |
 | ✅ | Cubierta: un test la comprueba (se indica cuál). |
 | ⚠️ | El código la cumple pero ningún test la prueba: candidata a test nuevo. |
-| ❌ | El código **no** la cumple: es un error a corregir. |
-| ❓ | Decisión de negocio sin confirmar. |
+| ❌ | El código **no** la cumple: es un error a corregir (se indica dónde). |
+| ❓ | Decisión de negocio sin confirmar: la tiene que validar el dueño o el cliente. |
 | 🚧 | Escrita y aprobada, todavía no programada. |
 
 ## Códigos
 
-Prefijo de tres letras por módulo y número correlativo. Un código **nunca se reutiliza**: si una regla
-se elimina, queda tachada con su motivo.
+Prefijo de tres letras por módulo y número correlativo de dos cifras. Un código **nunca se
+reutiliza**: si una regla se elimina, queda tachada con su motivo. En el test va al principio:
 
-| Prefijo | Spec | Qué cubre |
-| --- | --- | --- |
-| `TOR` | [torneos/torneos.md](torneos/torneos.md) | Torneo, estados, categorías, premios, reglamento, duplicar, exportar e imprimir |
-| `INS` | [torneos/inscripciones.md](torneos/inscripciones.md) | Anotarse, invitar, confirmar, cupo, baja y pago de la inscripción |
-| `JUE` | [torneos/zonas_y_llave.md](torneos/zonas_y_llave.md) | Formatos, zonas, tabla, desempates, llave y cronograma |
-| `PUB` | [torneos/publico.md](torneos/publico.md) | Lista de torneos, ficha, resultados y participantes sin cuenta |
-| `JUG` | [torneos/jugadores.md](torneos/jugadores.md) | Código de jugador, perfil, historial, campanita y correos |
-| `SUS` | [torneos/suscripcion.md](torneos/suscripcion.md) | Plan del organizador, transferencias, MercadoPago y panel |
+```js
+test("USU-02: login con email o nombre de usuario, sin distinguir mayúsculas", async () => { … });
+```
 
-Ingreso, registro, usuarios, roles y permisos, panel y despliegue son del **core**: sus specs
-(`core/usuarios.md`, `core/permisos.md`, `core/panel.md`, `core/sistema.md`) llegan con la migración
-al core ([cambios/](cambios/)).
-
-## Resumen de la primera versión
-
-| Spec | Reglas | ✅ con test | ⚠️ sin test | ❓ a decidir | 🚧 pendiente |
-| --- | --- | --- | --- | --- | --- |
-| TOR | 22 | 21 | 0 | 1 | 0 |
-| INS | 19 | 16 | 2 | 1 | 0 |
-| JUE | 24 | 23 | 1 | 0 | 0 |
-| PUB | 10 | 8 | 1 | 1 | 0 |
-| JUG | 10 | 9 | 0 | 0 | 1 |
-| SUS | 14 | 13 | 1 | 0 | 0 |
+| Prefijo | Spec |
+| --- | --- |
+| `USU` | [core/usuarios.md](core/usuarios.md) |
+| `PER` | [core/permisos.md](core/permisos.md) |
+| `PAN` | [core/panel.md](core/panel.md) |
+| `SIS` | [core/sistema.md](core/sistema.md) |
+| `PED` | [eccomerce_distribuidora/pedidos.md](eccomerce_distribuidora/pedidos.md) |
+| `COB` | [eccomerce_distribuidora/cobros.md](eccomerce_distribuidora/cobros.md) |
+| `CAR` | [eccomerce_distribuidora/carrito.md](eccomerce_distribuidora/carrito.md) |
+| `PRE` | [eccomerce_distribuidora/precios.md](eccomerce_distribuidora/precios.md) |
+| `CAT` | [eccomerce_distribuidora/catalogo.md](eccomerce_distribuidora/catalogo.md) |
+| `CLI` | [eccomerce_distribuidora/clientes.md](eccomerce_distribuidora/clientes.md) |

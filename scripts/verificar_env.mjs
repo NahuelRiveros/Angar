@@ -2,7 +2,7 @@
 // y del frontend contra sus moldes *.example, SIN mostrar ningún valor: solo nombres y si están
 // completos. Uso: npm --prefix servidor run env:verificar
 //
-//   ✅ bien   ⚠️ nombre anterior (renombrar) u obsoleta   ❔ no figura en el molde   ❌ falta o hay que corregirla
+//   ✅ bien   ⚠️ nombre anterior (renombrar)   ❔ no figura en el .env.example   ❌ falta o hay que corregirla
 //
 // Opcional: una carpeta raíz distinta como argumento (la usan los tests con archivos falsos).
 import { existsSync, readFileSync } from "node:fs";
@@ -17,7 +17,6 @@ const ANTERIORES = {
   NEON_DATABASE_URL_MIGRACION: "BD_URL_SUPABASE",
   BD_URL: "BD_URL_SUPABASE",
   DB_SCHEMA: "BD_ESQUEMA",
-  SOFTWARE_PRECIO: "PRECIO_SUSCRIPCION_MENSUAL",
   JWT_SECRET: "CLAVE_SESIONES",
   RENDER_APP_URL: "URL_API_RENDER",
   VERCEL_FRONTEND_URL: "URL_FRONTEND_VERCEL",
@@ -31,15 +30,13 @@ const ANTERIORES = {
 
 // Ya no se usan: se pueden borrar.
 const OBSOLETAS = {
-  BD_SSL: "el SSL se activa solo cuando hay BD_URL_SUPABASE",
-  DB_SSL: "el SSL se activa solo cuando hay BD_URL_SUPABASE",
   SUPERADMIN_NOMBRE: "el super admin ahora es solo SUPERADMIN_USUARIO y SUPERADMIN_CONTRASENA",
   SUPERADMIN_APELLIDO: "el super admin ahora es solo SUPERADMIN_USUARIO y SUPERADMIN_CONTRASENA",
   SUPERADMIN_DNI: "el super admin ahora es solo SUPERADMIN_USUARIO y SUPERADMIN_CONTRASENA",
-  SUPERADMIN_EMAIL: "el email del super admin es fijo (env.js)",
+  SUPERADMIN_EMAIL: "el email del super admin es fijo en el core",
 };
 
-// Restos de los moldes que no pueden llegar a un entorno real.
+// Restos de los .env.example que no pueden llegar a un entorno real.
 const VALORES_DE_EJEMPLO = ["[COMPLETAR]", "TU_PASSWORD_AQUI", "CAMBIA_ESTE_VALOR"];
 
 /** { NOMBRE: valor } de un archivo .env (el valor nunca se imprime). */
@@ -56,7 +53,8 @@ function leerEnv(ruta) {
 
 function revisar({ nombre, archivo, ejemplo, obligatorias, opcional = false }) {
   const ruta = join(RAIZ, archivo);
-  console.log(`\n── ${nombre} (${archivo}) ──`);
+  console.log(`
+── ${nombre} (${archivo}) ──`);
   if (!existsSync(ruta)) {
     if (opcional) {
       console.log(`ℹ️  No existe (opcional). Si querés tenerlo listo para pegar, copiá ${ejemplo} como ${archivo}.`);
@@ -111,7 +109,6 @@ const url = (v) => v.BD_URL_SUPABASE || v.BD_URL || "";
 const esquema = (v) => v.BD_ESQUEMA || v.DB_SCHEMA || "";
 const schemaValido = (v) => !esquema(v) || /^[a-z][a-z0-9_]*$/.test(esquema(v));
 const urlCompleta = (v) => !url(v) || /^postgres(ql)?:\/\/[^@\s]+@[^\s]+$/.test(url(v));
-const deDistribuCG = (v) => esquema(v).startsWith("gc_dist");
 const tiene = (nuevo, anterior) => (v) => Boolean(v[nuevo] || v[anterior]);
 
 const problemas =
@@ -122,10 +119,9 @@ const problemas =
     ejemplo: "servidor/.env.local.example",
     obligatorias: [
       { mensaje: "BD_URL_SUPABASE tiene que quedar vacía: en tu PC se usa el PostgreSQL local, nunca la base de producción", cumple: (v) => !url(v) },
-      { mensaje: "Falta DB_NAME: el nombre de tu base en el PostgreSQL local (mipadel)", cumple: (v) => Boolean(v.DB_NAME) },
-      { mensaje: "BD_ESQUEMA inválido: solo minúsculas, números y _ (ej. mipadel_test)", cumple: schemaValido },
-      { mensaje: "BD_ESQUEMA no puede ser mipadel (el de producción) en tu PC", cumple: (v) => esquema(v) !== "mipadel" },
-      { mensaje: "BD_ESQUEMA no puede ser de DistribuCG (gc_dist…)", cumple: (v) => !deDistribuCG(v) },
+      { mensaje: "Falta DB_NAME: el nombre de tu base en el PostgreSQL local", cumple: (v) => Boolean(v.DB_NAME) },
+      { mensaje: "BD_ESQUEMA inválido: solo minúsculas, números y _ (ej. mi_proyecto_local)", cumple: schemaValido },
+      { mensaje: "BD_ESQUEMA no puede ser gc_dist (el de producción de DistribuCG) en tu PC", cumple: (v) => esquema(v) !== "gc_dist" },
     ],
   }) +
   revisar({
@@ -136,17 +132,17 @@ const problemas =
     obligatorias: [
       { mensaje: "NODE_ENV tiene que ser production", cumple: (v) => v.NODE_ENV === "production" },
       { mensaje: "Falta CLAVE_SESIONES (larga y al azar)", cumple: tiene("CLAVE_SESIONES", "JWT_SECRET") },
-      { mensaje: "Falta URL_FRONTEND_VERCEL (la dirección https de la web)", cumple: tiene("URL_FRONTEND_VERCEL", "VERCEL_FRONTEND_URL") },
+      { mensaje: "Falta URL_FRONTEND_VERCEL (la dirección https de la tienda)", cumple: tiene("URL_FRONTEND_VERCEL", "VERCEL_FRONTEND_URL") },
       { mensaje: "Falta BD_URL_SUPABASE (Supabase → Connect → Session pooler)", cumple: (v) => Boolean(url(v)) },
       { mensaje: "BD_URL_SUPABASE tiene que ser la dirección completa (postgresql://usuario:contraseña@host:5432/postgres), no solo el host", cumple: urlCompleta },
-      { mensaje: "Falta BD_ESQUEMA: sin ella se usaría mipadel_test", cumple: (v) => Boolean(esquema(v)) },
-      { mensaje: "BD_ESQUEMA inválido: solo minúsculas, números y _ (ej. mipadel)", cumple: schemaValido },
-      { mensaje: "BD_ESQUEMA no puede ser de DistribuCG (gc_dist…)", cumple: (v) => !deDistribuCG(v) },
+      { mensaje: "Falta BD_ESQUEMA: sin ella se usaría gc_dist_test", cumple: (v) => Boolean(esquema(v)) },
+      { mensaje: "BD_ESQUEMA inválido: solo minúsculas, números y _ (ej. mi_proyecto)", cumple: schemaValido },
+      { mensaje: "DB_SSL=false con base remota: Supabase pide SSL (borrala, se activa sola)", cumple: (v) => !url(v) || v.DB_SSL?.toLowerCase() !== "false" },
       { mensaje: "Faltan las 3 de Cloudinary (sin ellas el servidor no arranca)", cumple: (v) => tiene("CLOUDINARY_NOMBRE_CUENTA", "CLOUDINARY_CLOUD_NAME")(v) && tiene("CLOUDINARY_CLAVE_API", "CLOUDINARY_API_KEY")(v) && tiene("CLOUDINARY_SECRETO_API", "CLOUDINARY_API_SECRET")(v) },
     ],
   }) +
   revisar({
-    nombre: "Web en tu PC",
+    nombre: "Tienda en tu PC",
     archivo: "frontend/.env.local",
     ejemplo: "frontend/.env.local.example",
     obligatorias: [
@@ -154,7 +150,7 @@ const problemas =
     ],
   }) +
   revisar({
-    nombre: "Web en producción, para Vercel",
+    nombre: "Tienda en producción, para Vercel",
     archivo: "frontend/.env.produccion",
     ejemplo: "frontend/.env.produccion.example",
     opcional: true,

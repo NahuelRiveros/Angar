@@ -1,0 +1,5 @@
+#!/bin/sh
+# Antes de cada commit: tests del servidor y lint del frontend, con salida resumida.
+# Se activa una vez por copia del repo con: git config core.hooksPath .githooks
+# Para saltearlo en un apuro: git commit --no-verify
+node scripts/verificar.mjs --rapido

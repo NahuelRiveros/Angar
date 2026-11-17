@@ -5,3 +5,6 @@ DEPLOY-ENV.txt
 .claude/settings.local.json
 .claude/worktrees/
 .claude/scheduled_tasks.lock
+
+# Segundo repo git que sube el core a CoreSistem (ver scripts/core_subir.mjs)
+.git-core/

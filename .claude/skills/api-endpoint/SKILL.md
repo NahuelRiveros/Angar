@@ -1,28 +1,28 @@
 ---
 name: api-endpoint
-description: Crea o modifica endpoints REST de MiPadel con autorización, validación, servicios y pruebas compatibles con el backend Express existente.
+description: Crea o modifica endpoints REST de DistribuCG con autorización, validación, servicios y pruebas compatibles con el backend Express existente.
 ---
 
 # Endpoint REST
 
 Leer CLAUDE.md y un router/controller/service cercano.
-Para torneos usar las carpetas servidor/src/{routes,controllers,services}/torneos/.
-Registrar rutas nuevas en servidor/src/routes/index.js.
+Para distribuidora usar servidor/src/modulos/eccomerce_distribuidora/{routes,controllers,services}/
+y registrar la ruta en `rutas` de su modulo.js. Las rutas del core van en servidor/src/core/routes/index.js.
 
-- Ruta: requireModuloHabilitado, requireAuth/optionalAuth y requireRole según el contrato real.
-  Lo de un torneo lo edita solo su organizador (dueño) con suscripción vigente; el equipo usa permisos_config.js.
+- Ruta: requireAuth/optionalAuth, requirePermiso (no por rol) y validar({ body, params }) con esquemas Zod en español. Controller delgado sin try/catch; el service lanza ErrorApp (ver servidor/src/core/*/_scaffold y banners).
+  Catálogo público depende de clientConfig; gestión de pedidos de orderConfig.managementRoles.
   Poner rutas fijas antes de /:id.
 - Validar body, query y params con utilidades existentes, sin asumir Zod ni req.datos.
 - Servicio: negocio y acceso a datos; allowlist de campos, atributos explícitos, SQL parametrizado,
   paginación y orden permitido. Evitar N+1.
-- Pagos de suscripción, resultados que avanzan llaves o varias tablas: transacciones, locks e idempotencia.
+- Operaciones de dinero, carrito o varias tablas: conservar transacciones, locks e idempotencia.
   Verificar acceso al recurso aunque su id exista.
 - Controlador: adaptar HTTP y conservar { ok, data, mensaje, codigo, ... }.
   Mantener el manejo de errores existente; no eliminar try/catch sin revisar app.js.
 - Si falta estructura de datos, concretar el cambio necesario antes de salir del alcance autorizado.
 
 Probar caso válido, entradas inválidas y permisos relevantes (401/403/propietario).
-Usar node:test y el patrón de servidor HTTP efímero de tests/despliegue.test.mjs;
+Usar node:test y el patrón de servidor HTTP efímero de tests/checkout.integration.mjs;
 no asumir Supertest. Integración solo sobre su schema temporal local.
 Ejecutar desde la raíz npm --prefix servidor test y, si corresponde y está disponible
 PostgreSQL local, npm --prefix servidor run test:integration.

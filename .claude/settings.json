@@ -17,7 +17,9 @@
       "Bash(git status)",
       "Bash(git diff*)",
       "Bash(git log*)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(node scripts/verificar.mjs)",
+      "Bash(node scripts/verificar.mjs --rapido)"
     ],
     "deny": [
       "Read(./.env)",
@@ -32,7 +34,7 @@
       "Read(./**/.env.test)",
       "Read(./DEPLOY-ENV.txt)",
       "Bash(node servidor/scripts/*)",
-      "Bash(node scripts/*)"
+      "Bash(node scripts/verificar_env.mjs*)"
     ],
     "ask": [
       "Bash(git push*)",
