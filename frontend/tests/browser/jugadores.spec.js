@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { porDefecto } from "./api_por_defecto.js";
 
 const FICHA = {
   id: 4, nombre: "Copa Amigos", estado: "inscripcion", sede: "Club Norte", direccion: null, localidad: null, fecha_inicio: "2026-12-05", fecha_fin: null,
@@ -40,7 +41,7 @@ async function api(page, { conSesion = true, rutas = {} } = {}) {
     const respuesta = rutas[clave];
     if (typeof respuesta === "function") return respuesta(route, body);
     if (respuesta) return route.fulfill({ json: respuesta });
-    return route.fulfill({ json: { ok: true, data: [], textos: {}, pilares: [], contactos: [] } });
+    return route.fulfill({ json: porDefecto(route) });
   });
   return pedidos;
 }
@@ -87,7 +88,7 @@ test("mi perfil: mi código para copiar, números, copas, historial y el plan de
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await api(page, { rutas: {
     "GET /jugadores/yo": { ok: true, data: PERFIL },
-    "GET /suscripcion/mia": { ok: true, data: { es_organizador: true, estado: "prueba", vigente: true, fecha_vencimiento: "2026-11-10", dias_restantes: 13 } },
+    "GET /plan-organizador/mia": { ok: true, data: { es_organizador: true, estado: "prueba", vigente: true, fecha_vencimiento: "2026-11-10", dias_restantes: 13 } },
   } });
   await page.goto("/");
   await page.getByRole("button", { name: info.project.name === "desktop" ? "Mi cuenta" : "Abrir menú" }).click();
@@ -112,7 +113,7 @@ test("mi perfil: si el plan no carga se puede reintentar sin perder el perfil", 
   let fallar = true;
   await api(page, { rutas: {
     "GET /jugadores/yo": { ok: true, data: PERFIL },
-    "GET /suscripcion/mia": (route) => (fallar
+    "GET /plan-organizador/mia": (route) => (fallar
       ? route.fulfill({ status: 500, json: { ok: false } })
       : route.fulfill({ json: { ok: true, data: { es_organizador: false, dias_prueba: 14 } } })),
   } });

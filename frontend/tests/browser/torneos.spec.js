@@ -28,7 +28,7 @@ async function servidorFalso(page, { roles = ["jugador", "organizador"], plan = 
     const torneo = torneos.find((t) => t.id === Number(id));
 
     if (ruta === "/auth/me") return route.fulfill({ json: { ok: true, usuario: { usuario_id: 8, nombre: "Eva", roles, permisos: [] } } });
-    if (ruta === "/suscripcion/mia") return route.fulfill({ json: { ok: true, data: plan } });
+    if (ruta === "/plan-organizador/mia") return route.fulfill({ json: { ok: true, data: plan } });
     if (ruta === "/torneos" && request.method() === "GET") {
       const data = torneos.map(({ categorias, ...t }) => ({ ...t, cantidad_categorias: categorias.length }));
       return route.fulfill({ json: { ok: true, data, page: 1, limit: 20, total: data.length, totalPages: 1 } });

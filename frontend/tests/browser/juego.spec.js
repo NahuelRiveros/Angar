@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { readFile } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
 import { EDICION_POR_ESTADO, TRANSICIONES } from "../../../rubros/torneos/torneo_config.js";
+import { porDefecto } from "./api_por_defecto.js";
 
 const PLAN = { es_organizador: true, vigente: true, estado: "activo", dias_restantes: 20, mensaje: "Plan activo.", medios_pago: { mercadopago: false, transferencia: null } };
 
@@ -20,11 +21,11 @@ async function api(page, { roles = null, rutas = {} } = {}) {
     try { body = request.postDataJSON(); } catch { /* sin cuerpo */ }
     pedidos.push({ clave, body, autenticado: Boolean(request.headers().authorization) });
     if (clave === "GET /auth/me") return roles ? route.fulfill({ json: { ok: true, usuario: { usuario_id: 8, nombre: "Eva", roles, permisos: [] } } }) : route.fulfill({ status: 401, json: { ok: false } });
-    if (clave === "GET /suscripcion/mia") return route.fulfill({ json: { ok: true, data: PLAN } });
+    if (clave === "GET /plan-organizador/mia") return route.fulfill({ json: { ok: true, data: PLAN } });
     const respuesta = rutas[clave];
     if (typeof respuesta === "function") return respuesta(route, body);
     if (respuesta) return route.fulfill({ json: respuesta });
-    return route.fulfill({ json: { ok: true, data: [], textos: {}, pilares: [], contactos: [] } });
+    return route.fulfill({ json: porDefecto(route) });
   });
   return pedidos;
 }

@@ -4,11 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Plus, Trash2 } from "lucide-react";
-import ErrorBanner from "../../../controls/ui/error_banner.jsx";
-import InputField from "../../../controls/ui/input_field.jsx";
-import Modal from "../../../controls/ui/modal.jsx";
-import SelectField from "../../../controls/ui/select_field.jsx";
-import { useToast } from "../../../controls/toast/toast_context.jsx";
+import ErrorBanner from "../../../core/controls/ui/error_banner.jsx";
+import InputField from "../../../core/controls/ui/input_field.jsx";
+import Modal from "../../../core/controls/ui/modal.jsx";
+import SelectField from "../../../core/controls/ui/select_field.jsx";
+import { useToast } from "../../../core/controls/toast/use_toast.js";
 import { previsualizarCronograma, aplicarCronograma } from "../api/torneos_api.js";
 import { mensajeDe } from "./use_cambio_torneo.js";
 

@@ -11,6 +11,12 @@ los consumidores tienen que ajustar) y anotá acá qué cambió. Antes de pisar
 un archivo en otro proyecto, revisá si ese proyecto le hizo cambios propios
 al mismo archivo — si los tiene, es un merge manual, no un copy-paste.
 
+## 2.3.0 — 2026-11-17
+
+Compatible.
+
+- `layout/app_layout`: dibuja debajo de la barra los `avisosSitio` que declaren las pantallas de un rubro (SIS-57).
+
 ## 2.2.0 — 2026-11-17
 
 Puntos de extensión para conectar proyectos sin tienda (MiPadel). Compatibles: sin configurar nada, todo sigue igual.

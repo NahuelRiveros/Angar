@@ -1,6 +1,6 @@
 import { AlertTriangle, Calculator } from "lucide-react";
-import InputField from "../../../controls/ui/input_field.jsx";
-import SelectField from "../../../controls/ui/select_field.jsx";
+import InputField from "../../../core/controls/ui/input_field.jsx";
+import SelectField from "../../../core/controls/ui/select_field.jsx";
 import { LIMITES, ZONAS, planDeLlave, zonasIguales, cuposConZonasIguales, llaveJusta } from "../../../../../rubros/torneos/torneo_config.js";
 
 const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;

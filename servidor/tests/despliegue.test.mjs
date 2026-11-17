@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolverApiUrl } from "../../frontend/src/api/api_url.js";
+import { resolverApiUrl } from "../../frontend/src/core/api/api_url.js";
 
 // Sin base: BD_URL vacía y ninguna prueba pide /health?bd=1.
 process.env.NODE_ENV = "test";

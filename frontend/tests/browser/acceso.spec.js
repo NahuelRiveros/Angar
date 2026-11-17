@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { permisosConfig, permisosEfectivos } from "../../../core/permisos_config.js";
+import { porDefecto as respuestaPorDefecto } from "./api_por_defecto.js";
 // Como /auth/me: los roles con los permisos que reciben por defecto (lo tildado al instalar).
 const porDefecto = (rol) => permisosConfig.permisos.filter((p) => p.porDefecto.includes(rol)).map((p) => p.codigo);
 const conPermisos = (usuario) => ({ ...usuario, permisos: permisosEfectivos(usuario.roles, usuario.roles.flatMap(porDefecto)) });
@@ -13,7 +14,7 @@ async function mockApi(page) {
   await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: GOOGLE_FALSO }));
   await page.route((url) => url.pathname.startsWith("/api/"), async (route) => {
     const path = new URL(route.request().url()).pathname.replace(/^\/api/, "");
-    let data = { ok: true, data: [] };
+    let data = respuestaPorDefecto(route);
     if (path === "/auth/login") data = { ok: true, token: "mock-session" };
     else if (path === "/auth/me") data = { ok: true, usuario: conPermisos({ usuario_id: 7, nombre: "Ana", apellido: "Jugadora", roles: ["jugador"] }) };
     else if (path === "/auth/register") data = { ok: true };
@@ -82,7 +83,7 @@ test("registro con usuario opcional muestra si ya está en uso, valida el format
     await route.fulfill({ status: repetido ? 400 : 201, contentType: "application/json", body: JSON.stringify(repetido ? { ok: false, codigo: "NOMBRE_USUARIO_DUPLICADO", mensaje: "Ese usuario ya está en uso. Probá con otro." } : { ok: true }) });
   });
   await page.route("**/api/jugadores/yo", (route) => route.fulfill({ json: { ok: true, data: { codigo: "MP-7K3QX", nombre: "Ana Jugadora", resumen: { torneos: 0, titulos: 0, finales: 0, mejor_puesto: null }, historial: [] } } }));
-  await page.route("**/api/suscripcion/mia", (route) => route.fulfill({ json: { ok: true, data: { es_organizador: false, dias_prueba: 14 } } }));
+  await page.route("**/api/plan-organizador/mia", (route) => route.fulfill({ json: { ok: true, data: { es_organizador: false, dias_prueba: 14 } } }));
   await page.goto("/register");
   await page.getByLabel(/^Nombre/).fill("Ana");
   await page.getByLabel(/^Apellido/).fill("Jugadora");
@@ -145,7 +146,7 @@ test("el admin entra al panel desde el navbar y ve las secciones de la plataform
   await expect(page).toHaveURL(/\/panel$/);
   await expect(page.getByRole("heading", { name: "Hola, Eva" })).toBeVisible();
   const menu = await menuPanel(page);
-  for (const item of ["Equipo", "Roles y permisos", "Contenido del home", "Cinta de anuncios"]) {
+  for (const item of ["Personal", "Roles y permisos", "Contenido del home", "Banners y promociones"]) {
     await expect(menu.getByRole("link", { name: item })).toBeVisible();
   }
   await expect(menu.getByRole("link", { name: "Suscripción del sistema" })).toHaveCount(0);
@@ -194,16 +195,16 @@ test("roles y permisos: dependencias al tildar, guardar juntos, crear y borrar r
   const casilla = (permiso, rol) => page.getByLabel(`${permiso} para ${rol}`).locator("visible=true");
   // El administrador tiene todo y no se edita.
   await elegir("Administrador");
-  await expect(casilla("Ver suscripciones", "Administrador")).toBeChecked();
-  await expect(casilla("Ver suscripciones", "Administrador")).toBeDisabled();
-  // Tildar "Activar o extender planes" suma "Ver suscripciones": sin él no hay pantalla donde hacerlo.
+  await expect(casilla("Ver planes de organizadores", "Administrador")).toBeChecked();
+  await expect(casilla("Ver planes de organizadores", "Administrador")).toBeDisabled();
+  // Tildar "Activar o extender planes" suma "Ver planes de organizadores": sin él no hay pantalla donde hacerlo.
   await elegir("Editor");
   await casilla("Activar o extender planes", "Editor").check();
-  await expect(casilla("Ver suscripciones", "Editor")).toBeChecked();
-  // Destildar "Ver suscripciones" saca lo que depende de él.
+  await expect(casilla("Ver planes de organizadores", "Editor")).toBeChecked();
+  // Destildar "Ver planes de organizadores" saca lo que depende de él.
   await elegir("Soporte");
   await casilla("Activar o extender planes", "Soporte").check();
-  await casilla("Ver suscripciones", "Soporte").uncheck();
+  await casilla("Ver planes de organizadores", "Soporte").uncheck();
   await expect(casilla("Activar o extender planes", "Soporte")).not.toBeChecked();
   await expect(page.getByRole("status")).toContainText("Cambios sin guardar en Soporte, Editor");
   await noOverflow(page);

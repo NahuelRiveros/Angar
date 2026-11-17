@@ -1,5 +1,5 @@
 import { Share2 } from "lucide-react";
-import { useToast } from "../../../controls/toast/toast_context.jsx";
+import { useToast } from "../../../core/controls/toast/use_toast.js";
 
 /** En el celular abre el menú de compartir (WhatsApp, etc.); en la compu copia el link. */
 export default function BotonCompartir({ titulo, ruta, className = "" }) {

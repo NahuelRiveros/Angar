@@ -1,4 +1,4 @@
-import { http } from "../../../api/http.js";
+import { http } from "../../../core/api/http.js";
 
 // Todas las escrituras devuelven el torneo completo actualizado (se guarda directo en la caché).
 export async function getMisTorneos({ page = 1, limit = 20 } = {}) {

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "../../../auth/auth_context.jsx";
+import { useAuth } from "../../../core/auth/auth_context.jsx";
 import { getMisInscripciones } from "../api/torneos_api.js";
 
 export const claveMisInscripciones = (usuarioId) => ["mis-inscripciones", usuarioId];

@@ -1,5 +1,5 @@
 import { Copy, Landmark } from "lucide-react";
-import { useToast } from "../../../controls/toast/toast_context.jsx";
+import { useToast } from "../../../core/controls/toast/use_toast.js";
 
 const CAMPOS = [["cobro_titular", "Titular"], ["cobro_banco", "Banco o billetera"], ["cobro_cbu", "CBU / CVU"], ["cobro_alias", "Alias"]];
 const COPIABLES = new Set(["cobro_cbu", "cobro_alias"]);

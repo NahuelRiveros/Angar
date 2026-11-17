@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import ErrorBanner from "../../../controls/ui/error_banner.jsx";
-import Modal from "../../../controls/ui/modal.jsx";
+import ErrorBanner from "../../../core/controls/ui/error_banner.jsx";
+import Modal from "../../../core/controls/ui/modal.jsx";
 import { FORMATOS_PARTIDO } from "../../../../../rubros/torneos/torneo_config.js";
 import { mensajeDe } from "./use_cambio_torneo.js";
 

@@ -73,6 +73,7 @@ El diseño del marco es el de MiPadel (pedido del dueño, 2026-11-17); los color
 | SIS-54 | La barra muestra el menú en forma de píldora desde 1024 px y, en celular, un menú lateral con la marca, los links y una tarjeta para ingresar o crear cuenta. Sus frases (`menuMovil` en `brand_config.js`: lema, título, texto y pie) son del proyecto; sin ellas se usan textos neutros. El logo puede ser imagen (`gc-mark`) o símbolo y nombre con acento (`simbolo-y-texto`). El panel ofrece "Ver tienda" si hay tienda y "Ver sitio" si no. | ⚠️ sin test (revisado en capturas) |
 | SIS-55 | Al imprimir una página del sitio no salen la cinta, la barra, el aviso de suscripción ni el pie: solo el contenido. | ⚠️ sin test |
 ### Seguridad y API del core
+| SIS-57 | Un rubro puede poner avisos para todo el sitio debajo de la barra (`avisosSitio` en sus pantallas, ej. "tu plan vence en 5 días"); cada aviso decide solo si se muestra. Al imprimir no salen. | ⚠️ sin test (lo cubren las pruebas del navegador de MiPadel) |
 
 | Código | Regla | Estado |
 | --- | --- | --- |

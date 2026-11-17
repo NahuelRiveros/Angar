@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
-import ErrorBanner from "../../../controls/ui/error_banner.jsx";
-import InputField from "../../../controls/ui/input_field.jsx";
-import Modal from "../../../controls/ui/modal.jsx";
+import ErrorBanner from "../../../core/controls/ui/error_banner.jsx";
+import InputField from "../../../core/controls/ui/input_field.jsx";
+import Modal from "../../../core/controls/ui/modal.jsx";
 import { mensajeDe } from "./use_cambio_torneo.js";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";

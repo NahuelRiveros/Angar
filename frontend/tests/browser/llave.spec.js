@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { porDefecto } from "./api_por_defecto.js";
 import { EDICION_POR_ESTADO, TRANSICIONES } from "../../../rubros/torneos/torneo_config.js";
 
 const PLAN = { es_organizador: true, vigente: true, estado: "activo", dias_restantes: 20, mensaje: "Plan activo.", medios_pago: { mercadopago: false, transferencia: null } };
@@ -41,7 +42,7 @@ async function servidor(page, { zonasCompletas = true } = {}) {
     pedidos.push({ clave, body });
     const ok = (mensaje) => route.fulfill({ json: { ok: true, mensaje, data: detalle() } });
     if (clave === "GET /auth/me") return route.fulfill({ json: { ok: true, usuario: { usuario_id: 8, nombre: "Eva", roles: ["organizador"], permisos: [] } } });
-    if (clave === "GET /suscripcion/mia") return route.fulfill({ json: { ok: true, data: PLAN } });
+    if (clave === "GET /plan-organizador/mia") return route.fulfill({ json: { ok: true, data: PLAN } });
     if (clave === "GET /torneos/9") return route.fulfill({ json: { ok: true, data: TORNEO } });
     if (clave === "GET /torneos/9/categorias/91/llave") return route.fulfill({ json: { ok: true, data: detalle() } });
     if (clave === "POST /torneos/9/categorias/91/llave/armar") {
@@ -67,7 +68,7 @@ async function servidor(page, { zonasCompletas = true } = {}) {
       Object.assign(p, { sets: body.sets, ganador_id: ganador });
       return ok("Resultado guardado.");
     }
-    return route.fulfill({ json: { ok: true, data: [] } });
+    return route.fulfill({ json: porDefecto(route) });
   });
   return pedidos;
 }

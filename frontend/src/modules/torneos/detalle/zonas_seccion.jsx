@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CalendarRange, Shuffle, Star, Trophy } from "lucide-react";
-import AdminSpinner from "../../../controls/ui/admin_spinner.jsx";
-import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
-import ErrorBanner from "../../../controls/ui/error_banner.jsx";
-import SelectField from "../../../controls/ui/select_field.jsx";
-import { useToast } from "../../../controls/toast/toast_context.jsx";
+import AdminSpinner from "../../../core/controls/ui/admin_spinner.jsx";
+import ConfirmDialog from "../../../core/controls/ui/confirm_dialog.jsx";
+import ErrorBanner from "../../../core/controls/ui/error_banner.jsx";
+import SelectField from "../../../core/controls/ui/select_field.jsx";
+import { useToast } from "../../../core/controls/toast/use_toast.js";
 import { FORMATOS_PARTIDO, PERMITIDO } from "../../../../../rubros/torneos/torneo_config.js";
 import { getZonas, sortearZonas, moverPareja, guardarResultado, borrarResultado, programarPartido } from "../api/torneos_api.js";
 import { AvisoMejores, HorarioPartido, MarcasDeFila } from "../comun/torneo_ui.jsx";

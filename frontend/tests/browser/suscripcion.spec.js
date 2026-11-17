@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { test, expect } from "@playwright/test";
 import { permisosConfig, permisosEfectivos } from "../../../core/permisos_config.js";
+import { porDefecto as respuestaPorDefecto } from "./api_por_defecto.js";
 
 const porDefecto = (rol) => permisosConfig.permisos.filter((p) => p.porDefecto.includes(rol)).map((p) => p.codigo);
 const conPermisos = (usuario) => ({ ...usuario, permisos: permisosEfectivos(usuario.roles, usuario.roles.flatMap(porDefecto)) });
@@ -27,7 +28,7 @@ async function entrarComo(page, roles, rutas = {}) {
     if (clave === "GET /auth/me") return route.fulfill({ json: { ok: true, usuario: conPermisos({ usuario_id: 8, nombre: "Eva", roles: typeof roles === "function" ? roles() : roles }) } });
     const respuesta = rutas[clave];
     if (respuesta) return typeof respuesta === "function" ? respuesta(route, request) : route.fulfill({ json: respuesta });
-    return route.fulfill({ json: { ok: true, data: [], textos: {}, pilares: [], contactos: [] } });
+    return route.fulfill({ json: respuestaPorDefecto(route) });
   });
   return pedidos;
 }
@@ -36,15 +37,15 @@ test("un jugador activa su cuenta de organizador y empieza la prueba de 14 días
   let roles = ["jugador"];
   let plan = { es_organizador: false, dias_prueba: 14, precio_mensual: 15000, dias_por_pago: 30 };
   const pedidos = await entrarComo(page, () => roles, {
-    "GET /suscripcion/mia": () => ({ ok: true, data: plan }),
-    "POST /suscripcion/empezar": (route) => {
+    "GET /plan-organizador/mia": () => ({ ok: true, data: plan }),
+    "POST /plan-organizador/empezar": (route) => {
       roles = ["jugador", "organizador"];
       plan = { ...PLAN_BASE, en_prueba: true, fecha_vencimiento: "2026-11-09", estado: "prueba", dias_restantes: 14, mensaje: "Prueba gratis: te quedan 14 días." };
       return route.fulfill({ status: 201, json: { ok: true, mensaje: "¡Listo! Empezó tu prueba gratis.", data: plan } });
     },
   });
   // Las respuestas que dependen del momento se calculan en cada pedido.
-  await page.route("**/api/suscripcion/mia", (route) => route.fulfill({ json: { ok: true, data: plan } }));
+  await page.route("**/api/plan-organizador/mia", (route) => route.fulfill({ json: { ok: true, data: plan } }));
 
   await page.goto("/");
   // En escritorio está en el menú "Mi cuenta"; en celular, en el menú ☰.
@@ -60,16 +61,16 @@ test("un jugador activa su cuenta de organizador y empieza la prueba de 14 días
   await expect(page.getByText("Prueba gratis: te quedan 14 días.")).toBeVisible();
   await expect(page.getByText("09/11/2026")).toBeVisible();
   await expect(page.getByText("Todavía no hay pagos")).toBeVisible();
-  expect(pedidos.filter((p) => p.clave === "POST /suscripcion/empezar")).toHaveLength(1);
+  expect(pedidos.filter((p) => p.clave === "POST /plan-organizador/empezar")).toHaveLength(1);
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("prueba.png"), fullPage: true });
 });
 
 test("plan por vencer: aviso en el sitio, se cierra, y pagar lleva a MercadoPago", async ({ page }, info) => {
   const pedidos = await entrarComo(page, ["jugador", "organizador"], {
-    "GET /suscripcion/mia": { ok: true, data: PLAN_POR_VENCER },
-    "GET /suscripcion/mia/pagos": { ok: true, data: [{ id: 1, origen: "mercadopago", estado: "aprobado", monto: "15000.00", dias: 30, vencimiento_anterior: "2026-10-01", vencimiento_nuevo: "2026-10-31", nota: null, creado_en: "2026-10-01T23:30:00.000Z" }] },
-    "POST /suscripcion/pagar": { ok: true, data: { preference_id: "pref-1", url_pago: "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=pref-1" } },
+    "GET /plan-organizador/mia": { ok: true, data: PLAN_POR_VENCER },
+    "GET /plan-organizador/mia/pagos": { ok: true, data: [{ id: 1, origen: "mercadopago", estado: "aprobado", monto: "15000.00", dias: 30, vencimiento_anterior: "2026-10-01", vencimiento_nuevo: "2026-10-31", nota: null, creado_en: "2026-10-01T23:30:00.000Z" }] },
+    "POST /plan-organizador/pagar": { ok: true, data: { preference_id: "pref-1", url_pago: "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=pref-1" } },
   });
   await page.route("https://www.mercadopago.com.ar/**", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Checkout de prueba</h1>" }));
 
@@ -90,13 +91,13 @@ test("plan por vencer: aviso en el sitio, se cierra, y pagar lleva a MercadoPago
   await page.screenshot({ path: info.outputPath("por_vencer.png"), fullPage: true });
   await page.getByRole("button", { name: "Pagar con MercadoPago" }).click();
   await expect(page).toHaveURL(/mercadopago\.com\.ar\/checkout/);
-  expect(pedidos.filter((p) => p.clave === "POST /suscripcion/pagar")).toHaveLength(1);
+  expect(pedidos.filter((p) => p.clave === "POST /plan-organizador/pagar")).toHaveLength(1);
 });
 
 test("la vuelta de MercadoPago informa el resultado y un error al pagar se muestra sin salir de la página", async ({ page }) => {
   await entrarComo(page, ["organizador"], {
-    "GET /suscripcion/mia": { ok: true, data: { ...PLAN_POR_VENCER, estado: "vencido", vigente: false, dias_restantes: 0, mensaje: "Tu plan venció: podés ver tus torneos pero no crear ni editar. Renovalo para seguir organizando." } },
-    "POST /suscripcion/pagar": (route) => route.fulfill({ status: 503, json: { ok: false, codigo: "PAGOS_NO_CONFIGURADOS", mensaje: "Los pagos con MercadoPago todavía no están habilitados. Escribinos para renovar." } }),
+    "GET /plan-organizador/mia": { ok: true, data: { ...PLAN_POR_VENCER, estado: "vencido", vigente: false, dias_restantes: 0, mensaje: "Tu plan venció: podés ver tus torneos pero no crear ni editar. Renovalo para seguir organizando." } },
+    "POST /plan-organizador/pagar": (route) => route.fulfill({ status: 503, json: { ok: false, codigo: "PAGOS_NO_CONFIGURADOS", mensaje: "Los pagos con MercadoPago todavía no están habilitados. Escribinos para renovar." } }),
   });
   await page.goto("/mi-suscripcion?pago=rechazado");
   await expect(page.getByText("El pago no se completó. No se te cobró nada")).toBeVisible();
@@ -109,7 +110,7 @@ test("la vuelta de MercadoPago informa el resultado y un error al pagar se muest
 test("si no carga el plan, se puede reintentar", async ({ page }) => {
   let fallar = true;
   await entrarComo(page, ["jugador"], {
-    "GET /suscripcion/mia": (route) => (fallar ? route.fulfill({ status: 500, json: { ok: false, mensaje: "No pudimos cargar tu plan." } })
+    "GET /plan-organizador/mia": (route) => (fallar ? route.fulfill({ status: 500, json: { ok: false, mensaje: "No pudimos cargar tu plan." } })
       : route.fulfill({ json: { ok: true, data: { es_organizador: false, dias_prueba: 14, precio_mensual: 15000, dias_por_pago: 30 } } })),
   });
   await page.goto("/mi-suscripcion");
@@ -130,15 +131,15 @@ const LISTA = {
 
 test("panel: el admin filtra organizadores, ve el historial y suma días con nota", async ({ page }, info) => {
   const pedidos = await entrarComo(page, ["admin"], {
-    "GET /suscripcion/admin": LISTA,
-    "GET /suscripcion/admin/5/pagos": { ok: true, data: [{ id: 3, origen: "manual", estado: "aprobado", monto: null, dias: 10, vencimiento_anterior: "2026-10-10", vencimiento_nuevo: "2026-10-20", nota: "Transferencia", creado_en: "2026-10-10T15:00:00Z" }] },
-    "POST /suscripcion/admin/5/extender": { ok: true, mensaje: "Se sumaron 15 día(s). Vence el 2026-11-11.", data: {} },
+    "GET /plan-organizador/admin": LISTA,
+    "GET /plan-organizador/admin/5/pagos": { ok: true, data: [{ id: 3, origen: "manual", estado: "aprobado", monto: null, dias: 10, vencimiento_anterior: "2026-10-10", vencimiento_nuevo: "2026-10-20", nota: "Transferencia", creado_en: "2026-10-10T15:00:00Z" }] },
+    "POST /plan-organizador/admin/5/extender": { ok: true, mensaje: "Se sumaron 15 día(s). Vence el 2026-11-11.", data: {} },
   });
   await page.goto("/admin/suscripciones");
   await expect(page.getByRole("heading", { name: "Suscripciones" })).toBeVisible();
   await expect(page.getByText("beto@example.test").locator("visible=true").first()).toBeVisible();
   await page.getByRole("button", { name: "Vencido (1)" }).click();
-  await expect.poll(() => pedidos.some((p) => p.clave === "GET /suscripcion/admin" && p.query.estado === "vencido")).toBeTruthy();
+  await expect.poll(() => pedidos.some((p) => p.clave === "GET /plan-organizador/admin" && p.query.estado === "vencido")).toBeTruthy();
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("suscripciones.png"), fullPage: true });
 
@@ -160,11 +161,11 @@ test("panel: el admin filtra organizadores, ve el historial y suma días con not
   await modal.getByRole("button", { name: "Sumar días" }).click();
   await expect(page.getByText("Se sumaron 15 día(s).")).toBeVisible();
   await expect(modal).toHaveCount(0);
-  expect(pedidos.filter((p) => p.clave === "POST /suscripcion/admin/5/extender").map((p) => p.body)).toEqual([{ dias: 15, nota: "Transferencia del 27/10" }]);
+  expect(pedidos.filter((p) => p.clave === "POST /plan-organizador/admin/5/extender").map((p) => p.body)).toEqual([{ dias: 15, nota: "Transferencia del 27/10" }]);
 });
 
 test("panel: soporte ve las suscripciones pero no puede sumar días; un jugador no entra", async ({ page }) => {
-  await entrarComo(page, ["soporte"], { "GET /suscripcion/admin": LISTA });
+  await entrarComo(page, ["soporte"], { "GET /plan-organizador/admin": LISTA });
   await page.goto("/admin/suscripciones");
   await expect(page.getByText("ana@example.test").locator("visible=true").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Historial" }).locator("visible=true").first()).toBeVisible();
@@ -184,12 +185,12 @@ test("transferencia: el organizador ve los datos, copia el CBU y envía el compr
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   let plan = { ...PLAN_POR_VENCER, medios_pago: { mercadopago: false, transferencia: DATOS_BANCO } };
   const pedidos = await entrarComo(page, ["organizador"], {
-    "POST /suscripcion/transferencia": (route) => {
+    "POST /plan-organizador/transferencia": (route) => {
       plan = { ...plan, ultima_transferencia: { id: 9, estado: "pendiente", motivo_rechazo: null, creado_en: "2026-10-27T15:00:00Z" } };
       return route.fulfill({ status: 201, json: { ok: true, mensaje: "¡Recibimos tu comprobante! Te avisamos apenas confirmemos la transferencia.", data: { id: 9, estado: "pendiente" } } });
     },
   });
-  await page.route("**/api/suscripcion/mia", (route) => route.fulfill({ json: { ok: true, data: plan } }));
+  await page.route("**/api/plan-organizador/mia", (route) => route.fulfill({ json: { ok: true, data: plan } }));
   await page.goto("/mi-suscripcion");
   await expect(page.getByRole("heading", { name: "Pagar por transferencia" })).toBeVisible();
   await expect(page.getByText("MIPADEL.EJEMPLO")).toBeVisible();
@@ -203,13 +204,13 @@ test("transferencia: el organizador ve los datos, copia el CBU y envía el compr
   await page.getByLabel(/^Comprobante/).setInputFiles({ name: "notas.txt", mimeType: "text/plain", buffer: Buffer.from("hola") });
   await page.getByRole("button", { name: "Enviar comprobante" }).click();
   await expect(page.getByText("Tiene que ser una foto (JPG, PNG o WEBP) o un PDF.")).toBeVisible();
-  expect(pedidos.filter((p) => p.clave === "POST /suscripcion/transferencia")).toHaveLength(0);
+  expect(pedidos.filter((p) => p.clave === "POST /plan-organizador/transferencia")).toHaveLength(0);
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("transferencia.png"), fullPage: true });
 
   await page.getByLabel(/^Comprobante/).setInputFiles(PDF);
   await page.getByLabel("Nota (opcional)").fill("Desde la cuenta del club");
-  const envio = page.waitForRequest((r) => r.url().endsWith("/api/suscripcion/transferencia"));
+  const envio = page.waitForRequest((r) => r.url().endsWith("/api/plan-organizador/transferencia"));
   await page.getByRole("button", { name: "Enviar comprobante" }).click();
   const cuerpo = (await envio).postDataBuffer().toString("latin1");
   expect(cuerpo).toContain(`name="comprobante"; filename="comprobante.pdf"`);
@@ -220,7 +221,7 @@ test("transferencia: el organizador ve los datos, copia el CBU y envía el compr
 
 test("transferencia rechazada: el organizador ve el motivo y puede mandar otro comprobante", async ({ page }) => {
   await entrarComo(page, ["organizador"], {
-    "GET /suscripcion/mia": { ok: true, data: { ...PLAN_POR_VENCER, medios_pago: { mercadopago: false, transferencia: DATOS_BANCO }, ultima_transferencia: { id: 4, estado: "rechazado", motivo_rechazo: "El monto no coincide", creado_en: "2026-10-20T15:00:00Z" } } },
+    "GET /plan-organizador/mia": { ok: true, data: { ...PLAN_POR_VENCER, medios_pago: { mercadopago: false, transferencia: DATOS_BANCO }, ultima_transferencia: { id: 4, estado: "rechazado", motivo_rechazo: "El monto no coincide", creado_en: "2026-10-20T15:00:00Z" } } },
   });
   await page.goto("/mi-suscripcion");
   await expect(page.getByRole("alert")).toContainText("El monto no coincide");
@@ -228,7 +229,7 @@ test("transferencia rechazada: el organizador ve el motivo y puede mandar otro c
 });
 
 test("sin datos bancarios ni MercadoPago, el organizador ve que tiene que escribirnos", async ({ page }) => {
-  await entrarComo(page, ["organizador"], { "GET /suscripcion/mia": { ok: true, data: { ...PLAN_POR_VENCER, medios_pago: { mercadopago: false, transferencia: null } } } });
+  await entrarComo(page, ["organizador"], { "GET /plan-organizador/mia": { ok: true, data: { ...PLAN_POR_VENCER, medios_pago: { mercadopago: false, transferencia: null } } } });
   await page.goto("/mi-suscripcion");
   await expect(page.getByText("Los medios de pago todavía no están cargados")).toBeVisible();
 });
@@ -243,9 +244,9 @@ const TRANSFERENCIAS = {
 
 test("inicio del panel: el admin ve organizadores por estado y revisa los comprobantes sin salir", async ({ page }, info) => {
   const pedidos = await entrarComo(page, ["admin"], {
-    "GET /suscripcion/admin": LISTA,
-    "GET /suscripcion/admin/transferencias": TRANSFERENCIAS,
-    "POST /suscripcion/admin/transferencias/31/aprobar": { ok: true, mensaje: "Transferencia aprobada: el plan vence el 2026-11-25.", data: {} },
+    "GET /plan-organizador/admin": LISTA,
+    "GET /plan-organizador/admin/transferencias": TRANSFERENCIAS,
+    "POST /plan-organizador/admin/transferencias/31/aprobar": { ok: true, mensaje: "Transferencia aprobada: el plan vence el 2026-11-25.", data: {} },
   });
   await page.goto("/panel");
   await expect(page.getByRole("link", { name: "Transferencias para revisar: 2" })).toBeVisible();
@@ -259,17 +260,17 @@ test("inicio del panel: el admin ve organizadores por estado y revisa los compro
   await comprobantes.getByRole("listitem").filter({ hasText: "Beto Pérez" }).getByRole("button", { name: "Aprobar" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Aprobar" }).click();
   await expect(page.getByText("Transferencia aprobada")).toBeVisible();
-  expect(pedidos.filter((x) => x.clave.startsWith("POST")).map((x) => x.clave)).toEqual(["POST /suscripcion/admin/transferencias/31/aprobar"]);
+  expect(pedidos.filter((x) => x.clave.startsWith("POST")).map((x) => x.clave)).toEqual(["POST /plan-organizador/admin/transferencias/31/aprobar"]);
 
   await page.getByRole("link", { name: "Vencidos: 1" }).click();
   await expect(page).toHaveURL(/\/admin\/suscripciones\?estado=vencido$/);
-  await expect.poll(() => pedidos.some((x) => x.clave === "GET /suscripcion/admin" && x.query.estado === "vencido")).toBeTruthy();
+  await expect.poll(() => pedidos.some((x) => x.clave === "GET /plan-organizador/admin" && x.query.estado === "vencido")).toBeTruthy();
 });
 
 test("inicio del panel: el super admin ve cuántos usuarios hay y los últimos (solo nombre y fecha); un admin no", async ({ page, browser }, info) => {
   const REGISTRADOS = { ok: true, page: 1, limit: 10, total: 12, totalPages: 2, resumen: { total: 12, ultimos_7: 3, ultimos_30: 8 },
     data: [{ id: 40, nombre: "Lucía", apellido: "Gómez", creado_en: "2026-10-28T15:00:00Z" }, { id: 39, nombre: "Pedro", apellido: "Sosa", creado_en: "2026-10-27T13:00:00Z" }] };
-  const pedidos = await entrarComo(page, ["super_admin"], { "GET /suscripcion/admin": LISTA, "GET /suscripcion/admin/transferencias": TRANSFERENCIAS, "GET /admin/registrados": REGISTRADOS });
+  const pedidos = await entrarComo(page, ["super_admin"], { "GET /plan-organizador/admin": LISTA, "GET /plan-organizador/admin/transferencias": TRANSFERENCIAS, "GET /admin/registrados": REGISTRADOS });
   await page.goto("/panel");
   const usuarios = page.getByRole("region", { name: "Usuarios" });
   await expect(usuarios.getByLabel("Usuarios registrados: 12")).toBeVisible();
@@ -282,7 +283,7 @@ test("inicio del panel: el super admin ve cuántos usuarios hay y los últimos (
   await expect.poll(() => pedidos.some((x) => x.clave === "GET /admin/registrados" && x.query.page === "2")).toBeTruthy();
 
   const otra = await browser.newPage();
-  const pedidosAdmin = await entrarComo(otra, ["admin"], { "GET /suscripcion/admin": LISTA, "GET /suscripcion/admin/transferencias": TRANSFERENCIAS });
+  const pedidosAdmin = await entrarComo(otra, ["admin"], { "GET /plan-organizador/admin": LISTA, "GET /plan-organizador/admin/transferencias": TRANSFERENCIAS });
   await otra.goto("/panel");
   await expect(otra.getByRole("region", { name: "Organizadores y pagos" })).toBeVisible();
   await expect(otra.getByRole("region", { name: "Usuarios" })).toHaveCount(0);
@@ -294,7 +295,7 @@ test("inicio del panel: el super admin ve los torneos demo, los borra con confir
   const DEMOS = [{ id: 12, nombre: "DEMO · Copa Primavera (finalizado)", estado: "finalizado" }, { id: 13, nombre: "DEMO · Torneo de Otoño (en juego)", estado: "en_juego" }];
   let demos = DEMOS;
   const pedidos = await entrarComo(page, ["super_admin"], {
-    "GET /suscripcion/admin": LISTA, "GET /suscripcion/admin/transferencias": TRANSFERENCIAS,
+    "GET /plan-organizador/admin": LISTA, "GET /plan-organizador/admin/transferencias": TRANSFERENCIAS,
     "GET /admin/registrados": { ok: true, page: 1, limit: 10, total: 0, totalPages: 0, resumen: { total: 0, ultimos_7: 0, ultimos_30: 0 }, data: [] },
     "GET /admin/demo": (route) => route.fulfill({ json: { ok: true, data: demos } }),
     "DELETE /admin/demo": (route) => { demos = []; return route.fulfill({ json: { ok: true, mensaje: "Torneos demo borrados: 2.", data: [] } }); },
@@ -318,8 +319,8 @@ test("inicio del panel: el super admin ve los torneos demo, los borra con confir
 test("inicio del panel: si no carga el resumen se puede reintentar", async ({ page }) => {
   let fallar = true;
   await entrarComo(page, ["admin"], {
-    "GET /suscripcion/admin": (route) => (fallar ? route.fulfill({ status: 500, json: { ok: false, mensaje: "No pudimos cargar el resumen." } }) : route.fulfill({ json: LISTA })),
-    "GET /suscripcion/admin/transferencias": TRANSFERENCIAS,
+    "GET /plan-organizador/admin": (route) => (fallar ? route.fulfill({ status: 500, json: { ok: false, mensaje: "No pudimos cargar el resumen." } }) : route.fulfill({ json: LISTA })),
+    "GET /plan-organizador/admin/transferencias": TRANSFERENCIAS,
   });
   await page.goto("/panel");
   await expect(page.getByText("No pudimos cargar el resumen.").first()).toBeVisible({ timeout: 15000 });
@@ -330,11 +331,11 @@ test("inicio del panel: si no carga el resumen se puede reintentar", async ({ pa
 
 test("panel: el admin abre el comprobante, aprueba una transferencia y rechaza otra con motivo", async ({ page, context }, info) => {
   const pedidos = await entrarComo(page, ["admin"], {
-    "GET /suscripcion/admin": LISTA,
-    "GET /suscripcion/admin/transferencias": TRANSFERENCIAS,
-    "GET /suscripcion/comprobantes/31": { ok: true, data: { url: "https://res.cloudinary.test/firmado/31.pdf", formato: "pdf" } },
-    "POST /suscripcion/admin/transferencias/31/aprobar": { ok: true, mensaje: "Transferencia aprobada: el plan vence el 2026-11-25.", data: {} },
-    "POST /suscripcion/admin/transferencias/32/rechazar": { ok: true, mensaje: "Transferencia rechazada. El organizador ve el motivo en su plan." },
+    "GET /plan-organizador/admin": LISTA,
+    "GET /plan-organizador/admin/transferencias": TRANSFERENCIAS,
+    "GET /plan-organizador/comprobantes/31": { ok: true, data: { url: "https://res.cloudinary.test/firmado/31.pdf", formato: "pdf" } },
+    "POST /plan-organizador/admin/transferencias/31/aprobar": { ok: true, mensaje: "Transferencia aprobada: el plan vence el 2026-11-25.", data: {} },
+    "POST /plan-organizador/admin/transferencias/32/rechazar": { ok: true, mensaje: "Transferencia rechazada. El organizador ve el motivo en su plan." },
   });
   await context.route("https://res.cloudinary.test/**", (route) => route.fulfill({ contentType: "text/plain", body: "comprobante" }));
   await page.goto("/admin/suscripciones");
@@ -360,13 +361,13 @@ test("panel: el admin abre el comprobante, aprueba una transferencia y rechaza o
   await modal.getByRole("button", { name: "Rechazar transferencia" }).click();
   await expect(page.getByText("Transferencia rechazada.")).toBeVisible();
   expect(pedidos.filter((p) => p.clave.startsWith("POST")).map((p) => [p.clave, p.body])).toEqual([
-    ["POST /suscripcion/admin/transferencias/31/aprobar", null],
-    ["POST /suscripcion/admin/transferencias/32/rechazar", { motivo: "No llegó el dinero" }],
+    ["POST /plan-organizador/admin/transferencias/31/aprobar", null],
+    ["POST /plan-organizador/admin/transferencias/32/rechazar", { motivo: "No llegó el dinero" }],
   ]);
 });
 
 test("panel: soporte ve las transferencias y el comprobante, pero no aprueba ni rechaza", async ({ page }) => {
-  await entrarComo(page, ["soporte"], { "GET /suscripcion/admin": LISTA, "GET /suscripcion/admin/transferencias": TRANSFERENCIAS });
+  await entrarComo(page, ["soporte"], { "GET /plan-organizador/admin": LISTA, "GET /plan-organizador/admin/transferencias": TRANSFERENCIAS });
   await page.goto("/admin/suscripciones");
   await page.getByRole("tab", { name: /Transferencias/ }).click();
   await expect(page.getByRole("button", { name: "Ver comprobante" }).first()).toBeVisible();

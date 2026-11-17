@@ -107,13 +107,13 @@ y una cinta de anuncios propia (`banner_anuncio`). El core las reemplazó por ba
 1. [x] Aprobar esta spec (D1 a D5 respondidas).
 2. [x] ~~Copia de seguridad~~: no hace falta, todavía no hay datos reales (D5).
 3. [x] Core: C1, C2 y C3 con tests (PER-37, USU-43, SIS-56), en CoreSistem `4f8f83a` y traídos a Stilos.
-4. [ ] MiPadel, rama `core`: traer el esqueleto del core, armar `proyecto/` con la marca y los colores de hoy,
+4. [x] MiPadel, rama `core`: traer el esqueleto del core, armar `proyecto/` con la marca y los colores de hoy,
    y conectar `.git-core/`.
-5. [ ] Mover torneos, jugadores, avisos, demo y plan del organizador al rubro `torneos` (servidor y web),
+5. [~] (servidor hecho; falta la web) Mover torneos, jugadores, avisos, demo y plan del organizador al rubro `torneos` (servidor y web),
    con su `modulo.js` y `modulo_pantallas.jsx`; arreglar imports.
 6. [ ] Lo propio de MiPadel que hoy está en archivos del esqueleto (destino del registro, campanita, mails
    del super admin, impresión) pasa al rubro o ya llegó al core.
-7. [ ] Arranque del rubro: tabla `jugador` con los datos copiados (D3) y cintas a banners (D4), sin borrar nada.
+7. [x] Arranque del rubro (los códigos se generan de nuevo: sin datos reales, D5): tabla `jugador` con los datos copiados (D3) y cintas a banners (D4), sin borrar nada.
 8. [ ] Tests: los de hoy (unitarios, integración y navegador) movidos y en verde; nuevos para MIG-03, MIG-04 y la
    copia de datos (con una base local armada como la de producción).
 9. [ ] Capturas en compu y celular de las pantallas principales (inicio, torneos, detalle, panel, ingreso).

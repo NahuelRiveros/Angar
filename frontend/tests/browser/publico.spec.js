@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { porDefecto } from "./api_por_defecto.js";
 
 const pareja = (id, nombre) => ({ id, nombre, cabeza_de_serie: false });
 const [ana, caro, eli, gabi] = [pareja(11, "Ana / Bea"), pareja(12, "Caro / Dani"), pareja(21, "Eli / Flor"), pareja(22, "Gabi / Hebe")];
@@ -29,7 +30,7 @@ async function api(page) {
     if (clave === "GET /publico/torneos/5/categorias/51") return route.fulfill({ json: { ok: true, data: CUARTA } });
     if (clave === "GET /publico/torneos/5/categorias/52") return route.fulfill({ json: { ok: true, data: SUMA } });
     if (clave === "GET /auth/me") return route.fulfill({ status: 401, json: { ok: false } });
-    return route.fulfill({ json: { ok: true, data: [], textos: {}, pilares: [], contactos: [] } });
+    return route.fulfill({ json: porDefecto(route) });
   });
   return pedidos;
 }

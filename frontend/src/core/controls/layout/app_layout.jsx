@@ -5,6 +5,10 @@ import Footer from "./footer.jsx";
 import AnunciosBanner from "./anuncios_banner.jsx";
 import SuscripcionBanner from "../suscripcion/suscripcion_banner.jsx";
 import ErrorBoundary from "../ui/error_boundary.jsx";
+import { pantallasActivas } from "../../../proyecto/pantallas_modulos.jsx";
+
+// SIS-57: avisos de los rubros para todo el sitio, debajo de la barra (ej. "tu plan vence en 5 días").
+const avisosSitio = pantallasActivas.flatMap((pantallas) => pantallas.avisosSitio ?? []);
 
 function ScrollToTop() {
   const { pathname, hash, key } = useLocation();
@@ -30,6 +34,7 @@ export default function AppLayout({ children }) {
         <AnunciosBanner />
         <Navbar />
         <SuscripcionBanner />
+        {avisosSitio.map((Aviso, i) => <Aviso key={i} />)}
       </div>
       <main id="main-content" tabIndex={-1}>
         <ErrorBoundary key={pathname}>{children}</ErrorBoundary>

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "../../../controls/toast/toast_context.jsx";
-import { useAuth } from "../../../auth/auth_context.jsx";
-import { claveMiSuscripcion } from "../../../hooks/use_mi_suscripcion.js";
+import { useToast } from "../../../core/controls/toast/use_toast.js";
+import { useAuth } from "../../../core/auth/auth_context.jsx";
+import { claveMiSuscripcion } from "../hooks/use_mi_suscripcion.js";
 
 export const claveTorneo = (id) => ["torneos", Number(id)];
 export const mensajeDe = (error, porDefecto) => error?.response?.data?.mensaje || porDefecto;

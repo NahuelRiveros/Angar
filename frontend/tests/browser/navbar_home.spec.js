@@ -1,9 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { porDefecto } from "./api_por_defecto.js";
 
 test.beforeEach(async ({ page }) => {
   await page.route((url) => url.pathname.startsWith("/api/"), (route) => {
     const config = new URL(route.request().url()).pathname.endsWith("/home/config");
-    return route.fulfill({ json: config ? { ok: true, textos: {}, pilares: [], contactos: [] } : { ok: true, data: [] } });
+    return route.fulfill({ json: config ? { ok: true, textos: {}, pilares: [], contactos: [] } : porDefecto(route) });
   });
 });
 

@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createResetToken, verifyResetToken, passwordVersion } from "../src/core/services/common/auth_tokens.js";
 import { CODIGOS_PERMISO, dependientesDe, permisosConfig, permisosEfectivos, tienePermiso } from "../../core/permisos_config.js";
-import { cumpleAcceso } from "../../frontend/src/controls/acceso/acceso.js";
+import { cumpleAcceso } from "../../frontend/src/core/controls/acceso/acceso.js";
 import { env } from "../src/core/configuracion_servidor/env.js";
 import { enviarEmail, mailConfigured } from "../src/core/services/common/mail_service.js";
-import { safeReturnTo } from "../../frontend/src/controls/acceso/return_to.js";
-import { filtrarNavbarPorRol } from "../../frontend/src/controls/layout/navbar/navbar_permissions.js";
+import { safeReturnTo } from "../../frontend/src/core/controls/acceso/return_to.js";
+import { filtrarNavbarPorRol } from "../../frontend/src/core/controls/layout/navbar/navbar_permissions.js";
 import { clasificarIdentificador, esNombreUsuarioValido } from "../src/core/services/common/nombre_usuario.js";
 
 test("login distingue email de nombre de usuario y valida el usuario sin consultar la base", () => {
@@ -70,17 +70,21 @@ test("navbar filtra árboles por sesión y rol", () => {
 });
 
 test("panel de gestión: el equipo ve lo de sus permisos; organizadores y jugadores no entran", async () => {
-  const { panelGrupos, accesoPanel } = await import("../../frontend/src/config/navbar_config/panel_gestion.js");
+  const { panelGrupos, accesoPanel } = await import("../../frontend/src/core/config/navbar_config/panel_gestion.js");
   const porDefecto = (rol) => permisosConfig.permisos.filter((p) => p.porDefecto.includes(rol)).map((p) => p.codigo);
   const usuario = (roles, asignados = []) => ({ roles, permisos: permisosEfectivos(roles, asignados) });
   const menu = (u) => Object.fromEntries(filtrarNavbarPorRol({ dropdowns: panelGrupos }, u).dropdowns.map((g) => [g.id, g.items.map((i) => i.to)]));
 
   assert.deepEqual(porDefecto("soporte"), ["suscripciones.ver"]);
+  // "Plataforma" es el grupo del rubro torneos; "Admin", el del core (personal, permisos y banners).
   const admin = menu(usuario(["admin"]));
-  assert.deepEqual(admin.admin, ["/admin/suscripciones", "/admin/staffManager", "/admin/permisos", "/admin/home-config", "/admin/anuncios"]);
-  assert.deepEqual(menu(usuario(["super_admin"])).admin, admin.admin);
-  assert.deepEqual(menu(usuario(["soporte"], porDefecto("soporte"))).admin, ["/admin/suscripciones"]);
-  assert.deepEqual(menu(usuario(["editor"], ["contenido.editar"])).admin, ["/admin/home-config", "/admin/anuncios"]);
+  assert.deepEqual(admin.plataforma, ["/admin/suscripciones", "/admin/home-config"]);
+  assert.deepEqual(admin.admin, ["/admin/staffManager", "/admin/permisos", "/admin/banners"]);
+  assert.deepEqual(menu(usuario(["super_admin"])), admin);
+  const soporte = menu(usuario(["soporte"], porDefecto("soporte")));
+  assert.deepEqual([soporte.plataforma, soporte.admin], [["/admin/suscripciones"], undefined]);
+  const editor = menu(usuario(["editor"], ["contenido.editar"]));
+  assert.deepEqual([editor.plataforma, editor.admin], [["/admin/home-config"], ["/admin/banners"]]);
   for (const rol of permisosConfig.rolesFuera) {
     assert.deepEqual(menu(usuario([rol])), {}, rol);
     assert.equal(accesoPanel.roles.includes(rol), false, rol);
