@@ -7,6 +7,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Guía de trabajo para Claude Code en este repositorio. Las instrucciones explícitas
 del usuario tienen prioridad; no volver a pedir una autorización ya otorgada.
 
+## Estructura (desde 2026-11: conectado al core, como DistribuCG y Stilos)
+
+> Spec: `docs/specs/cambios/2026-11-conectar-al-core.md`. Las rutas de archivos de las secciones de abajo
+> son anteriores: lo de torneos ahora vive en el rubro.
+- Core compartido (no se edita acá salvo para mejorarlo y subirlo): `core/`, `frontend/src/core/`, `servidor/src/core/`.
+  `node scripts/core_traer.mjs` trae mejoras de CoreSistem; `core_subir.mjs --subir` sube las de acá.
+- Datos de MiPadel: `proyecto/` (client_config con `suscripcionDelSoftware: false`, permisos_rubros con roles
+  jugador/organizador), `frontend/src/proyecto/` (marca, colores, menú del celular) y `servidor/src/proyecto/`.
+- Rubro torneos: `servidor/src/modulos/torneos/` (modulo.js, arranque.js, configuracion.js, models con tabla `jugador`),
+  `frontend/src/modules/torneos/` (modulo.js, modulo_pantallas.jsx con `inicio` y `avisosSitio`, rutas.jsx, menu.js)
+  y `rubros/torneos/` (torneo_config.js, cobro_config.js). El plan del organizador está en `/api/plan-organizador`.
+- Variables: `servidor/.env.local` (PC) y `.env.produccion` (Render); moldes `*.example`.
 ## Proyecto y fuentes de verdad
 
 Sistema web (SaaS) para organizar torneos de pádel. Un organizador paga una suscripción
