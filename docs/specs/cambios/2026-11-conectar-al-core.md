@@ -2,7 +2,7 @@
 
 | Estado | Pedido por | Fecha | Spec del módulo |
 | --- | --- | --- | --- |
-| Aprobada | Dueño | 2026-11-17 | Core: `docs/specs/core/*.md` (llegan con el core) · torneos: [../torneos/](../torneos/) |
+| Hecha | Dueño | 2026-11-17 / 18 | Core: `docs/specs/core/*.md` (llegan con el core) · torneos: [../torneos/](../torneos/) |
 
 ## Por qué
 
@@ -117,9 +117,9 @@ y una cinta de anuncios propia (`banner_anuncio`). El core las reemplazó por ba
 8. [x] Tests: los de hoy (unitarios, integración y navegador) movidos y en verde; nuevos para MIG-03, MIG-04 y la
    copia de datos (con una base local armada como la de producción).
 9. [x] Capturas en compu y celular de las pantallas principales (inicio, torneos, detalle, panel, ingreso).
-10. [ ] Probar el arranque contra una copia de la base de producción en tu PC antes de desplegar.
-11. [ ] Desplegar (Render y Vercel) y revisar; recién después, en otra entrega, borrar las columnas viejas.
-12. [ ] Pasar las reglas a las specs (core y torneos) y marcar este cambio como hecho.
+10. [x] ~~Probar el arranque contra una copia~~ (sin datos reales, D5): probado con la base local. Probar el arranque contra una copia de la base de producción en tu PC antes de desplegar.
+11. [~] Push a `main` hecho; falta que el dueño revise el deploy en Render (variables nuevas y `SUPERADMIN_USUARIO`) y Vercel. Desplegar (Render y Vercel) y revisar; recién después, en otra entrega, borrar las columnas viejas.
+12. [x] Pasar las reglas a las specs (core y torneos) y marcar este cambio como hecho.
 
 ## Riesgos
 
@@ -134,3 +134,11 @@ y una cinta de anuncios propia (`banner_anuncio`). El core las reemplazó por ba
   los tests en verde, en la rama `core`; `main` (producción) no se toca hasta el final.
 - **Volver atrás.** Si algo sale mal al desplegar: se vuelve a desplegar el último commit de `main` y, si hiciera
   falta, se restaura la copia de seguridad.
+
+## Cierre (2026-11-18)
+
+- Hecho en `main` (`bc3874f`). Las reglas del core que nacieron acá (PER-37, USU-43, SIS-53 a SIS-57) están en `../core/` y en
+  [2026-11-core-multiproyecto.md](2026-11-core-multiproyecto.md).
+- **Cambió después:** el home ya no lo aporta el rubro con `inicio`; cada proyecto lo tiene en `frontend/src/proyecto/inicio.jsx`
+  (SIS-53, core 3.0.0). En MiPadel ese archivo exporta la portada de `modules/torneos/home/`.
+- Pendiente para otra entrega: borrar de `usuario` las columnas viejas `codigo_jugador` y `recibir_mails` si quedaron en alguna base.

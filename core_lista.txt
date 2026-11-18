@@ -30,6 +30,7 @@
 !docs/specs/cambios/2026-11-home-tienda.md
 !docs/specs/cambios/2026-11-personal-con-usuario.md
 !docs/specs/cambios/2026-11-indices-unicos.md
+!docs/specs/cambios/2026-11-core-multiproyecto.md
 
 # Frontend: esqueleto y core
 !frontend/package.json

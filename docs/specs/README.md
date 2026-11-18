@@ -1,7 +1,7 @@
 # Especificaciones (SDD)
 
 Acá vive **qué tiene que hacer** el sistema, escrito antes que el código. Cada regla tiene un
-código (`USU-03`, `PED-12`…) que también aparece en el test que la comprueba: buscando el código
+código (`USU-03`, `SIS-53`…) que también aparece en el test que la comprueba: buscando el código
 en el proyecto se encuentran juntas la regla, su test y su implementación.
 
 ## Dos tipos de spec
@@ -11,8 +11,9 @@ en el proyecto se encuentran juntas la regla, su test y su implementación.
 | **De módulo** | `core/<modulo>.md` o `<rubro>/<tema>.md` | Una vez; se actualiza cuando cambia una regla | [_plantilla_modulo.md](_plantilla_modulo.md) |
 | **De cambio** | `cambios/AAAA-MM-<nombre>.md` | Antes de programar cada trabajo nuevo | [_plantilla_cambio.md](_plantilla_cambio.md) |
 
-`core/` vale para cualquier proyecto que use esta base (login, usuarios, permisos, panel). Cada
-rubro tiene su carpeta (`eccomerce_distribuidora/`): al copiar la base para otro rubro, se borra.
+Este README y `core/` son **del core**: llegan iguales a todos los proyectos con `core_traer` (no se editan en un
+proyecto: se mejoran y se suben con `core_subir`). Lo de cada proyecto vive en la carpeta de su rubro, con su propio
+índice: `docs/specs/<rubro>/README.md` (sus módulos y sus códigos). Las specs de cambio del core también viajan.
 
 ## Cómo se trabaja
 
@@ -50,15 +51,13 @@ reutiliza**: si una regla se elimina, queda tachada con su motivo. En el test va
 test("USU-02: login con email o nombre de usuario, sin distinguir mayúsculas", async () => { … });
 ```
 
-| Prefijo | Spec |
+| Prefijo | Spec del core |
 | --- | --- |
 | `USU` | [core/usuarios.md](core/usuarios.md) |
 | `PER` | [core/permisos.md](core/permisos.md) |
 | `PAN` | [core/panel.md](core/panel.md) |
 | `SIS` | [core/sistema.md](core/sistema.md) |
-| `PED` | [eccomerce_distribuidora/pedidos.md](eccomerce_distribuidora/pedidos.md) |
-| `COB` | [eccomerce_distribuidora/cobros.md](eccomerce_distribuidora/cobros.md) |
-| `CAR` | [eccomerce_distribuidora/carrito.md](eccomerce_distribuidora/carrito.md) |
-| `PRE` | [eccomerce_distribuidora/precios.md](eccomerce_distribuidora/precios.md) |
-| `CAT` | [eccomerce_distribuidora/catalogo.md](eccomerce_distribuidora/catalogo.md) |
-| `CLI` | [eccomerce_distribuidora/clientes.md](eccomerce_distribuidora/clientes.md) |
+| `COR` | Estructura del core ([cambios/2026-11-core-multiproyecto.md](cambios/2026-11-core-multiproyecto.md)) |
+
+Los prefijos de cada rubro (ej. `PED`, `ROP`, `TOR`) están en el índice de su carpeta. Un prefijo no se repite entre el
+core y un rubro.
