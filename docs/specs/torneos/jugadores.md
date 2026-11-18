@@ -41,20 +41,21 @@ tener que entrar a revisar.
 | JUG-08 | Al aplicar el cronograma automático, cada jugador recibe un solo aviso con todos sus horarios. | ✅ `llave.integration.mjs` › "cronograma automático…" |
 | JUG-09 | El jugador puede apagar los avisos por mail en Mi perfil (la campanita sigue). | ✅ `juego.spec.js` › "mi perfil: el jugador apaga los avisos por mail" |
 | JUG-10 | Los correos se mandan después de guardar y en segundo plano: un error del correo nunca rompe la acción. Nunca se escribe a dominios de prueba y se apagan con `AVISOS_POR_CORREO=no`. | ✅ `ux_rules.test.mjs` › "avisos por correo: textos con enlace, datos escapados y sin escribir a dominios de prueba" |
+| JUG-11 | El código y la preferencia de mails viven en la tabla `jugador` del rubro (una fila por cuenta), no en `usuario` del core. La fila nace junto con la cuenta, en la misma transacción, y el arranque completa las cuentas que no la tengan. | ✅ `jugadores.integration.mjs` › "cada cuenta nace con su código…" |
 
 ## Configuración
 
 | Qué | Dónde | Valor actual |
 | --- | --- | --- |
 | Avisos por correo prendidos o apagados | `.env` del servidor › `AVISOS_POR_CORREO` | Prendidos salvo `no` |
-| A quién avisar del lado de la plataforma | `.env` del servidor › `SUPERADMIN_EMAIL` | (en el `.env`) |
-| Etiquetas de puesto alcanzado | `torneo_config.js` › `PUESTOS_ALCANZADOS` | Campeón, Finalista, Semifinal… |
+| A quién avisar del lado de la plataforma | email fijo del super admin (`SUPERADMIN_EMAIL_FIJO`, en `env.js` del core) | el del dueño |
+| Etiquetas de puesto alcanzado | `rubros/torneos/torneo_config.js` › `PUESTOS_ALCANZADOS` | Campeón, Finalista, Semifinal… |
 
 ## Dónde está el código
 
 - Servidor: `services/jugadores/`, `services/avisos/avisos_jugador_service.js`,
   `services/common/avisos_service.js` y `avisos_reglas.js`; rutas `/api/jugadores`, `/api/avisos`.
-- Frontend: `/mi-perfil`, `/jugadores/:codigo`, `modules/torneos/avisos/` (campanita).
+- Frontend: `/mi-perfil`, `/jugadores/:codigo`, `avisos/` (campanita).
 
 ## Preguntas abiertas
 

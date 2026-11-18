@@ -3,6 +3,9 @@
 Las reglas del negocio de MiPadel. Las del core (ingreso, usuarios, permisos, panel, sistema) están en
 [../core/](../core/) y su índice en [../README.md](../README.md).
 
+En las secciones "Dónde está el código", las rutas son relativas a la carpeta del rubro: `servidor/src/modulos/torneos/`,
+`frontend/src/modules/torneos/` y `rubros/torneos/`.
+
 ## Códigos del rubro
 
 Prefijo de tres letras por módulo y número correlativo. Un código **nunca se reutiliza**: si una regla

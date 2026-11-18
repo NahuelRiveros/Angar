@@ -79,8 +79,8 @@ Solo si la categoría tiene monto ([TOR-15](torneos.md)).
 
 | Qué | Dónde | Valor actual |
 | --- | --- | --- |
-| Cuándo se anota, se cargan parejas y se paga | `torneo_config.js` › `PERMITIDO` | Online y pago: Inscripción · a mano: Borrador e Inscripción |
-| Comprobante | `cobro_config.js` › `comprobante` | Hasta 5 MB · jpg, png, webp, pdf (se reconoce por el contenido) |
+| Cuándo se anota, se cargan parejas y se paga | `rubros/torneos/torneo_config.js` › `PERMITIDO` | Online y pago: Inscripción · a mano: Borrador e Inscripción |
+| Comprobante | `rubros/torneos/cobro_config.js` › `comprobante` | Hasta 5 MB · jpg, png, webp, pdf (se reconoce por el contenido) |
 
 ## Dónde está el código
 

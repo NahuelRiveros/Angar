@@ -75,8 +75,8 @@ cronograma de días, horas y canchas.
 
 | Qué | Dónde | Valor actual |
 | --- | --- | --- |
-| Formatos de partido, tamaños de zona y valores por defecto | `torneo_config.js` › `FORMATOS_PARTIDO`, `ZONAS` | Ver JUE-01 y JUE-02 |
-| Cuándo se arma, se carga y se programa | `torneo_config.js` › `PERMITIDO` | Zonas: Inscripción y En juego · resultados y llave: En juego |
+| Formatos de partido, tamaños de zona y valores por defecto | `rubros/torneos/torneo_config.js` › `FORMATOS_PARTIDO`, `ZONAS` | Ver JUE-01 y JUE-02 |
+| Cuándo se arma, se carga y se programa | `rubros/torneos/torneo_config.js` › `PERMITIDO` | Zonas: Inscripción y En juego · resultados y llave: En juego |
 | Límites del cronograma | `services/torneos/cronograma_reglas.js` › `CRONOGRAMA` | 7 días · 20 canchas · turnos de 30 a 120 min · descanso 0 a 3 |
 
 ## Dónde está el código

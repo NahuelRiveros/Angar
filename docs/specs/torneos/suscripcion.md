@@ -59,26 +59,28 @@ plataforma aprueba pagos y extiende planes.
 | SUS-12 | Listado de organizadores con filtros, historial de pagos y comprobantes. Soporte ve; solo quien gestiona aprueba, rechaza o extiende. Un jugador no entra. | ✅ `suscripcion.spec.js` › "panel: …" (5 tests) |
 | SUS-13 | Extensión manual: de 1 a 365 días, o fijar una fecha, con nota. Queda en el historial. | ✅ `ux_rules.test.mjs` › "plan: extensión manual y ajuste de fecha…"; `suscripcion.integration.mjs` › "panel: extender a mano…" |
 | SUS-14 | Inicio del panel: organizadores por estado y comprobantes para revisar sin salir; el super admin además ve cuántos usuarios hay (solo nombre y fecha) y maneja los torneos demo. | ✅ `suscripcion.spec.js` › "inicio del panel…" (4 tests) |
+| SUS-15 | El plan del organizador responde en `/api/plan-organizador`: no choca con `/api/suscripcion`, que en el core es la suscripción del software (apagada en MiPadel, SIS-56). | ✅ `suscripcion.integration.mjs` (todas las pruebas del plan usan esa ruta) |
+| SUS-16 | El super admin nunca queda en solo lectura ni recibe el aviso de plan vencido, aunque su cuenta también sea de organizador: igual que el servidor (`requireSuscripcionVigente` lo deja pasar). | ✅ `ux_rules.test.mjs` › "plan vencido: el organizador queda en solo lectura; el super admin no…" |
 
 ## Configuración
 
 | Qué | Dónde | Valor actual |
 | --- | --- | --- |
 | Precio del mes | `.env` del servidor › `PRECIO_SUSCRIPCION_MENSUAL` | ❓ el del ejemplo no es real |
-| MercadoPago prendido o apagado | `cobro_config.js` › `mercadoPagoHabilitado` | Apagado |
-| Datos para transferir | `cobro_config.js` › `transferencia` | `[COMPLETAR]` (titular, banco, CBU, alias, CUIT) |
+| MercadoPago prendido o apagado | `rubros/torneos/cobro_config.js` › `mercadoPagoHabilitado` | Apagado |
+| Datos para transferir | `rubros/torneos/cobro_config.js` › `transferencia` | `[COMPLETAR]` (titular, banco, CBU, alias, CUIT) |
 | Días de prueba, por pago, de aviso y tope manual | `services/suscripciones/suscripcion_reglas.js` | 14 · 30 · 7 · 365 |
 
 ## Dónde está el código
 
-- Servidor: `services/suscripciones/` (reglas en `suscripcion_reglas.js`), `middleware/suscripcion_middleware.js`
-  (`requireSuscripcionVigente`), rutas `routes/suscripciones/`.
-- Frontend: `/mi-suscripcion`, `/admin/suscripciones`, `modules/suscripcion/`.
+- Servidor: `services/suscripciones/` (reglas en `suscripcion_reglas.js`), `middleware/plan_middleware.js`
+  (`requireSuscripcionVigente`), rutas `routes/suscripciones/` montadas en `/api/plan-organizador`.
+- Frontend: `/mi-suscripcion`, `/admin/suscripciones`, `plan/` y `admin/`.
 
 ## Preguntas abiertas
 
 1. **[SUS-06] — Precio del plan y datos bancarios reales.** Hacen falta para publicar: precio mensual,
-   titular, banco, CBU o CVU, alias y CUIT. Se cargan en el `.env` (precio) y en `cobro_config.js`.
+   titular, banco, CBU o CVU, alias y CUIT. Se cargan en el `.env.produccion` (`PRECIO_SUSCRIPCION_MENSUAL`) y en `rubros/torneos/cobro_config.js`.
    **Respuesta:**
 2. **[SUS-05] — ¿Días de gracia?** Hoy, al día siguiente del vencimiento queda en solo lectura, aunque
    tenga un torneo en juego ese fin de semana. Opciones: (a) sin gracia, como hoy; (b) si tiene un torneo

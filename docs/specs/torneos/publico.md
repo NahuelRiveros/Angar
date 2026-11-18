@@ -49,7 +49,7 @@ nunca datos privados de los jugadores.
 ## Dónde está el código
 
 - Servidor: `services/torneos/publico_service.js`, `publico_reglas.js`; rutas `/api/publico/torneos`.
-- Frontend: `modules/torneos/publico/` (`/torneos`, `/torneos/:id`).
+- Frontend: `publico/` (`/torneos`, `/torneos/:id`).
 
 ## Preguntas abiertas
 

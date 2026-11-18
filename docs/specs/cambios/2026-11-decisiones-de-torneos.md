@@ -2,7 +2,7 @@
 
 | Estado | Pedido por | Fecha | Spec del módulo |
 | --- | --- | --- | --- |
-| Borrador | Dueño | 2026-11-18 | [torneos](../torneos/torneos.md), [inscripciones](../torneos/inscripciones.md), [zonas y llave](../torneos/zonas_y_llave.md), [jugadores](../torneos/jugadores.md), [público](../torneos/publico.md) |
+| Aprobada | Dueño | 2026-11-18 | [torneos](../torneos/torneos.md), [inscripciones](../torneos/inscripciones.md), [zonas y llave](../torneos/zonas_y_llave.md), [jugadores](../torneos/jugadores.md), [público](../torneos/publico.md) |
 
 ## Por qué
 
@@ -19,9 +19,9 @@ partido por el 3er puesto como opción y la primera parte del perfil de jugador 
 | TOR-24 | Un torneo "En juego" puede volver a "Inscripción" mientras no tenga ningún resultado cargado (ni de zona ni de llave). Las zonas y el fixture se conservan. | 🚧 |
 | JUE-25 | Cada categoría puede tener **partido por el 3er puesto** (opción del organizador, apagada por defecto). Si está prendida, al armar la llave se crea ese partido con los perdedores de las semifinales, y el podio muestra 3º y 4º en vez del 3º compartido. | 🚧 |
 | JUE-26 | Con las zonas sorteadas no se suman parejas: el cupo se define de antemano y, al completarse, la categoría deja de aceptar inscripciones. (Confirma JUE-07 e INS-09; se agrega el test que falta.) | 🚧 |
-| JUG-11 | El jugador puede subir una **foto** (opcional) a su perfil; se ve en su perfil público y en los participantes. Se guarda en Cloudinary y se pide al tamaño en que se muestra. | 🚧 |
-| JUG-12 | **Ranking por puntos**, por categoría (nivel y rama) y por año: cada torneo finalizado suma puntos según el puesto alcanzado. Página pública `/ranking` con filtros de categoría y año. | ❓ falta la tabla de puntos (ver pregunta 1) |
-| PUB-11 | Un torneo cancelado no aparece en la lista; si alguien entra por su link, ve la ficha con el cartel "Torneo cancelado". | ❓ ver pregunta 2 |
+| JUG-12 | El jugador puede subir una **foto** (opcional) a su perfil; se ve en su perfil público y en los participantes. Se guarda en Cloudinary y se pide al tamaño en que se muestra. | 🚧 |
+| JUG-13 | **Ranking por puntos**, por categoría (nivel y rama) y por año: cada torneo finalizado suma puntos según el puesto alcanzado. Página pública `/ranking` con filtros de categoría y año. | 🚧 (campeón 100, finalista 70, semifinal 50, cuartos 30, octavos 15, zona 5; uno por torneo) |
+| PUB-11 | Un torneo cancelado no aparece en la lista; si alguien entra por su link, ve la ficha con el cartel "Torneo cancelado". | 🚧 |
 
 **Fuera de alcance:** devolver la plata desde el sistema, las estrellas del jugador y el ranking general (sin categoría).
 
@@ -48,22 +48,22 @@ partido por el 3er puesto como opción y la primera parte del perfil de jugador 
 
 ## Preguntas abiertas
 
-1. **[JUG-12] — ¿Cuántos puntos da cada puesto?** Propuesta: campeón 100, finalista 70, semifinal 50, cuartos 30,
+1. **[JUG-13] — ¿Cuántos puntos da cada puesto?** Propuesta: campeón 100, finalista 70, semifinal 50, cuartos 30,
    octavos 15, solo zona 5. ¿Suma solo el mejor resultado de cada torneo (sí, uno por torneo) y cuentan todos los torneos
    del año? Recomendación: la propuesta, todos los torneos del año.
-   **Respuesta:**
+   **Respuesta:** la propuesta, por ahora (2026-11-18).
 2. **[PUB-11] — Torneo cancelado por su link:** (a) como hoy, "No encontramos ese torneo"; (b) la ficha con el cartel
    "Torneo cancelado". Recomendación: (b).
-   **Respuesta:**
+   **Respuesta:** (b), la ficha con el cartel (2026-11-18).
 
 ## Tareas
 
-1. [ ] Aprobar esta spec (preguntas 1 y 2 respondidas).
+1. [x] Aprobar esta spec (preguntas 1 y 2 respondidas).
 2. [ ] Tests de cada requisito (fallan al principio).
 3. [ ] TOR-24 y JUE-26 (cambios chicos de reglas).
 4. [ ] INS-20 y TOR-23 (avisos al organizador).
 5. [ ] JUE-25 (3er puesto: modelo, llave, podio y pantalla).
-6. [ ] JUG-11 (foto) y JUG-12 (ranking).
+6. [ ] JUG-12 (foto) y JUG-13 (ranking).
 7. [ ] Unitarios, integración, navegador y capturas en verde; pasar las reglas a las specs del módulo.
 
 ## Riesgos

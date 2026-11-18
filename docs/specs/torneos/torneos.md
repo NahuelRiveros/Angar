@@ -82,14 +82,14 @@ cobro de la inscripción) y lo lleve por sus estados hasta terminarlo, sin que n
 
 | Qué | Dónde | Valor actual |
 | --- | --- | --- |
-| Estados, pasos permitidos, qué se edita en cada estado | `torneo_config.js` (`ESTADOS_TORNEO`, `TRANSICIONES`, `EDICION_POR_ESTADO`) | Ver TOR-07 a TOR-09 |
-| Niveles, ramas y puestos | `torneo_config.js` | 1ra a 8va; Caballeros, Damas, Mixto |
-| Límites | `torneo_config.js` › `LIMITES` | 30 categorías · 10 premios · cupo 2 a 256 · monto hasta $10.000.000 |
+| Estados, pasos permitidos, qué se edita en cada estado | `rubros/torneos/torneo_config.js` (`ESTADOS_TORNEO`, `TRANSICIONES`, `EDICION_POR_ESTADO`) | Ver TOR-07 a TOR-09 |
+| Niveles, ramas y puestos | `rubros/torneos/torneo_config.js` | 1ra a 8va; Caballeros, Damas, Mixto |
+| Límites | `rubros/torneos/torneo_config.js` › `LIMITES` | 30 categorías · 10 premios · cupo 2 a 256 · monto hasta $10.000.000 |
 
 ## Dónde está el código
 
 - Servidor: `routes/torneos/`, `services/torneos/torneo_service.js`, reglas en `torneo_reglas.js`.
-- Frontend: `modules/torneos/organizador/` (Mis torneos), `detalle/` (pestañas), `/mis-torneos/:id/imprimir`.
+- Frontend: `organizador/` (Mis torneos), `detalle/` (pestañas), `/mis-torneos/:id/imprimir`.
 
 ## Decisiones
 
