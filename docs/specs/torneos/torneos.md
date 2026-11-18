@@ -103,8 +103,8 @@ cobro de la inscripción) y lo lleve por sus estados hasta terminarlo, sin que n
    con esos pagos (la devolución, si la hay, se arregla por fuera). Opciones: (a) dejarlo así y avisarle a
    las parejas que pagaron que el torneo se canceló; (b) además, marcar esas inscripciones "a devolver"
    para que el organizador lleve la cuenta; (c) dejarlo como está, sin aviso. Recomendación: (a).
-   **Respuesta:**
+   **Respuesta:** avisarle al organizador qué parejas habían pagado y que tiene que devolverles la plata (la devolución se hace por fuera, por ahora). (2026-11-18)
 2. **[TOR-07] — ¿Se puede volver de "En juego" a "Inscripción"?** Hoy no (solo a Finalizado o Cancelado).
    Sirve si se empezó por error. Opciones: (a) no, como hoy; (b) sí, mientras no haya ningún resultado
    cargado. Recomendación: (b).
-   **Respuesta:**
+   **Respuesta:** (b) sí: se puede volver a Inscripción mientras no haya ningún resultado cargado. (2026-11-18)

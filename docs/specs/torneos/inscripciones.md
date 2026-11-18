@@ -95,7 +95,7 @@ Solo si la categoría tiene monto ([TOR-15](torneos.md)).
    arregla por fuera; (b) avisarle al organizador ("se bajó una pareja que había pagado") para que
    decida; (c) no dejar que se baje sola si ya pagó: tiene que pedírselo al organizador.
    Recomendación: (b).
-   **Respuesta:**
+   **Respuesta:** (b) avisarle al organizador que se bajó una pareja que había pagado y que tiene que devolverle la plata (la devolución se hace por fuera, por ahora). (2026-11-18)
 2. **[INS-11] — ¿La pareja puede mandar el comprobante con el torneo ya empezado?** Hoy solo se
    manda con la inscripción abierta. Opciones: (a) así; (b) también "En juego", para el que paga el día
    del torneo. Recomendación: (b), porque en los clubes es común pagar el mismo día.

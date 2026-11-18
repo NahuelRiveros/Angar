@@ -91,8 +91,8 @@ cronograma de días, horas y canchas.
 1. **[JUE-17] — ¿Partido por el 3er puesto?** Hoy no se juega: los dos semifinalistas comparten el
    tercer lugar. Opciones: (a) así; (b) opcional por categoría. Recomendación: (a) hasta que un
    organizador lo pida.
-   **Respuesta:**
+   **Respuesta:** (b) opcional por categoría: el partido por el 3er puesto se juega solo si el organizador lo configura. (2026-11-18)
 2. **[JUE-07] — ¿Se puede agregar una pareja con las zonas ya sorteadas?** Hoy hay que rearmar (y se
    pierden los horarios). Opciones: (a) así; (b) sumarla a la zona más chica sin rearmar, mientras esa
    zona no tenga resultados. Recomendación: (b).
-   **Respuesta:**
+   **Respuesta:** (a) no: con las zonas sorteadas no se suman parejas. El cupo se define de antemano y, una vez completo, la inscripción se cierra. (2026-11-18)

@@ -64,4 +64,4 @@ tener que entrar a revisar.
    las pone quién y a quién: el organizador al jugador, o los jugadores entre sí? (c) ¿la foto es
    obligatoria o opcional? Recomendación: arrancar por la foto (opcional) y un ranking por puntos por
    categoría y año; las estrellas, después.
-   **Respuesta:**
+   **Respuesta:** foto (opcional) y ranking por puntos por categoría y año; las estrellas, después. Falta definir la tabla de puntos por puesto. (2026-11-18)
