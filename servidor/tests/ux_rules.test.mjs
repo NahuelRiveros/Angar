@@ -741,3 +741,14 @@ test("plan vencido: el organizador queda en solo lectura; el super admin no (com
   assert.equal(planEnSoloLectura({ es_organizador: true, vigente: true }, { roles: ["organizador"] }), false);
   assert.equal(planEnSoloLectura(undefined, null), false, "sin datos del plan, no se bloquea");
 });
+
+test("SUS-08: el comprobante privado se ve con un enlace firmado que vence a los 5 minutos", async () => {
+  const { v2: cloudinary } = await import("cloudinary");
+  cloudinary.config({ cloud_name: "prueba", api_key: "123", api_secret: "secreto-de-prueba" });
+  const { enlaceArchivoPrivado } = await import("../src/core/services/common/upload_service.js");
+  const antes = Math.floor(Date.now() / 1000);
+  const url = new URL(enlaceArchivoPrivado("mipadel/comprobantes/x", "pdf"));
+  const vence = Number(url.searchParams.get("expires_at"));
+  assert.ok(vence >= antes + 300 && vence <= antes + 302, `vence a los 5 minutos (${vence - antes}s)`);
+  assert.ok(url.searchParams.get("signature"), "va firmado");
+});

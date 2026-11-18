@@ -59,7 +59,7 @@ cronograma de días, horas y canchas.
 | JUE-16 | Nadie cruza en primera ronda a alguien de su zona y, si se puede, el 2º queda en la otra mitad de la llave que su 1º. | ✅ `ux_rules.test.mjs` › "llave: de 1 a 8 zonas…" y "llave con mejores terceros…" |
 | JUE-17 | El ganador de cada partido avanza solo a su lugar en la ronda siguiente. Sin partido por el 3er puesto: los semifinalistas lo comparten. El podio sale de la final y las semis. | ✅ `llave.integration.mjs` › "llave de 4…"; `ux_rules.test.mjs` › "llave: el ganador avanza…" |
 | JUE-18 | Con la llave armada, las zonas quedan cerradas. Para corregirlas se deshace la llave, solo si no tiene resultados. | ✅ `llave.integration.mjs` › "…deshacer la llave reabre las zonas…"; `llave.spec.js` › "deshacer la llave sin resultados…" |
-| JUE-19 | Corregir un resultado cuyo partido siguiente ya se jugó y que cambia al ganador: se frena (hay que corregir primero el siguiente). | ⚠️ sin test propio |
+| JUE-19 | Corregir un resultado cuyo partido siguiente ya se jugó y que cambia al ganador: se frena (hay que corregir primero el siguiente). | ✅ `llave.integration.mjs` › "llave de 4: semis cruzadas…"; `llave.spec.js` › "organizador arma la llave…" |
 | JUE-20 | El cálculo que ve el organizador (zonas, clasificados, llave) es el mismo que usan el sorteo y la llave reales. | ✅ `ux_rules.test.mjs` › "cálculo de la llave: lo que ve el organizador coincide…" |
 
 ### Programación y cronograma

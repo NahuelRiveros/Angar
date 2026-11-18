@@ -34,10 +34,10 @@ test("variables pegadas con comillas o espacios en Render se limpian", () => {
 });
 
 test("la API de producción usa MiPadel y rechaza direcciones mal formadas antes de enviar credenciales", () => {
-  assert.equal(resolverApiUrl(undefined), "https://mipadel.onrender.com/api");
-  assert.equal(resolverApiUrl(""), "https://mipadel.onrender.com/api");
+  assert.equal(resolverApiUrl(undefined), "https://kinetica.onrender.com/api");
+  assert.equal(resolverApiUrl(""), "https://kinetica.onrender.com/api");
   assert.equal(resolverApiUrl(undefined, true), "http://localhost:3001/api");
-  assert.equal(resolverApiUrl(' "https://mipadel.onrender.com/api/" '), "https://mipadel.onrender.com/api");
+  assert.equal(resolverApiUrl(' "https://kinetica.onrender.com/api/" '), "https://kinetica.onrender.com/api");
   assert.equal(resolverApiUrl("https://otra-api.example.com/api"), "https://otra-api.example.com/api");
   for (const invalida of ["/api", "https://api.example.com", "https://api.example.com/api?clave=1", "https://usuario:clave@api.example.com/api"]) {
     assert.throws(() => resolverApiUrl(invalida), /VITE_API_URL/);
@@ -89,13 +89,13 @@ test("producción permite el frontend de MiPadel por defecto y muestra la identi
     try {
       const base = 'http://127.0.0.1:' + servidor.address().port;
       const r = await fetch(base + '/api/auth/google', { method: 'OPTIONS', headers: {
-        Origin: 'https://mipadel.vercel.app', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type'
+        Origin: 'https://mipadelcup.vercel.app', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type'
       }});
       assert.equal(r.status, 204);
-      assert.equal(r.headers.get('access-control-allow-origin'), 'https://mipadel.vercel.app');
+      assert.equal(r.headers.get('access-control-allow-origin'), 'https://mipadelcup.vercel.app');
       const portada = await (await fetch(base + '/')).json();
       assert.equal(portada.nombre, 'MiPadel API');
-      assert.equal(portada.frontend, 'https://mipadel.vercel.app');
+      assert.equal(portada.frontend, 'https://mipadelcup.vercel.app');
     } finally { await new Promise(r => servidor.close(r)); }
   `;
   const r = spawnSync(process.execPath, ["--input-type=module", "-e", script], {

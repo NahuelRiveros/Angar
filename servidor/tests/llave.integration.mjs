@@ -201,3 +201,17 @@ test("cronograma automático: vista previa sin guardar, aplicar respeta lo manua
   assert.equal(avisos.length, 1, "un solo aviso con todos sus horarios");
   assert.match(avisos[0].detalle, /6ta Mixto · Jugadora Horarios \/ Compa Sin Cuenta vs/);
 });
+
+test("PUB-08: la vista pública de una categoría se guarda 30 segundos (sin consultas automáticas)", { skip: sin }, async () => {
+  const { torneo, categoria } = await torneoConZonasJugadas("Copa caché", 6);
+  const { createApp } = await import("../src/core/app.js");
+  const servidor = createApp().listen(0);
+  await new Promise((r) => servidor.once("listening", r));
+  try {
+    const r = await fetch(`http://127.0.0.1:${servidor.address().port}/api/publico/torneos/${torneo.id}/categorias/${categoria.id}`);
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get("cache-control"), "public, max-age=30");
+  } finally {
+    await new Promise((r) => servidor.close(r));
+  }
+});

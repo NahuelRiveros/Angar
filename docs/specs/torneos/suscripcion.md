@@ -42,7 +42,7 @@ plataforma aprueba pagos y extiende planes.
 | --- | --- | --- |
 | SUS-06 | El organizador ve los datos bancarios y copia el CBU. Mientras falte alguno (`[COMPLETAR]`), la pantalla avisa que no se puede transferir y que hay que escribirnos. | ✅ `suscripcion.spec.js` › "transferencia: el organizador ve los datos…" y "sin datos bancarios ni MercadoPago…" |
 | SUS-07 | Manda el comprobante (jpg, png, webp o pdf, hasta 5 MB, reconocido por su contenido) con una nota opcional; queda "en revisión". Una sola transferencia pendiente por organizador. | ✅ `suscripcion.integration.mjs` › "transferencia…"; `ux_rules.test.mjs` › "transferencia: el comprobante se reconoce por su contenido…" |
-| SUS-08 | El comprobante es privado y se ve con un enlace que vence a los 5 minutos. | ⚠️ sin test propio |
+| SUS-08 | El comprobante es privado y se ve con un enlace que vence a los 5 minutos. | ✅ `ux_rules.test.mjs` › "SUS-08: el comprobante privado… vence a los 5 minutos" |
 | SUS-09 | El equipo la aprueba (suma 30 días) o la rechaza con motivo; el organizador ve el motivo y puede mandar otra. | ✅ `suscripcion.integration.mjs` › "transferencia…"; `suscripcion.spec.js` › "transferencia rechazada…" y "panel: el admin abre el comprobante…" |
 
 ### MercadoPago (apagado)

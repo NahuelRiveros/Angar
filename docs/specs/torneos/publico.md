@@ -42,7 +42,7 @@ nunca datos privados de los jugadores.
 | --- | --- | --- |
 | PUB-06 | La ficha muestra datos, categorías, premios, reglamento, monto por pareja y la cuenta para transferir (CBU y alias para copiar). | ✅ `juego.spec.js` › "visitante: la ficha muestra el monto por pareja y la cuenta…" |
 | PUB-07 | Por categoría: zonas con tabla, fixture y resultados, y la llave con el podio. | ✅ `publico.spec.js` › "sin cuenta se siguen la llave, las zonas y los resultados…" |
-| PUB-08 | Sin actualización automática: los datos se guardan 30 segundos y hay un botón "Actualizar" (la base cobra mientras está despierta). | ⚠️ sin test |
+| PUB-08 | Sin actualización automática: los datos se guardan 30 segundos y hay un botón "Actualizar" (la base cobra mientras está despierta). | ✅ `llave.integration.mjs` › "PUB-08: la vista pública… 30 segundos"; botón: `publico.spec.js` › "sin cuenta se siguen la llave…" |
 | PUB-09 | Participantes: las parejas de cada categoría; los jugadores con cuenta muestran su historial y llevan a su perfil público. | ✅ `jugadores.spec.js` › "los participantes muestran el historial…" |
 | PUB-10 | "Compartir": en el celular abre el menú del teléfono; en la compu copia el link. | ✅ `publico.spec.js` › "compartir copia el link del torneo" |
 

@@ -209,3 +209,35 @@ test("pago de la inscripción: la pareja manda el comprobante, el organizador lo
   await assert.rejects(insc.aprobarPagoInscripcion(pago.id, insc1.id, org), /no tiene un comprobante para revisar/);
   await assert.rejects(insc.aprobarPagoInscripcion(pago.id, insc1.id, jugadores[1]), /No encontramos ese torneo/, "solo el dueño aprueba");
 });
+
+test("INS-14, INS-17 e INS-18: confirmar sin comprobante (efectivo) y los límites de las bajas", { skip: sin }, async () => {
+  const [ana, beto, caro] = jugadores;
+  const t = await torneos.crearTorneo(org, { nombre: "Bajas y efectivo", sede: "Club Sur", fecha_inicio: "2026-12-12" });
+  const cat = (await torneos.crearCategoria(t.id, org, { nivel: 5, rama: "damas", cupo_parejas: 8, parejas_por_zona: 3, monto_inscripcion: 15000 })).categorias[0];
+  await torneos.cambiarEstado(t.id, org, "inscripcion");
+
+  // INS-14: la categoría cobra, pero el organizador puede confirmar sin comprobante (pagó en efectivo en el club).
+  const online = await insc.anotarseOnline(ana, t.id, { categoria_id: cat.id, jugador2_nombre: "Pago Efectivo" });
+  await insc.confirmarInscripcion(t.id, online.id, org);
+  const confirmada = await Inscripcion.findByPk(online.id);
+  assert.deepEqual([confirmada.estado, confirmada.pago_estado], ["confirmada", null]);
+
+  // INS-17: solo los jugadores de la pareja pueden bajarla.
+  await assert.rejects(insc.cancelarMia(beto, online.id), /No encontramos/);
+  const pendiente = await insc.anotarseOnline(caro, t.id, { categoria_id: cat.id, jugador2_nombre: "Sin Confirmar" });
+
+  // INS-18: el organizador da de baja una pareja que todavía no está en una zona.
+  for (const n of [1, 2, 9]) await insc.cargarPareja(t.id, org, parejaManual(cat.id, n));
+  const libre = await Inscripcion.findOne({ where: { torneo_id: t.id, jugador1_nombre: "Jugador 9A" } });
+  await insc.darDeBaja(t.id, libre.id, org);
+  assert.equal((await Inscripcion.findByPk(libre.id)).estado, "cancelada");
+
+  // Con las zonas sorteadas, ninguno de los dos puede bajar una pareja que ya está en una zona.
+  await zonas.generarZonas(t.id, cat.id, org);
+  await assert.rejects(insc.cancelarMia(ana, online.id), /escribile al organizador/);
+  await assert.rejects(insc.darDeBaja(t.id, online.id, org), /rearmá las zonas/);
+
+  // Con el torneo cerrado, tampoco el organizador.
+  await torneos.cambiarEstado(t.id, org, "cancelado");
+  await assert.rejects(insc.darDeBaja(t.id, pendiente.id, org), /está cerrado/);
+});

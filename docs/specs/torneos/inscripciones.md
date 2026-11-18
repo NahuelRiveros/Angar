@@ -63,7 +63,7 @@ Solo si la categoría tiene monto ([TOR-15](torneos.md)).
 | INS-11 | La pareja paga mientras la inscripción del torneo está abierta: ve la cuenta, copia CBU y alias y manda el comprobante (imagen o PDF). | ✅ `juego.integration.mjs` › "pago de la inscripción…"; `juego.spec.js` › "jugador: ve la cuenta, manda el comprobante…" |
 | INS-12 | Se puede reemplazar un comprobante rechazado; uno en revisión o aprobado, no. | ✅ `ux_rules.test.mjs` › "cobro de la inscripción… cuándo la pareja puede mandar el comprobante" |
 | INS-13 | El organizador ve el comprobante con un enlace que vence a los 5 minutos y lo aprueba (la inscripción queda Confirmada, respetando el cupo) o lo rechaza con motivo. | ✅ `juego.spec.js` › "organizador: carga la cuenta en Datos, ve el comprobante y aprueba…" |
-| INS-14 | Confirmar sin comprobante (pago en efectivo en el club) sigue permitido. | ⚠️ sin test propio |
+| INS-14 | Confirmar sin comprobante (pago en efectivo en el club) sigue permitido. | ✅ `juego.integration.mjs` › "INS-14, INS-17 e INS-18: confirmar sin comprobante…" |
 | INS-15 | Al anotarse en una categoría que cobra, la ficha lleva directo a pagar ("Mis inscripciones", con el pago destacado); en una que no cobra, se queda en la ficha. | ✅ `juego.spec.js` › "jugador: al anotarse en una categoría que cobra…" y "jugador: en una categoría sin cobro…" |
 
 ### Mis inscripciones y baja
@@ -71,8 +71,8 @@ Solo si la categoría tiene monto ([TOR-15](torneos.md)).
 | Código | Regla | Estado |
 | --- | --- | --- |
 | INS-16 | "Mis inscripciones" tiene pestañas Activas, Jugadas y Bajas; lo que pide acción va primero y cada tarjeta dice el próximo paso. | ✅ `juego.spec.js` › "mis inscripciones: pestañas Activas, Jugadas y Bajas…" |
-| INS-17 | Cualquiera de los dos jugadores con cuenta puede dar de baja la pareja mientras el torneo está en Inscripción y la pareja no está en una zona; pasa a "Bajas". Después, el sistema le dice que le escriba al organizador. | ✅ `juego.spec.js` › "mis inscripciones… bajarse la pasa a Bajas" (los límites: ⚠️ sin test) |
-| INS-18 | El organizador da de baja una pareja mientras el torneo no esté cerrado; si ya está en una zona, primero hay que rearmar las zonas. | ⚠️ sin test |
+| INS-17 | Cualquiera de los dos jugadores con cuenta puede dar de baja la pareja mientras el torneo está en Inscripción y la pareja no está en una zona; pasa a "Bajas". Después, el sistema le dice que le escriba al organizador. | ✅ `juego.spec.js` › "mis inscripciones… bajarse la pasa a Bajas"; límites: `juego.integration.mjs` › "INS-14, INS-17 e INS-18…" |
+| INS-18 | El organizador da de baja una pareja mientras el torneo no esté cerrado; si ya está en una zona, primero hay que rearmar las zonas. | ✅ `juego.integration.mjs` › "INS-14, INS-17 e INS-18…" |
 | INS-19 | Si la pareja ya pagó y se baja, el sistema no registra ninguna devolución. | ❓ ver pregunta 1 |
 
 ## Configuración
