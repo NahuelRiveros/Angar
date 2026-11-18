@@ -732,3 +732,12 @@ test("historial: puesto alcanzado por ronda de llave y resumen con títulos, fin
   assert.deepEqual(resumen, { torneos: 3, titulos: 1, finales: 2, mejor_puesto: "campeon" }, "dos categorías del mismo torneo cuentan un torneo");
   assert.deepEqual(resumirHistorial([]), { torneos: 0, titulos: 0, finales: 0, mejor_puesto: null });
 });
+
+test("plan vencido: el organizador queda en solo lectura; el super admin no (como en el servidor)", async () => {
+  const { planEnSoloLectura } = await import("../../frontend/src/modules/torneos/plan/estado_plan.js");
+  const vencido = { es_organizador: true, vigente: false };
+  assert.equal(planEnSoloLectura(vencido, { roles: ["jugador", "organizador"] }), true);
+  assert.equal(planEnSoloLectura(vencido, { roles: ["super_admin", "admin", "organizador"] }), false);
+  assert.equal(planEnSoloLectura({ es_organizador: true, vigente: true }, { roles: ["organizador"] }), false);
+  assert.equal(planEnSoloLectura(undefined, null), false, "sin datos del plan, no se bloquea");
+});

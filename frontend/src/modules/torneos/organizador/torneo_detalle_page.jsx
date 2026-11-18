@@ -7,6 +7,8 @@ import ConfirmDialog from "../../../core/controls/ui/confirm_dialog.jsx";
 import ErrorBanner from "../../../core/controls/ui/error_banner.jsx";
 import { useToast } from "../../../core/controls/toast/use_toast.js";
 import { useMiSuscripcion } from "../hooks/use_mi_suscripcion.js";
+import { planEnSoloLectura } from "../plan/estado_plan.js";
+import { useAuth } from "../../../core/auth/auth_context.jsx";
 import { ESTADOS_TORNEO } from "../../../../../rubros/torneos/torneo_config.js";
 import { getTorneo, cambiarEstadoTorneo, eliminarTorneo, duplicarTorneo } from "../api/torneos_api.js";
 import { EstadoTorneo } from "../comun/torneo_ui.jsx";
@@ -37,7 +39,8 @@ export default function TorneoDetallePage() {
   const [seccion, setSeccion] = useState("datos");
   const plan = useMiSuscripcion();
   const torneo = useQuery({ queryKey: claveTorneo(torneoId), queryFn: () => getTorneo(torneoId) });
-  const soloLectura = plan.data?.es_organizador && !plan.data.vigente;
+  const { usuario } = useAuth();
+  const soloLectura = planEnSoloLectura(plan.data, usuario);
 
   if (torneo.isPending) return <div className="p-8"><AdminSpinner /></div>;
   if (torneo.isError) {

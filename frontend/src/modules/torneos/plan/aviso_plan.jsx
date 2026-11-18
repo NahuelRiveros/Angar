@@ -22,7 +22,8 @@ export default function SuscripcionBanner() {
   const { data: plan } = useMiSuscripcion({ enabled: esOrganizador });
   const [cerrado, setCerrado] = useState(cerradoHoy);
 
-  if (!esOrganizador || cerrado || CON_AVISO_PROPIO.some((ruta) => pathname.startsWith(ruta))) return null;
+  // El super admin organiza sin plan (el servidor lo deja pasar): no se le avisa.
+  if (!esOrganizador || usuario?.roles?.includes("super_admin") || cerrado || CON_AVISO_PROPIO.some((ruta) => pathname.startsWith(ruta))) return null;
   if (!["por_vencer", "vencido"].includes(plan?.estado)) return null;
 
   const vencido = plan.estado === "vencido";

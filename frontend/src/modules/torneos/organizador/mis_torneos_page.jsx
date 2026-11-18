@@ -12,6 +12,8 @@ import InputField from "../../../core/controls/ui/input_field.jsx";
 import Modal from "../../../core/controls/ui/modal.jsx";
 import Pagination from "../../../core/controls/ui/pagination.jsx";
 import { useMiSuscripcion } from "../hooks/use_mi_suscripcion.js";
+import { planEnSoloLectura } from "../plan/estado_plan.js";
+import { useAuth } from "../../../core/auth/auth_context.jsx";
 import { formatearFechaAR } from "../../../core/utils/formatear_fecha.js";
 import { getMisTorneos, crearTorneo } from "../api/torneos_api.js";
 import { EstadoTorneo } from "../comun/torneo_ui.jsx";
@@ -32,7 +34,8 @@ export default function MisTorneosPage() {
   const [creando, setCreando] = useState(false);
   const plan = useMiSuscripcion();
   const torneos = useQuery({ queryKey: ["torneos", "mios", page], queryFn: () => getMisTorneos({ page }), placeholderData: keepPreviousData });
-  const soloLectura = plan.data?.es_organizador && !plan.data.vigente;
+  const { usuario } = useAuth();
+  const soloLectura = planEnSoloLectura(plan.data, usuario);
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-4 py-8 sm:py-12">

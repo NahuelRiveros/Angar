@@ -22,3 +22,6 @@ export const formatearMomento = (instante) => (instante ? diaArgentina.format(ne
 
 // Clave de las transferencias del panel: la pestaña cuenta las pendientes con la misma consulta.
 export const claveTransferencias = (filtros) => ["suscripciones", "transferencias", filtros];
+
+/** Plan vencido = solo lectura y aviso, salvo para el super admin (el servidor también lo deja pasar). */
+export const planEnSoloLectura = (plan, usuario) => Boolean(plan?.es_organizador && !plan.vigente && !usuario?.roles?.includes("super_admin"));
