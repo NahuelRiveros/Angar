@@ -74,11 +74,9 @@ test("COR-01: el chequeo detecta un import a un rubro", () => {
   assert.ok(RUBROS.some((r) => destino.startsWith(r)));
 });
 
-test("SIS-53: la portada la elige el proyecto; sin rubro que la traiga queda la del core", async () => {
-  const { inicioDelProyecto } = await import("../../frontend/src/core/app/inicio.js");
-  const delCore = () => "home del core";
-  const propia = () => "home del proyecto";
-  assert.equal(inicioDelProyecto([{ codigo: "tienda" }, { codigo: "torneos", inicio: propia }], delCore), propia);
-  assert.equal(inicioDelProyecto([{ codigo: "tienda", rutasTienda: [] }], delCore), delCore, "un rubro sin inicio no la reemplaza");
-  assert.equal(inicioDelProyecto([], delCore), delCore, "sin rubros, la del core");
+test("SIS-53: el home es de cada proyecto: el core lo toma de proyecto/inicio.jsx y no trae uno propio", () => {
+  const rutas = readFileSync(path.join(raiz, "frontend/src/core/app/routes/general.routes.jsx"), "utf8");
+  assert.match(rutas, /import\("\.\.\/\.\.\/\.\.\/proyecto\/inicio\.jsx"\)/);
+  assert.equal(existsSync(path.join(raiz, "frontend/src/core/modules/home/home_page.jsx")), false, "el core no tiene home");
+  assert.ok(existsSync(path.join(raiz, "plantilla_proyecto/frontend/src/proyecto/inicio.jsx")), "un proyecto nuevo arranca con uno para modificar");
 });

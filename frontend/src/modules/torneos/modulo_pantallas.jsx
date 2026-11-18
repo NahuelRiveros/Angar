@@ -14,6 +14,4 @@ export const pantallasTorneos = {
   // Aviso al organizador con el plan por vencer o vencido, debajo de la barra (SIS-57).
   avisosSitio: [AvisoPlan],
   ResumenPanel: lazy(() => import("./admin/resumen_panel.jsx")),
-  // SIS-53: la portada de MiPadel reemplaza al home de tienda del core.
-  inicio: lazy(() => import("./home/home_page.jsx")),
 };

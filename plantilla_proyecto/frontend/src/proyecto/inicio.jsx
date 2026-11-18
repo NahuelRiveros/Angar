@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { useBannersVigentes } from "../../hooks/use_banners.js";
-import { brandConfig } from "../../../proyecto/config/brand_config.js";
-import { HOME_TIENDA } from "../../../proyecto/config/home_config.js";
-import { tiendaActiva } from "../../../proyecto/modulos_activos.js";
-import { pantallasActivas } from "../../../proyecto/pantallas_modulos.jsx";
-import BannerCarrusel from "./banner_carrusel.jsx";
+import { useBannersVigentes } from "../core/hooks/use_banners.js";
+import { brandConfig } from "./config/brand_config.js";
+import { HOME_TIENDA } from "./config/home_config.js";
+import { tiendaActiva } from "./modulos_activos.js";
+import { pantallasActivas } from "./pantallas_modulos.jsx";
+import BannerCarrusel from "../core/modules/home/banner_carrusel.jsx";
 
 /**
  * Home de tienda (SIS-30): carrusel de promociones vigentes y, debajo, el inicio que aporta el

@@ -49,7 +49,7 @@ arranca y responde de forma segura.
 
 | Código | Regla | Estado |
 | --- | --- | --- |
-| SIS-30 | El home muestra arriba el carrusel de promociones y, debajo, el inicio que aporta el rubro (su propia portada y productos). Sin rubro, el core muestra el nombre y la frase de la tienda, con "Ver catálogo" si hay tienda. Si los banners no cargan, el carrusel no aparece y la tienda se sigue viendo, sin mensaje de error. | ⚠️ sin test (revisado en capturas) |
+| SIS-30 | El home de tienda (de la plantilla, ver SIS-53) muestra arriba el carrusel de promociones y, debajo, el inicio que aporta el rubro (su propia portada y productos). Sin rubro, el core muestra el nombre y la frase de la tienda, con "Ver catálogo" si hay tienda. Si los banners no cargan, el carrusel no aparece y la tienda se sigue viendo, sin mensaje de error. | ⚠️ sin test (revisado en capturas) |
 | SIS-31 | El carrusel pasa solo cada 5 segundos (se frena con el mouse o el foco encima, y no se mueve si la persona pidió menos movimiento), tiene flechas, puntos y se desliza con el dedo. Con un solo banner no hay controles. | ⚠️ sin test (revisado en capturas) |
 | SIS-32 | Un banner es de **carrusel** (imagen) o de **cinta** (texto en la franja superior, en todo el sitio). Ambos se cargan en "Banners y promociones". | ✅ `core_banners.test.mjs` › \"SIS-32: …\"; migración de la cinta vieja: `checkout.integration.mjs` › "SIS-32, SIS-34, SIS-39 y COR-10: …" |
 | SIS-33 | Subir o borrar imágenes (a Cloudinary) lo puede hacer quien tiene "Editar banners" o "Editar artículos". | ⚠️ sin test |
@@ -69,7 +69,7 @@ El diseño del marco es el de MiPadel (pedido del dueño, 2026-11-17); los color
 
 | Código | Regla | Estado |
 | --- | --- | --- |
-| SIS-53 | La portada ("/") es de cada proyecto: si un rubro trae `inicio` en sus pantallas, se muestra esa; si no, el home de tienda del core (SIS-30). | ✅ `core_estructura.test.mjs` › "SIS-53: …" |
+| SIS-53 | El home es de cada proyecto: la portada ("/") es `frontend/src/proyecto/inicio.jsx` y el core no trae uno. La plantilla de proyectos nuevos trae como punto de partida un home de tienda (banners, nombre y el inicio que aporte el rubro). | ✅ `core_estructura.test.mjs` › "SIS-53: …" |
 | SIS-54 | La barra muestra el menú en forma de píldora desde 1024 px y, en celular, un menú lateral con la marca, los links y una tarjeta para ingresar o crear cuenta. Sus frases (`menuMovil` en `brand_config.js`: lema, título, texto y pie) son del proyecto; sin ellas se usan textos neutros. El logo puede ser imagen (`gc-mark`) o símbolo y nombre con acento (`simbolo-y-texto`). El panel ofrece "Ver tienda" si hay tienda y "Ver sitio" si no. | ⚠️ sin test (revisado en capturas) |
 | SIS-55 | Al imprimir una página del sitio no salen la cinta, la barra, el aviso de suscripción ni el pie: solo el contenido. | ⚠️ sin test |
 ### Seguridad y API del core

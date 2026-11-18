@@ -11,6 +11,14 @@ los consumidores tienen que ajustar) y anotá acá qué cambió. Antes de pisar
 un archivo en otro proyecto, revisá si ese proyecto le hizo cambios propios
 al mismo archivo — si los tiene, es un merge manual, no un copy-paste.
 
+## 3.0.0 — 2026-11-18
+
+**Rompe:** el core ya no trae home. Cada proyecto tiene el suyo en `frontend/src/proyecto/inicio.jsx` (SIS-53).
+
+- Se quitó `modules/home/home_page.jsx` (pasó a `plantilla_proyecto/frontend/src/proyecto/inicio.jsx` como punto de partida) y `app/inicio.js`.
+- Los componentes de banners (`banner_carrusel`, `home_carousel`, `trazo_animado`) siguen en el core.
+- Al traer este core: crear `frontend/src/proyecto/inicio.jsx` (copiar el de la plantilla o exportar el home propio).
+
 ## 2.3.0 — 2026-11-17
 
 Compatible.
