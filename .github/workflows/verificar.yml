@@ -1,0 +1,73 @@
+# Corre todas las pruebas en los servidores de GitHub en cada push y pull request.
+# El resultado se ve en la pestaña "Actions" del repo (y GitHub avisa por mail si falla).
+# No usa la base real ni secretos: PostgreSQL de prueba propio y API simulada en Playwright.
+# Es del core: llega igual a todos los proyectos con core_traer.
+name: Verificar
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: verificar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  servidor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci
+          POSTGRES_DB: proyecto_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      DB_PORT: 5432
+      DB_NAME: proyecto_ci
+      DB_USER: postgres
+      DB_PASS: postgres_ci
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            servidor/package-lock.json
+            frontend/package-lock.json
+      - run: npm --prefix servidor ci
+      # Los tests del servidor también prueban archivos del frontend (menús, permisos),
+      # que importan librerías del frontend como lucide-react.
+      - run: npm --prefix frontend ci
+      - name: Tests del servidor
+        run: npm --prefix servidor test
+      - name: Integración con PostgreSQL
+        run: npm --prefix servidor run test:integration
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm --prefix frontend ci
+      - name: Lint
+        run: npm --prefix frontend run lint
+      - name: Build
+        run: npm --prefix frontend run build
+      - name: Navegador (Playwright)
+        working-directory: frontend
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e

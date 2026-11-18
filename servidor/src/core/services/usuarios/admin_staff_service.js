@@ -1,4 +1,4 @@
-﻿import bcrypt from "bcrypt";
+import bcrypt from "bcrypt";
 import { Op } from "sequelize";
 import { sequelize } from "../../database/sequelize.js";
 import { Persona, Usuario, UsuarioRol, Rol, TipoDocumento } from "../../models/index.js";
@@ -40,7 +40,7 @@ const usuarioDuplicado = { ok: false, codigo: "USUARIO_DUPLICADO", mensaje: "Ese
 // creados en el panel de permisos. "admin" solo lo asigna un super_admin (se valida
 // en crearStaff y cambiarRolStaff); super_admin y los roles de cliente, nunca.
 const ROLES_NO_ASIGNABLES = ["super_admin", ...permisosConfig.rolesFuera];
-const ROL_POR_DEFECTO = "supervisor";
+const ROL_POR_DEFECTO = permisosConfig.rolPersonalPorDefecto;
 
 /** Roles para el selector de "Personal": código y nombre visible. */
 export async function listarRolesAsignables() {

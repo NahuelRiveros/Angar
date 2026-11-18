@@ -18,4 +18,6 @@ export const PERMISOS_DE_RUBROS = [
 export const ROLES_DE_RUBROS = {
   fuera: { jugador: "Jugador", organizador: "Organizador" },
   alRegistrarse: "jugador",
+  // PER-38: el único rol del equipo es soporte (atiende a los organizadores); supervisor y vendedor no van.
+  equipo: { soporte: "Soporte" },
 };

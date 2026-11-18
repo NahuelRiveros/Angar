@@ -1,23 +1,31 @@
 import { QueryTypes } from "sequelize";
 import { sequelize, DB_SCHEMA } from "../../core/database/sequelize.js";
 import { configTorneos } from "./configuracion.js";
-import { Rol } from "./models/index.js";
+import { Rol, RolPermiso, UsuarioRol } from "./models/index.js";
 import { asignarCodigosFaltantes } from "./services/jugadores/jugador_service.js";
 import { crearTorneosDemo } from "./services/demo/demo_torneos_service.js";
 
 // Ajustes que corren en cada arranque DESPUÉS de sincronizar los modelos (necesitan las tablas
 // ya creadas). Todos idempotentes.
 export async function arranque_torneos() {
-  await crear_rol_soporte();
+  await retirar_roles_sin_sentido();
   await migrar_cinta_de_anuncios();
 }
 
-/**
- * Rol del equipo de la plataforma que atiende a los organizadores. Se crea antes de los datos base del
- * core para que, al aparecer "Ver planes de organizadores", lo reciba por defecto (porDefecto).
- */
-export async function crear_rol_soporte() {
-  await Rol.findOrCreate({ where: { codigo: "soporte" }, defaults: { codigo: "soporte", descripcion: "Soporte" } });
+// Roles de equipo de otro rubro que el core sembraba antes de PER-38 (MiPadel usa solo "soporte").
+const ROLES_SIN_SENTIDO = ["supervisor", "vendedor"];
+
+/** Los borra si nadie los tiene asignados; si alguien los tiene, quedan (se reasignan desde el panel). */
+export async function retirar_roles_sin_sentido() {
+  for (const codigo of ROLES_SIN_SENTIDO) {
+    const rol = await Rol.findOne({ where: { codigo } });
+    if (!rol || await UsuarioRol.count({ where: { rol_id: rol.id } })) continue;
+    await sequelize.transaction(async (transaction) => {
+      await RolPermiso.destroy({ where: { rol_id: rol.id }, transaction });
+      await rol.destroy({ transaction });
+    });
+    console.log(`🧹 Rol "${codigo}" retirado (no lo usa ningún miembro del equipo)`);
+  }
 }
 
 // Después de los datos base del core (roles y super admin), en cada arranque.

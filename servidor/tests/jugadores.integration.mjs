@@ -213,3 +213,14 @@ test("super admin: se crea con SUPERADMIN_USUARIO y entra con ese usuario; un de
   await assert.rejects(login({ identificador: "dueno.admin", password: "OtraClave99" }), /incorrect/i);
   assert.ok((await login({ identificador: "dueno.admin", password: "Clave1234" })).token);
 });
+
+test("PER-38: MiPadel tiene soporte como rol de equipo; supervisor y vendedor no se siembran y se retiran si nadie los usa", { skip: sin }, async () => {
+  const { Rol } = await import("../src/modulos/torneos/models/index.js");
+  const { retirar_roles_sin_sentido } = await import("../src/modulos/torneos/arranque.js");
+  assert.ok(await Rol.findOne({ where: { codigo: "soporte" } }), "soporte lo crea el core");
+  assert.equal(await Rol.findOne({ where: { codigo: "supervisor" } }), null);
+  // Uno heredado de antes, sin nadie asignado, se retira en el arranque.
+  await Rol.create({ codigo: "vendedor", descripcion: "Vendedor" });
+  await retirar_roles_sin_sentido();
+  assert.equal(await Rol.findOne({ where: { codigo: "vendedor" } }), null);
+});

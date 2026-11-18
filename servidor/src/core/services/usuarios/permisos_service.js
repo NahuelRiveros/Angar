@@ -4,7 +4,7 @@ import { Modulo, Permiso, Rol, RolPermiso, UsuarioRol } from "../../models/index
 import { CODIGOS_PERMISO, conRequeridos, permisosConfig } from "../../../../../core/permisos_config.js";
 
 // Roles que el sistema necesita: se editan sus permisos pero no se borran.
-export const ROLES_BASE = [...permisosConfig.rolesTotales, ...permisosConfig.rolesFuera, "supervisor", "vendedor"];
+export const ROLES_BASE = [...permisosConfig.rolesTotales, ...permisosConfig.rolesFuera, ...permisosConfig.rolesEquipo];
 const error = (mensaje, status = 400, codigo = "PERMISOS_INVALIDOS") => Object.assign(new Error(mensaje), { status, codigo });
 
 /**

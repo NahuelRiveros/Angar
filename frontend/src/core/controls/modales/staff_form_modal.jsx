@@ -6,9 +6,10 @@ import { authConfig } from "../../config/auth_config.js";
 import SelectField from "../ui/select_field.jsx";
 import { useAuth } from "../../auth/auth_context.jsx";
 import { obtenerRolesStaff } from "../../api/staff_api.js";
+import { permisosConfig } from "../../../../../core/permisos_config.js";
 
 // Los roles salen del servidor: incluyen los creados en "Roles y permisos".
-const ROL_POR_DEFECTO = "supervisor";
+const ROL_POR_DEFECTO = permisosConfig.rolPersonalPorDefecto;
 // Mismas reglas que el servidor (servidor/src/core/services/common/nombre_usuario.js).
 const USUARIO_REGEX = /^[a-z0-9._-]{3,30}$/;
 

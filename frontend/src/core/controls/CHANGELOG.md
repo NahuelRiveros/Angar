@@ -11,6 +11,15 @@ los consumidores tienen que ajustar) y anotá acá qué cambió. Antes de pisar
 un archivo en otro proyecto, revisá si ese proyecto le hizo cambios propios
 al mismo archivo — si los tiene, es un merge manual, no un copy-paste.
 
+## 3.1.0 — 2026-11-18
+
+Compatible.
+
+- `core/permisos_config.js`: `ROLES_DE_RUBROS.equipo` reemplaza los roles del personal que siembra el core (PER-38);
+  `rolPersonalPorDefecto` lo usan el alta de personal y su formulario.
+- `.github/workflows/verificar.yml` pasa al core (tests, integración, lint, build y navegador en cada push).
+- `.claude/agents/limpiador-codigo.md`: agente que borra código sin uso, con evidencia y verificación.
+
 ## 3.0.0 — 2026-11-18
 
 **Rompe:** el core ya no trae home. Cada proyecto tiene el suyo en `frontend/src/proyecto/inicio.jsx` (SIS-53).
