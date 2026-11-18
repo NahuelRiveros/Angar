@@ -9,7 +9,8 @@ import { nombreRol, permisosConfig } from "../../core/permisos_config.js";
 test("PER-14: los roles del sistema se muestran con nombres profesionales, sin 'admin' a la vista", () => {
   assert.equal(nombreRol("super_admin"), "Administrador del sistema");
   assert.equal(nombreRol("admin"), "Gerente general");
-  assert.equal(nombreRol("supervisor"), "Encargado");
+  // supervisor existe solo si el proyecto no eligió otros roles de equipo (PER-38).
+  if (permisosConfig.rolesEquipo.includes("supervisor")) assert.equal(nombreRol("supervisor"), "Encargado");
   for (const nombre of Object.values(permisosConfig.nombresRol)) assert.doesNotMatch(nombre, /\b(super ?)?admin\b/i);
 });
 
