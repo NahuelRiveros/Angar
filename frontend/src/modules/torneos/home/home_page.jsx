@@ -1,11 +1,8 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, ShieldCheck } from "lucide-react";
-import { useHomeContent } from "../hooks/use_home_content.js";
-import { useHomeConfig } from "../hooks/use_home_config.js";
 import { iconoHome } from "./home_iconos.js";
 import { brandConfig } from "../../../proyecto/config/brand_config.js";
 import { HOME_TEXTOS_DEFAULT, HOME_COMO_FUNCIONA, HOME_PILARES, HOME_CONTACTOS } from "./home_config.js";
-import HomeCarousel from "../../../core/modules/home/home_carousel.jsx";
 import HomeHero from "./home_hero.jsx";
 import MarcasCarousel from "./marcas_carousel.jsx";
 import { JUGADORES_HOME } from "./home_media.js";
@@ -21,25 +18,19 @@ const referentePorPilar = {
   premios: referentesArgentinos[1],
 };
 
-function contenidoASlide(c) {
-  return { url: c.cloudinary_url, tipoMedia: c.tipo_media, title: c.titulo, subtitle: c.descripcion };
-}
+// Los textos de la portada son fijos (home_config.js); las promociones van por los banners del core.
+const texto = (_clave, porDefecto) => porDefecto;
 
 export default function HomePage() {
-  const { areas, contenidosDeArea } = useHomeContent();
-  const { texto, pilares, contactos, layoutDeArea } = useHomeConfig();
-  const pilaresAMostrar = pilares.length > 0 ? pilares : HOME_PILARES;
-  const contactosAMostrar = (contactos.length > 0 ? contactos : HOME_CONTACTOS).filter((c) => !esPlaceholder(c.valor));
-  const areasConContenido = areas
-    .map((a) => ({ ...a, slides: contenidosDeArea(a.descripcion).map(contenidoASlide) }))
-    .filter((a) => a.slides.length > 0);
+  const pilaresAMostrar = HOME_PILARES;
+  const contactosAMostrar = HOME_CONTACTOS.filter((c) => !esPlaceholder(c.valor));
 
   return (
     <div className="padel-home kt-body min-h-screen bg-white text-(--kt-ink)">
       <HomeHero texto={texto} />
       <MarcasCarousel />
 
-      {/* ── PILARES CON IMÁGENES (editables desde /admin/home-config) ── */}
+      {/* ── PILARES CON IMÁGENES (textos en home_config.js) ── */}
       <section id="pilares" aria-labelledby="pilares-titulo" className="relative isolate overflow-hidden bg-(--kt-night) px-6 py-14 sm:py-20">
         <div aria-hidden="true" className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full border border-[#D2F36B]/15" />
         <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full border border-white/10" />
@@ -168,35 +159,7 @@ export default function HomePage() {
       </section>
 
 
-      {/* ── GALERÍA CONFIGURABLE (grid o carrusel, por área) ── */}
-      {areasConContenido.length > 0 && <section id="galeria" className="bg-[var(--kt-bg-soft)] py-12 px-6">
-        <div className="mx-auto max-w-6xl">
-          <SectionKicker>{texto("galeria_kicker", HOME_TEXTOS_DEFAULT.galeria_kicker)}</SectionKicker>
-          <h2 className="kt-display mt-3 text-2xl font-bold leading-tight sm:text-3xl">
-            {texto("galeria_titulo", HOME_TEXTOS_DEFAULT.galeria_titulo)}
-          </h2>
-
-          {areasConContenido.map((area) => (
-            <div key={area.id} className="mt-7 first:mt-10">
-              <h3 className="kt-display text-xl font-bold text-[var(--kt-petrol)]">{area.descripcion}</h3>
-
-              {layoutDeArea(area.descripcion) === "carrusel" ? (
-                <div className="mt-5">
-                  <HomeCarousel items={area.slides} renderItem={(slide, i) => <GalleryCard key={i} slide={slide} />} />
-                </div>
-              ) : (
-                <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {area.slides.map((slide, i) => (
-                    <GalleryCard key={i} slide={slide} />
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>}
-
-      {/* ── CONTACTO (editable desde /admin/home-config); sin datos reales no se muestra ── */}
+      {/* ── CONTACTO (home_config.js); sin datos reales no se muestra ── */}
       {contactosAMostrar.length > 0 && <section id="contacto" className="py-12 px-6">
         <div className="mx-auto max-w-5xl">
           <SectionKicker>{texto("contacto_kicker", HOME_TEXTOS_DEFAULT.contacto_kicker)}</SectionKicker>
@@ -237,7 +200,7 @@ export default function HomePage() {
         </details>
       </div>
 
-      {/* ── FOOTER CTA (editable desde /admin/home-config) ── */}
+      {/* ── FOOTER CTA ── */}
       <section className="relative overflow-hidden border-t border-[var(--kt-border)] bg-linear-to-br from-[var(--kt-petrol)] to-(--kt-teal-700) py-12 px-6 text-center text-white">
         <div className="relative mx-auto max-w-2xl">
           <h2 className="kt-display text-3xl font-bold leading-tight sm:text-4xl">
@@ -260,29 +223,5 @@ function SectionKicker({ children, claro = false }) {
     <span className={`text-[11px] font-bold uppercase tracking-[0.3em] ${claro ? "text-(--kt-accent-on-dark)" : "text-(--kt-teal-700)"}`}>
       {children}
     </span>
-  );
-}
-
-function GalleryCard({ slide }) {
-  return (
-    <div className="kt-img-card h-full rounded-3xl border border-[var(--kt-border)] bg-white shadow-sm overflow-hidden">
-      <div className="relative h-56 overflow-hidden bg-[var(--kt-bg-soft)]">
-        {slide.tipoMedia === "video" ? (
-          <video
-            src={slide.url}
-            className="h-full w-full object-cover"
-            autoPlay muted loop playsInline controls
-          />
-        ) : (
-          <img src={slide.url} alt={slide.title || ""} loading="lazy" decoding="async" className="h-full w-full object-cover" />
-        )}
-      </div>
-      {(slide.title || slide.subtitle) && (
-        <div className="p-5">
-          {slide.title && <h4 className="text-sm font-bold text-[var(--kt-ink)]">{slide.title}</h4>}
-          {slide.subtitle && <p className="mt-1 text-xs leading-relaxed text-[var(--kt-ink-soft)]">{slide.subtitle}</p>}
-        </div>
-      )}
-    </div>
   );
 }

@@ -146,7 +146,7 @@ test("el admin entra al panel desde el navbar y ve las secciones de la plataform
   await expect(page).toHaveURL(/\/panel$/);
   await expect(page.getByRole("heading", { name: "Hola, Eva" })).toBeVisible();
   const menu = await menuPanel(page);
-  for (const item of ["Personal", "Roles y permisos", "Contenido del home", "Banners y promociones"]) {
+  for (const item of ["Personal", "Roles y permisos", "Banners y promociones"]) {
     await expect(menu.getByRole("link", { name: item })).toBeVisible();
   }
   await expect(menu.getByRole("link", { name: "Suscripción del sistema" })).toHaveCount(0);

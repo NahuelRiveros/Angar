@@ -142,3 +142,6 @@ y una cinta de anuncios propia (`banner_anuncio`). El core las reemplazó por ba
 - **Cambió después:** el home ya no lo aporta el rubro con `inicio`; cada proyecto lo tiene en `frontend/src/proyecto/inicio.jsx`
   (SIS-53, core 3.0.0). En MiPadel ese archivo exporta la portada de `modules/torneos/home/`.
 - Pendiente para otra entrega: borrar de `usuario` las columnas viejas `codigo_jugador` y `recibir_mails` si quedaron en alguna base.
+- **2026-11-18:** se quitó el editor "Contenido del home" (D4 queda sin efecto para el editor): la portada usa textos fijos de
+  `modules/torneos/home/home_config.js` y las promociones van por los banners del core (cinta con fechas). Las tablas `home_*`,
+  se retiran al arrancar (`servidor/src/proyecto/tablas_retiradas.js`).

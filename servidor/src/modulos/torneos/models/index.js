@@ -11,12 +11,6 @@ import { generarCodigoJugador } from "../services/common/codigo_jugador.js";
 import { Jugador } from "./jugador.js";
 import { AvisoUsuario } from "./usuario/aviso_usuario.js";
 
-// ── home/ — portada de MiPadel, editable desde el panel (imágenes/videos en Cloudinary) ──
-import { HomeArea } from "./home/home_area.js";
-import { HomeContenido } from "./home/home_contenido.js";
-import { HomeTexto } from "./home/home_texto.js";
-import { HomePilar } from "./home/home_pilar.js";
-import { HomeContacto } from "./home/home_contacto.js";
 
 // ── suscripcion/ — plan mensual de cada organizador y sus pagos ─────────────
 import { Suscripcion } from "./suscripcion/suscripcion.js";
@@ -35,9 +29,6 @@ aplicarRelaciones([
   { tipo: "hasOne",    from: Usuario, to: Jugador, foreignKey: "usuario_id", as: "jugador" },
   { tipo: "belongsTo", from: Jugador, to: Usuario, foreignKey: "usuario_id", as: "usuario" },
 
-  // ─── HomeArea ↔ HomeContenido (1:N) ──────────────────────────────────────
-  { tipo: "hasMany",   from: HomeArea,      to: HomeContenido, foreignKey: "area_id", as: "contenidos" },
-  { tipo: "belongsTo", from: HomeContenido, to: HomeArea,      foreignKey: "area_id", as: "area" },
 
   // ─── Usuario ↔ Suscripcion (1:1) y sus pagos (1:N) ───────────────────────
   { tipo: "hasOne",    from: Usuario,         to: Suscripcion,     foreignKey: "usuario_id", as: "suscripcion" },
@@ -69,7 +60,6 @@ export {
   Rol, Modulo, Permiso, RolPermiso,
   Persona, PersonaFiscal, Usuario, UsuarioRol, BannerPromocion,
   Jugador, AvisoUsuario,
-  HomeArea, HomeContenido, HomeTexto, HomePilar, HomeContacto,
   Suscripcion, PagoSuscripcion,
   Torneo, TorneoCategoria, TorneoPremio, Inscripcion, Zona, Partido,
 };

@@ -78,13 +78,14 @@ test("panel de gestión: el equipo ve lo de sus permisos; organizadores y jugado
   assert.deepEqual(porDefecto("soporte"), ["suscripciones.ver"]);
   // "Plataforma" es el grupo del rubro torneos; "Admin", el del core (personal, permisos y banners).
   const admin = menu(usuario(["admin"]));
-  assert.deepEqual(admin.plataforma, ["/admin/suscripciones", "/admin/home-config"]);
+  assert.deepEqual(admin.plataforma, ["/admin/suscripciones"]);
   assert.deepEqual(admin.admin, ["/admin/staffManager", "/admin/permisos", "/admin/banners"]);
   assert.deepEqual(menu(usuario(["super_admin"])), admin);
   const soporte = menu(usuario(["soporte"], porDefecto("soporte")));
   assert.deepEqual([soporte.plataforma, soporte.admin], [["/admin/suscripciones"], undefined]);
   const editor = menu(usuario(["editor"], ["contenido.editar"]));
-  assert.deepEqual([editor.plataforma, editor.admin], [["/admin/home-config"], ["/admin/banners"]]);
+  // Sin editor del home: lo de contenido son los banners del core (cinta y promociones).
+  assert.deepEqual([editor.plataforma, editor.admin], [undefined, ["/admin/banners"]]);
   for (const rol of permisosConfig.rolesFuera) {
     assert.deepEqual(menu(usuario([rol])), {}, rol);
     assert.equal(accesoPanel.roles.includes(rol), false, rol);

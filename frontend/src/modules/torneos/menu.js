@@ -1,4 +1,4 @@
-import { CalendarDays, ClipboardList, CreditCard, LayoutTemplate, Trophy, UserCircle } from "lucide-react";
+import { CalendarDays, ClipboardList, CreditCard, Trophy, UserCircle } from "lucide-react";
 
 // Menús del rubro, mismas reglas que adminDropdown (roles, permisos, requiereAuth). Los usa modulo.js.
 
@@ -21,7 +21,6 @@ export const panelTorneos = [
     titulo: "Plataforma",
     items: [
       { label: "Planes de organizadores", to: "/admin/suscripciones", requiereAuth: true, permisos: ["suscripciones.ver"], icon: CreditCard },
-      { label: "Contenido del home", to: "/admin/home-config", requiereAuth: true, permisos: ["contenido.editar"], icon: LayoutTemplate },
     ],
   },
 ];

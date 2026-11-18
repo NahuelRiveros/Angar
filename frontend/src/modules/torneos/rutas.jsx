@@ -10,7 +10,6 @@ const MisInscripcionesPage = lazy(() => import("./inscripciones/mis_inscripcione
 const MiPerfilPage = lazy(() => import("./jugadores/perfil_pages.jsx").then((m) => ({ default: m.MiPerfilPage })));
 const PerfilPublicoPage = lazy(() => import("./jugadores/perfil_pages.jsx").then((m) => ({ default: m.PerfilPublicoPage })));
 const SuscripcionesPage = lazy(() => import("./admin/suscripciones_page.jsx"));
-const HomeConfigPage = lazy(() => import("./admin/home_config_page.jsx"));
 
 // El organizador maneja sus torneos; el super admin puede entrar a cualquiera. Lo público no pide cuenta.
 const ORGANIZA = ["organizador", "super_admin"];
@@ -30,5 +29,4 @@ export const rutasTorneos = [
 // Panel de gestión: el equipo de la plataforma (el servidor vuelve a verificar cada permiso).
 export const rutasPanelTorneos = [
   { path: "/admin/suscripciones", element: protegida(<SuscripcionesPage />, { permisos: ["suscripciones.ver"] }) },
-  { path: "/admin/home-config", element: protegida(<HomeConfigPage />, { permisos: ["contenido.editar"] }) },
 ];
