@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { subirImagenController, eliminarImagenController } from "../controllers/common/upload_controller.js";
+import { permisosConfig } from "../../../../core/permisos_config.js";
 import { requireAuth, requirePermiso } from "../middleware/auth_middleware.js";
 
 const upload = multer({
@@ -12,7 +13,10 @@ const upload = multer({
   },
 });
 
+// SIS-33: además de los de siempre, los permisos de módulos prendidos que trabajan con fotos.
+const PUEDE_SUBIR = ["contenido.editar", "productos.editar", ...permisosConfig.permisos.filter((p) => p.subeImagenes).map((p) => p.codigo)];
+
 export const uploadRouter = Router();
 
-uploadRouter.post("/imagen", requireAuth, requirePermiso("contenido.editar", "productos.editar"), upload.single("imagen"), subirImagenController);
-uploadRouter.delete("/imagen", requireAuth, requirePermiso("contenido.editar", "productos.editar"), eliminarImagenController);
+uploadRouter.post("/imagen", requireAuth, requirePermiso(...PUEDE_SUBIR), upload.single("imagen"), subirImagenController);
+uploadRouter.delete("/imagen", requireAuth, requirePermiso(...PUEDE_SUBIR), eliminarImagenController);

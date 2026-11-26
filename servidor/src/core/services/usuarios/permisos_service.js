@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 import { sequelize } from "../../database/sequelize.js";
 import { Modulo, Permiso, Rol, RolPermiso, UsuarioRol } from "../../models/index.js";
-import { CODIGOS_PERMISO, conRequeridos, permisosConfig } from "../../../../../core/permisos_config.js";
+import { CODIGOS_PERMISO, CODIGOS_PERMISO_APAGADOS, conRequeridos, permisosConfig } from "../../../../../core/permisos_config.js";
 
 // Roles que el sistema necesita: se editan sus permisos pero no se borran.
 export const ROLES_BASE = [...permisosConfig.rolesTotales, ...permisosConfig.rolesFuera, ...permisosConfig.rolesEquipo];
@@ -10,9 +10,10 @@ const error = (mensaje, status = 400, codigo = "PERMISOS_INVALIDOS") => Object.a
 /**
  * Deja la tabla `permiso` igual a permisos_config.js. Idempotente: corre en cada arranque.
  * Un permiso NUEVO se asigna a sus roles `porDefecto`; los existentes no se tocan,
- * así lo que se destildó en el panel no vuelve solo. Los que salieron de la lista se borran.
+ * así lo que se destildó en el panel no vuelve solo. Los que salieron de la lista se borran, salvo
+ * los de un módulo opcional apagado: lo tildado vuelve al prenderlo (MOD-03).
  */
-export async function sincronizarPermisos() {
+export async function sincronizarPermisos({ apagados = CODIGOS_PERMISO_APAGADOS } = {}) {
   return sequelize.transaction(async (t) => {
     const modulos = new Map();
     for (const [i, grupo] of permisosConfig.grupos.entries()) {
@@ -27,7 +28,7 @@ export async function sincronizarPermisos() {
       if (actual) await actual.update(datos, { transaction: t });
       else nuevos.push({ fila: await Permiso.create({ codigo: permiso.codigo, ...datos }, { transaction: t }), porDefecto: permiso.porDefecto });
     }
-    const sobrantes = [...existentes.values()].filter((p) => !CODIGOS_PERMISO.includes(p.codigo)).map((p) => p.id);
+    const sobrantes = [...existentes.values()].filter((p) => !CODIGOS_PERMISO.includes(p.codigo) && !apagados.includes(p.codigo)).map((p) => p.id);
     if (sobrantes.length) {
       await RolPermiso.destroy({ where: { permiso_id: { [Op.in]: sobrantes } }, transaction: t });
       await Permiso.destroy({ where: { id: { [Op.in]: sobrantes } }, transaction: t });
@@ -70,7 +71,7 @@ async function rolEditable(rol_id, t) {
 }
 
 /** Reemplaza los permisos del rol por la lista recibida (solo códigos conocidos) y lo que requieren. */
-export async function guardarPermisosDeRol(rol_id, permisos) {
+export async function guardarPermisosDeRol(rol_id, permisos, { apagados = CODIGOS_PERMISO_APAGADOS } = {}) {
   if (!Array.isArray(permisos) || permisos.some((p) => typeof p !== "string")) throw error("Enviá la lista de permisos del rol.");
   const desconocidos = permisos.filter((p) => !CODIGOS_PERMISO.includes(p));
   if (desconocidos.length) throw error(`Permisos desconocidos: ${desconocidos.join(", ")}.`);
@@ -78,7 +79,9 @@ export async function guardarPermisosDeRol(rol_id, permisos) {
     const rol = await rolEditable(rol_id, t);
     if (!rol) return null;
     const filas = await Permiso.findAll({ where: { codigo: { [Op.in]: conRequeridos(permisos) } }, transaction: t });
-    await RolPermiso.destroy({ where: { rol_id: rol.id }, transaction: t });
+    // MOD-03: los de un módulo apagado no se ven en el panel; guardar el resto no los destilda.
+    const ocultos = apagados.length ? await Permiso.findAll({ where: { codigo: { [Op.in]: apagados } }, attributes: ["id"], transaction: t }) : [];
+    await RolPermiso.destroy({ where: { rol_id: rol.id, permiso_id: { [Op.notIn]: ocultos.map((p) => p.id) } }, transaction: t });
     await RolPermiso.bulkCreate(filas.map((p) => ({ rol_id: rol.id, permiso_id: p.id })), { transaction: t });
     return { id: rol.id, codigo: rol.codigo, permisos: filas.map((p) => p.codigo) };
   });

@@ -7,9 +7,13 @@
 // Opcional: una carpeta raíz distinta como argumento (la usan los tests con archivos falsos).
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const RAIZ = process.argv[2] ? resolve(process.argv[2]) : join(dirname(fileURLToPath(import.meta.url)), "..");
+// Esquema de producción de esta instalación (proyecto/deployment_config.js); la PC no puede usarlo.
+const configDespliegue = join(RAIZ, "proyecto/deployment_config.js");
+const ESQUEMA_PRODUCCION = existsSync(configDespliegue)
+  ? (await import(pathToFileURL(configDespliegue).href)).deploymentConfig.esquemaProduccion : null;
 
 // Nombre anterior → nombre actual. El servidor todavía lee los anteriores (env.js), pero conviene renombrarlos.
 const ANTERIORES = {
@@ -121,7 +125,7 @@ const problemas =
       { mensaje: "BD_URL_SUPABASE tiene que quedar vacía: en tu PC se usa el PostgreSQL local, nunca la base de producción", cumple: (v) => !url(v) },
       { mensaje: "Falta DB_NAME: el nombre de tu base en el PostgreSQL local", cumple: (v) => Boolean(v.DB_NAME) },
       { mensaje: "BD_ESQUEMA inválido: solo minúsculas, números y _ (ej. mi_proyecto_local)", cumple: schemaValido },
-      { mensaje: "BD_ESQUEMA no puede ser gc_dist (el de producción de DistribuCG) en tu PC", cumple: (v) => esquema(v) !== "gc_dist" },
+      { mensaje: `BD_ESQUEMA no puede ser ${ESQUEMA_PRODUCCION} (el de producción) en tu PC`, cumple: (v) => !ESQUEMA_PRODUCCION || esquema(v) !== ESQUEMA_PRODUCCION },
     ],
   }) +
   revisar({

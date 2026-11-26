@@ -6,7 +6,9 @@
   "scripts": {
     "test": "node --test \"tests/*.test.mjs\"",
     "env:verificar": "node ../scripts/verificar_env.mjs",
-    "test:integration": "node --test tests/suscripcion.integration.mjs tests/torneo.integration.mjs tests/juego.integration.mjs tests/llave.integration.mjs tests/jugadores.integration.mjs",
+    "test:integration": "node --test --test-concurrency=1 \"tests/*.integration.mjs\"",
+    "migrar:estado": "node src/core/database/migrar.js estado",
+    "migrar:deshacer": "node src/core/database/migrar.js deshacer",
     "demo": "node scripts/demo_torneos.mjs",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",

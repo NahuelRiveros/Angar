@@ -7,12 +7,13 @@ pruebas. Cada proyecto nuevo suma su **rubro** (el negocio) y su **configuració
 JavaScript (ESM) en todo el sistema, nunca TypeScript. Frontend: React, Vite, Tailwind, TanStack Query.
 Servidor: Node, Express, Sequelize y PostgreSQL.
 
-## Las tres partes
+## Las partes
 
 | Carpeta | Qué tiene | ¿Se toca en un proyecto nuevo? |
 | --- | --- | --- |
 | `core/`, `frontend/src/core/`, `servidor/src/core/` | Todo lo reutilizable: componentes, hooks, APIs, sesión, permisos, panel, servicios, modelos, middleware | No. Se mejora acá y se sube al repo del core |
 | `proyecto/`, `frontend/src/proyecto/`, `servidor/src/proyecto/` | Lo de cada cliente: nombre, logos, colores, textos, URLs, datos fiscales y qué rubros tiene | Sí, es lo único que se completa |
+| `…/core/opcionales/<modulo>/` | Módulos que vienen apagados (catálogo, pedidos, turnos…) y cada proyecto prende en `proyecto/gate_config.js` ([spec](docs/specs/core/modulos.md)) | No. Solo se prenden o apagan |
 | `frontend/src/modules/<rubro>/`, `servidor/src/modulos/<rubro>/`, `rubros/<rubro>/` | El negocio (ej. distribuidora: pedidos, cobros, catálogo) | Se crea el del proyecto a partir de los moldes `_scaffold` |
 
 Regla: **el core nunca importa un rubro** (lo controla un test, COR-01). Recibe los rubros por los
@@ -21,7 +22,8 @@ registros de `proyecto/` (`modulos_activos.js`, `pantallas_modulos.jsx`, `modulo
 ## Arrancar un proyecto nuevo
 
 1. Clonar este repo en una carpeta nueva.
-2. `node scripts/nuevo_proyecto.mjs`: copia `plantilla_proyecto/` a su lugar sin pisar nada.
+2. `node scripts/nuevo_proyecto.mjs --tipo <tipo>`: copia `plantilla_proyecto/` a su lugar sin pisar nada y prende
+   los módulos de ese tipo. `--tipos` los muestra; `--con stock` suma un módulo.
 3. Buscar `[COMPLETAR]` y llenar los datos del cliente (marca, colores, URLs, `.env`).
 4. `npm --prefix frontend ci` y `npm --prefix servidor ci`.
 5. Copiar `servidor/.env.local.example` a `servidor/.env.local` y `frontend/.env.local.example` a

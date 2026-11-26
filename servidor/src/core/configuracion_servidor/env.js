@@ -47,6 +47,8 @@ const urlBaseDatos = leer("BD_URL_SUPABASE", "BD_URL");
 export const env = {
   PORT:     process.env.PORT || 3001,
   NODE_ENV: process.env.NODE_ENV || "development",
+  // Render la define sola en sus servidores.
+  EN_RENDER: process.env.RENDER === "true",
 
   // ── Base de datos (Supabase en producción, Postgres local en dev) ──
   // BD_URL_SUPABASE: connection string completo; si queda vacío se usan las DB_* sueltas (tu PC).
@@ -132,7 +134,7 @@ export const env = {
 
   // ── Catálogo de demostración ─────────────────────────────────────
   // true = en cada arranque completa el catálogo del seed y pone precios inventados
-  // (ver modulos/eccomerce_distribuidora/seed/catalogo_demo.js). Nunca se aplica en el esquema gc_dist.
+  // (ver modulos/eccomerce_distribuidora/seed/catalogo_demo.js). Nunca se aplica en el esquema de producción.
   CATALOGO_DEMO_AL_INICIAR: String(process.env.CATALOGO_DEMO_AL_INICIAR || "").toLowerCase() === "true",
   // true = en cada arranque pone la foto de Cloudinary a los artículos sin foto, por su código
   // interno (ver modulos/eccomerce_distribuidora/seed/imagenes_catalogo.js). Vale para prueba y producción.

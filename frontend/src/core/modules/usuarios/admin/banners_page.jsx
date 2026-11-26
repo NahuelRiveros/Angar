@@ -10,6 +10,7 @@ import { imagenCloudinary } from "../../../utils/imagen_cloudinary.js";
 import { formatearFechaAR } from "../../../utils/formatear_fecha.js";
 import { cn } from "../../../utils/cn.js";
 import BannerFormModal from "./banner_form_modal.jsx";
+import BotonAyuda from "../../ayuda/boton_ayuda.jsx";
 
 // SIS-39: el servidor es quien hace cumplir el tope; acá solo se muestra.
 const PESTANAS = [
@@ -68,7 +69,7 @@ export default function BannersPage() {
       <div className="mx-auto max-w-4xl space-y-4">
         <header className="flex flex-col gap-3 rounded-2xl border border-(--kt-turquoise-border) bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900">Banners y promociones</h1>
+            <div className="flex items-center gap-1"><h1 className="text-2xl font-extrabold text-slate-900">Banners y promociones</h1><BotonAyuda tema="banners" /></div>
             <p className="mt-0.5 text-sm text-slate-500">
               Programá el carrusel del inicio y la cinta superior con fecha de inicio y fin: aparecen y se ocultan solos.
             </p>

@@ -1,5 +1,5 @@
 import { clientConfig } from "../../../../proyecto/client_config.js";
-import { modulosActivos, tiendaActiva } from "../../proyecto/modulos_activos.js";
+import { modulosActivos, tiendaActiva } from "./modulos_activos.js";
 
 // USU-43: a dónde va quien se registra sin venir de otra página. Lo puede poner el rubro
 // (`registro.destino` en su modulo.js, ej. su perfil de bienvenida); si no, el destino de siempre.

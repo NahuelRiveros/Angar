@@ -20,6 +20,7 @@ import StockBadge from "./stock_badge.jsx";
 export default function ProductCard({
   name, brand, image, to, price, pricePrefix, previousPrice, discountPercent,
   presentation, stock, unavailable, onAdd, busy, message, error,
+  taxNote = "IVA incluido", emptyPriceLabel = "Consultá disponibilidad", linkLabel = "Ver opciones",
 }) {
   return (
     <article className="kt-card group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-(--kt-border) bg-white shadow-sm">
@@ -51,10 +52,10 @@ export default function ProductCard({
               <p className="kt-display text-lg font-extrabold leading-tight text-(--kt-ink) sm:text-xl">
                 {pricePrefix}{price}
               </p>
-              <p className="text-[11px] text-(--kt-ink-soft)">IVA incluido</p>
+              {taxNote && <p className="text-[11px] text-(--kt-ink-soft)">{taxNote}</p>}
             </div>
           ) : (
-            <p className="text-sm font-semibold text-(--kt-ink-soft)">Consultá disponibilidad</p>
+            <p className="text-sm font-semibold text-(--kt-ink-soft)">{emptyPriceLabel}</p>
           )}
 
           <StockBadge stock={stock} />
@@ -69,7 +70,7 @@ export default function ProductCard({
             {unavailable ? "Sin stock" : busy ? "Agregando…" : "Agregar"}
           </ActionButton>
         ) : (
-          <Link to={to} className="flex min-h-11 items-center justify-center rounded-xl border border-(--kt-border) px-2 text-sm font-semibold text-(--kt-ink)">Ver opciones</Link>
+          <Link to={to} className="flex min-h-11 items-center justify-center rounded-xl border border-(--kt-border) px-2 text-sm font-semibold text-(--kt-ink)">{linkLabel}</Link>
         )}
         {(message || error) && <p role={error ? "alert" : "status"} className={`text-xs ${error ? "text-rose-700" : "text-emerald-700"}`}>{error || message}</p>}
       </div>

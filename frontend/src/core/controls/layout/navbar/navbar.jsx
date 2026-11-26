@@ -7,7 +7,8 @@ import { filtrarNavbarPorRol } from "./navbar_permissions.js";
 import { navbar_config } from "../../../config/navbar_config/main.js";
 import NavbarDesktop from "./navbar_desktop.jsx";
 import NavbarMobile from "./navbar_mobile.jsx";
-import NavbarUserBox from "./navbar_userbox.jsx";
+import NavbarUserBox, { InicialesUsuario } from "./navbar_userbox.jsx";
+import { nombreCompleto } from "../../../auth/datos_usuario.js";
 import { UI_NAVBAR as S } from "./navbar_style.js";
 import LogoMoovs from "../../brand/logo_moovs.jsx";
 
@@ -40,6 +41,9 @@ export default function Navbar() {
               : <Link to={authLink("/login", returnTo)} className={S.btn_login_desktop}>Ingresar <ArrowUpRight size={17} aria-hidden="true" /></Link>}
           </div>
           {!cargando && !usuario && <Link to={authLink("/login", returnTo)} className="hidden min-h-11 items-center px-2 text-xs font-bold text-(--kt-night) min-[380px]:inline-flex lg:hidden">Ingresar</Link>}
+          {/* En celular, solo las iniciales: abren el menú, donde está la cuenta. */}
+          {!cargando && usuario && <button type="button" onClick={() => setMobileOpen(true)} aria-label={`Mi cuenta: ${nombreCompleto(usuario)}`}
+            className="flex h-11 w-11 items-center justify-center rounded-full lg:hidden"><InicialesUsuario usuario={usuario} className="h-9 w-9" /></button>}
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Abrir menú" aria-expanded={mobileOpen}
             className={S.btn_hamburguesa + " lg:hidden"}><Menu size={21} aria-hidden="true" /><span className="hidden sm:inline">Menú</span></button>
         </div>

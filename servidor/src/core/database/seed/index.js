@@ -3,7 +3,7 @@ import { seed_rbac } from "./seed_rbac.js";
 import { sincronizarPermisos } from "../../services/usuarios/permisos_service.js";
 import { seed_super_admin } from "./seed_super_admin.js";
 import { seed_suscripcion } from "./seed_suscripcion.js";
-import { modulosActivos } from "../../../proyecto/modulos.js";
+import { modulosActivos } from "../../modulos_activos.js";
 import { suscripcionDelSoftwareActiva } from "../../../../../core/suscripcion_software_config.js";
 
 /**

@@ -2,7 +2,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/auth_context.jsx";
 import { usePanelGrupos } from "../../controls/layout/panel/use_panel_grupos.js";
-import { pantallasActivas } from "../../../proyecto/pantallas_modulos.jsx";
+import { pantallasActivas } from "../../app/pantallas_activas.js";
 
 /** Inicio del panel: el resumen del negocio y un acceso a cada pantalla que el rol permite. */
 export default function PanelInicioPage() {

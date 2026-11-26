@@ -5,7 +5,7 @@ import PanelLayout from "../controls/layout/panel/panel_layout.jsx";
 
 import { generalRoutes } from "./routes/general.routes.jsx";
 import { panelRoutes } from "./routes/panel.routes.jsx";
-import { pantallasActivas } from "../../proyecto/pantallas_modulos.jsx";
+import { rutasActivas } from "./pantallas_activas.js";
 
 const cargando = <p role="status" className="p-8 text-center">Cargando…</p>;
 
@@ -19,7 +19,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       ...generalRoutes,
-      ...pantallasActivas.flatMap((pantallas) => pantallas.rutasTienda ?? []),
+      ...rutasActivas("rutasTienda"),
     ],
   },
   {

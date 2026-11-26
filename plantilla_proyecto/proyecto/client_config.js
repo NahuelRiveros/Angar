@@ -8,6 +8,9 @@ export const clientConfig = {
   auth: { publicRegistration: false, passwordMinLength: 8, passwordMaxLength: 72, resetMinutes: 20, sesionClienteDias: 30, sesionPersonalHoras: 24 },
   // Catálogo y carrito de la tienda (las reglas del carrito del core leen estos límites).
   tienda: { publicCatalog: true, guestCart: true, pageSize: 24, maxQuantity: 9999, maxCartLines: 200, cartTtlDays: 30 },
+  // WhatsApp del negocio: código de país y número, sin "+" ni espacios (ej. "5491100000000").
+  // Sin esto, el catálogo no muestra el botón para consultar.
+  whatsapp: null, // [COMPLETAR]
   // Datos fiscales de quien factura (ver core/fiscal_config.js). [COMPLETAR] antes de facturar.
   // condicion_iva: "responsable_inscripto", "monotributista" o "exento"; null = no se sugiere factura.
   emisorFiscal: {

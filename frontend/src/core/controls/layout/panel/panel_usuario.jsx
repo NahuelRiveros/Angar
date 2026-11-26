@@ -2,11 +2,7 @@ import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/auth_context.jsx";
 import { cn } from "../../../utils/cn.js";
-import { nombreRol, permisosConfig } from "../../../../../../core/permisos_config.js";
-
-function iniciales(nombre) {
-  return nombre.split(" ").slice(0, 2).map((palabra) => palabra[0]?.toUpperCase() ?? "").join("");
-}
+import { nombreCompleto, iniciales, rolVisible } from "../../../auth/datos_usuario.js";
 
 /** Quién está usando el panel y el botón para salir. `compacta`: menú achicado. */
 export default function PanelUsuario({ compacta = false }) {
@@ -14,11 +10,8 @@ export default function PanelUsuario({ compacta = false }) {
   const navigate = useNavigate();
   if (!usuario) return null;
 
-  const nombre = [usuario.nombre, usuario.apellido].filter(Boolean).join(" ") || usuario.email || "Usuario";
-  const delEquipo = (usuario.roles ?? []).filter((r) => !permisosConfig.rolesFuera.includes(r));
-  // Si tiene varios, se muestra primero uno del sistema (ej. "Gerente general").
-  const principal = delEquipo.find((r) => permisosConfig.nombresRol[r]) ?? delEquipo[0];
-  const rol = principal ? nombreRol(principal) : "";
+  const nombre = nombreCompleto(usuario);
+  const rol = rolVisible(usuario);
 
   async function salir() {
     await logout();
@@ -28,7 +21,7 @@ export default function PanelUsuario({ compacta = false }) {
   return (
     <div className={cn("flex items-center gap-3", compacta && "flex-col gap-2")}>
       <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-(--kt-turquoise) text-sm font-bold text-(--kt-night)">
-        {iniciales(nombre) || "?"}
+        {iniciales(nombre)}
       </span>
       <div className={cn("min-w-0 flex-1", compacta && "sr-only")}>
         <p className="truncate text-sm font-semibold text-white">{nombre}</p>

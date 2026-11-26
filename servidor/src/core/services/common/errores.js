@@ -4,11 +4,13 @@
  * HTTP. Así los controllers no repiten try/catch ni deciden códigos HTTP a mano.
  */
 export class ErrorApp extends Error {
-  constructor(codigo, mensaje, estado = 400) {
+  /** `datos`: lo que la pantalla necesita para resolverlo (ej. qué cambió en el carrito). */
+  constructor(codigo, mensaje, estado = 400, datos = undefined) {
     super(mensaje);
     this.name = "ErrorApp";
     this.codigo = codigo;
     this.estado = estado;
+    this.datos = datos;
   }
 }
 

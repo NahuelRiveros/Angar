@@ -1,5 +1,5 @@
-import { LayoutDashboard } from "lucide-react";
-import { modulosActivos } from "../../../proyecto/modulos_activos.js";
+import { CircleHelp, LayoutDashboard } from "lucide-react";
+import { modulosActivos } from "../modulos_activos.js";
 import { adminDropdown } from "./admin_dropdown.js";
 import { superAdminDropdown } from "./super_admin_dropdown.js";
 
@@ -22,7 +22,10 @@ export const accesoPanel = { roles: unir("roles"), permisos: unir("permisos") };
 
 export const panelInicio = { label: "Inicio", to: "/panel", exact: true, requiereAuth: true, ...accesoPanel, icon: LayoutDashboard };
 
-export const panelGrupos = [{ id: "inicio", items: [panelInicio] }, ...gruposDeSecciones];
+// AYU-01: la Ayuda la ve todo el que entra al panel; adentro, cada uno ve solo los temas de lo que puede usar.
+export const panelAyuda = { label: "Ayuda", to: "/panel/ayuda", requiereAuth: true, ...accesoPanel, icon: CircleHelp };
+
+export const panelGrupos = [{ id: "inicio", items: [panelInicio] }, ...gruposDeSecciones, { id: "ayuda", titulo: "Ayuda", items: [panelAyuda] }];
 
 // Botón del navbar de la tienda que reemplaza a los menús del rubro, "Gestión" y "Configuración".
 export const panelGestionLink = { label: "Panel de gestión", to: "/panel", requiereAuth: true, ...accesoPanel, icon: LayoutDashboard };

@@ -1,0 +1,2 @@
+CREATE TABLE pru_a_medias (id SERIAL PRIMARY KEY);
+ALTER TABLE tabla_que_no_existe ADD COLUMN x INTEGER;

@@ -25,14 +25,13 @@ test("PER-14: un rol creado en el panel se muestra legible", () => {
   assert.equal(nombreRol(undefined), "");
 });
 
-// Copia un archivo del core junto a un proyecto/ falso y lo importa: así se prueba con otra configuración.
+// Copia core/ junto a un proyecto/ falso y lo importa: así se prueba con otra configuración.
 async function conProyecto(archivoCore, proyecto) {
   const raiz = mkdtempSync(join(tmpdir(), "core_config_"));
   try {
-    mkdirSync(join(raiz, "core"));
     mkdirSync(join(raiz, "proyecto"));
-    cpSync(new URL(`../../core/${archivoCore}`, import.meta.url), join(raiz, "core", archivoCore));
-    for (const [nombre, contenido] of Object.entries(proyecto)) writeFileSync(join(raiz, "proyecto", nombre), contenido);
+    cpSync(new URL("../../core", import.meta.url), join(raiz, "core"), { recursive: true });
+    for (const [nombre, contenido] of Object.entries({ "gate_config.js": "export const projectModules = {};", ...proyecto })) writeFileSync(join(raiz, "proyecto", nombre), contenido);
     return await import(pathToFileURL(join(raiz, "core", archivoCore)).href);
   } finally {
     rmSync(raiz, { recursive: true, force: true });

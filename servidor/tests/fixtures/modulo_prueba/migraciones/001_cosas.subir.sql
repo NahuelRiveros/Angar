@@ -1,0 +1,5 @@
+CREATE TABLE pru_cosa (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(80) NOT NULL,
+  creado_por INTEGER REFERENCES usuario (id) ON DELETE SET NULL
+);

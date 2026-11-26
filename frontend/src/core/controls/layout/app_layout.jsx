@@ -5,7 +5,7 @@ import Footer from "./footer.jsx";
 import AnunciosBanner from "./anuncios_banner.jsx";
 import SuscripcionBanner from "../suscripcion/suscripcion_banner.jsx";
 import ErrorBoundary from "../ui/error_boundary.jsx";
-import { pantallasActivas } from "../../../proyecto/pantallas_modulos.jsx";
+import { pantallasActivas } from "../../app/pantallas_activas.js";
 
 // SIS-57: avisos de los rubros para todo el sitio, debajo de la barra (ej. "tu plan vence en 5 días").
 const avisosSitio = pantallasActivas.flatMap((pantallas) => pantallas.avisosSitio ?? []);

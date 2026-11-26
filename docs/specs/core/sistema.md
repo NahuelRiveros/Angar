@@ -43,7 +43,7 @@ arranca y responde de forma segura.
 
 | Código | Regla | Estado |
 | --- | --- | --- |
-| SIS-21 | Qué rubros tiene una instalación lo decide solo `gate_config.js` (código, tablas y menús). No hay interruptor en vivo: prender o apagar un rubro es un cambio de configuración y un nuevo despliegue. | ⚠️ sin test |
+| SIS-21 | Qué rubros y módulos opcionales ([modulos.md](modulos.md)) tiene una instalación lo decide solo `gate_config.js` (código, tablas y menús). No hay interruptor en vivo: prender o apagar un rubro es un cambio de configuración y un nuevo despliegue. | ⚠️ sin test |
 
 ### Home de tienda y banners
 
@@ -79,6 +79,7 @@ El diseño del marco es el de MiPadel (pedido del dueño, 2026-11-17); los color
 | --- | --- | --- |
 | COR-10 | Al arrancar, todas las tablas del schema quedan con RLS activado y, en Supabase, sin acceso para `anon` ni `authenticated`: la API REST de Supabase no puede leer ni escribir nada. Avisa si `BD_ESQUEMA=public`. | ✅ `core_seguridad.test.mjs`; `checkout.integration.mjs` › "SIS-32, SIS-34, SIS-39 y COR-10: …" |
 | COR-20 | Una entrada inválida responde 400 `DATOS_INVALIDOS` con el primer error en español y la lista por campo; los errores esperados de un service (`ErrorApp`) responden con su código y estado. | ✅ `core_api.test.mjs` › "COR-20: …" |
+| COR-21 | En Render, los topes de intentos (ingreso, registro, recuperación) cuentan por la conexión real del visitante y no por la del proxy, que es la misma para todos. Fuera de Render no se cree en ese encabezado. | ✅ `core_modulos.test.mjs` › "COR-21: …" |
 
 ### Servidor y despliegue
 

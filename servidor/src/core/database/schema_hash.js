@@ -21,13 +21,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * inofensivo — solo paga otra vez el costo que hoy se paga SIEMPRE.
  */
 const dirModulos = path.resolve(__dirname, "../../modulos");
-const RUTAS_A_HASHEAR = [
+export const RUTAS_A_HASHEAR = [
   path.resolve(__dirname, "../models"),
   // De cada módulo de rubro: sus modelos y su modulo.js (decide el orden de sync).
   // Un proyecto recién creado puede no tener ningún rubro todavía.
   ...(fs.existsSync(dirModulos) ? fs.readdirSync(dirModulos, { withFileTypes: true }) : []).filter((e) => e.isDirectory())
     .flatMap((e) => [path.join(dirModulos, e.name, "models"), path.join(dirModulos, e.name, "modulo.js")]),
-  path.resolve(__dirname, "../configuracion_servidor/gate_config.js"),
+  // Lo que decide qué rubros están prendidos: sin esto, prender uno no crearía sus tablas (MOD-12).
+  path.resolve(__dirname, "../../../../proyecto/gate_config.js"),
+  path.resolve(__dirname, "../../proyecto/modulos.js"),
   path.resolve(__dirname, "./bootstrap.js"),
 ];
 

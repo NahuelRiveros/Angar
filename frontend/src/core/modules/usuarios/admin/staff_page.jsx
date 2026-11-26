@@ -12,6 +12,7 @@ import {
   eliminarStaff,
 } from "../../../api/staff_api";
 import { Users, UserPlus, Edit2, KeyRound, ShieldCheck, ShieldOff, RefreshCw, Trash2 } from "lucide-react";
+import BotonAyuda from "../../ayuda/boton_ayuda.jsx";
 
 function formatearFecha(fecha) {
   if (!fecha) return "—";
@@ -244,7 +245,7 @@ export default function StaffPage() {
                 <Users size={11} />
                 Admin
               </span>
-              <h1 className="mt-2 text-2xl font-extrabold text-slate-900">Personal</h1>
+              <div className="flex items-center gap-1"><h1 className="mt-2 text-2xl font-extrabold text-slate-900">Personal</h1><BotonAyuda tema="personal" /></div>
               <p className="mt-0.5 text-sm text-slate-500">
                 Administrá al personal (staff y admins), sus datos, contraseña y estado.
               </p>

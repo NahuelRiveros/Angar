@@ -1,8 +1,8 @@
 import { Home } from "lucide-react";
 import { accountLinks } from "./account.js";
 import { brandConfig } from "../../../proyecto/config/brand_config.js";
-import { modulosActivos } from "../../../proyecto/modulos_activos.js";
-import { pantallasActivas } from "../../../proyecto/pantallas_modulos.jsx";
+import { modulosActivos } from "../modulos_activos.js";
+import { pantallasActivas } from "../../app/pantallas_activas.js";
 
 import { panelGestionLink } from "./panel_gestion.js";
 

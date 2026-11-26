@@ -1,0 +1,1 @@
+ALTER TABLE pru_cosa ADD COLUMN color VARCHAR(20);

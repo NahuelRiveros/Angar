@@ -32,6 +32,8 @@
 !docs/specs/cambios/2026-11-personal-con-usuario.md
 !docs/specs/cambios/2026-11-indices-unicos.md
 !docs/specs/cambios/2026-11-core-multiproyecto.md
+!docs/specs/cambios/2026-11-modulos-opcionales.md
+!docs/specs/cambios/2026-11-tienda-base.md
 
 # Frontend: esqueleto y core
 !frontend/package.json
@@ -59,3 +61,16 @@
 !servidor/tests/core_roles.test.mjs
 !servidor/tests/core_banners.test.mjs
 !servidor/tests/core_api.test.mjs
+!servidor/tests/core_modulos.test.mjs
+!servidor/tests/core_modulos.integration.mjs
+!servidor/tests/fixtures/modulo_prueba/
+!servidor/tests/catalogo.test.mjs
+!servidor/tests/catalogo.integration.mjs
+!frontend/tests/browser/catalogo.spec.js
+!servidor/tests/pedidos.test.mjs
+!servidor/tests/pedidos.integration.mjs
+!frontend/tests/browser/pedidos.spec.js
+!servidor/tests/stock.test.mjs
+!servidor/tests/stock.integration.mjs
+!frontend/tests/browser/stock.spec.js
+!servidor/tests/tienda_adaptacion.test.mjs

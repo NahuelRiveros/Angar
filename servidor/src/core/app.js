@@ -113,31 +113,34 @@ export function createApp() {
 
   // ── Error handler global ─────────────────────────────────────────────────
   // Express 5 manda acá también los errores de los controllers async: no hace falta try/catch.
-  app.use((err, _req, res, _next) => {
-    if (err instanceof ErrorApp) {
-      return res.status(err.estado).json({ ok: false, codigo: err.codigo, mensaje: err.message });
-    }
-    if (err?.type === "entity.parse.failed") {
-      return res.status(400).json({
-        ok: false,
-        codigo: "JSON_INVALIDO",
-        mensaje: "Body JSON inválido",
-      });
-    }
-    if (err?.codigo === "CORS_NO_PERMITIDO") {
-      return res.status(403).json({
-        ok: false,
-        codigo: err.codigo,
-        mensaje: "Este sitio no tiene permiso para usar la API",
-      });
-    }
-    console.error(err);
-    return res.status(500).json({
-      ok: false,
-      codigo: "ERROR",
-      mensaje: "Error interno del servidor",
-    });
-  });
+  app.use(manejarErrores);
 
   return app;
+}
+
+/** Convierte cualquier error en { ok: false, codigo, mensaje }. Exportado para los tests de cada módulo. */
+export function manejarErrores(err, _req, res, _next) {
+  if (err instanceof ErrorApp) {
+    return res.status(err.estado).json({ ok: false, codigo: err.codigo, mensaje: err.message, ...(err.datos !== undefined && { datos: err.datos }) });
+  }
+  if (err?.type === "entity.parse.failed") {
+    return res.status(400).json({
+      ok: false,
+      codigo: "JSON_INVALIDO",
+      mensaje: "Body JSON inválido",
+    });
+  }
+  if (err?.codigo === "CORS_NO_PERMITIDO") {
+    return res.status(403).json({
+      ok: false,
+      codigo: err.codigo,
+      mensaje: "Este sitio no tiene permiso para usar la API",
+    });
+  }
+  console.error(err);
+  return res.status(500).json({
+    ok: false,
+    codigo: "ERROR",
+    mensaje: "Error interno del servidor",
+  });
 }

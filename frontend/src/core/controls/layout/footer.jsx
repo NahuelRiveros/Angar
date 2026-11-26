@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Phone, Undo2, Scale } from "lucide-react";
 import { footer_config } from "../../../proyecto/config/footer_config.js";
-import { tiendaActiva } from "../../../proyecto/modulos_activos.js";
+import { tiendaActiva } from "../../config/modulos_activos.js";
 import { iconoHome } from "../config/home_iconos.js";
 import { HOME_CONTACTOS } from "../../../proyecto/config/home_config.js";
 import { brandConfig } from "../../../proyecto/config/brand_config.js";

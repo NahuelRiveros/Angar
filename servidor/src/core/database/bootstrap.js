@@ -3,7 +3,8 @@ import { sequelize, DB_SCHEMA } from "./sequelize.js";
 import { calcularHashEsquema } from "./schema_hash.js";
 import { asegurarTablas } from "./seguridad_tablas.js";
 import { borrarUnicosRepetidos } from "./indices_repetidos.js";
-import { modulosActivos } from "../../proyecto/modulos.js";
+import { subirMigraciones } from "./migraciones.js";
+import { exigirModulosValidos, modulosActivos } from "../modulos_activos.js";
 import { TABLAS_RETIRADAS } from "../../proyecto/tablas_retiradas.js";
 import {
   Sexo, TipoDocumento, TipoPersona, Rol, Modulo,
@@ -13,15 +14,18 @@ import {
 
 /**
  * Crea el schema y todas las tablas desde cero a partir de los modelos
- * Sequelize — no depende de archivos .sql de migración.
+ * Sequelize. Las de los módulos opcionales, con sus migraciones (ver migraciones.js).
  * Idempotente: correr sobre una base ya creada solo aplica los ALTER
  * necesarios (nuevas columnas, índices, etc.).
  */
 export async function bootstrap_database() {
   console.log("🛠️  Iniciando bootstrap...");
+  exigirModulosValidos(); // antes que nada: lo que sigue borra tablas retiradas y crea las nuevas
   await crear_schema();
   await aplicar_ajustes_puntuales();
   await sincronizar_modelos_si_hace_falta();
+  const migradas = await subirMigraciones(modulosActivos, { sequelize, schema: DB_SCHEMA });
+  if (migradas.length) console.log(`🧩 Migraciones aplicadas: ${migradas.join(", ")}`);
   for (const modulo of modulosActivos) await modulo.arranque?.();
   // Al final: así también cubre las tablas que crean los rubros en su arranque.
   await asegurarTablas(sequelize, DB_SCHEMA);
@@ -114,11 +118,11 @@ async function sincronizar_modelos() {
     UsuarioRol, // usuario_rol → usuario, rol
   ];
 
-  // Cada módulo de rubro trae sus modelos ya ordenados (ver su modulo.js); solo
-  // se sincronizan los de los módulos activos en gate_config.js.
+  // Cada módulo de rubro trae sus modelos ya ordenados (ver su modulo.js); solo se sincronizan los
+  // activos en gate_config.js. Un módulo con migraciones crea sus tablas con ellas, nunca con sync.
   const modelos_en_orden = [
     ...MODELOS_COMPARTIDOS,
-    ...modulosActivos.flatMap((modulo) => modulo.modelos),
+    ...modulosActivos.flatMap((modulo) => (modulo.migraciones ? [] : modulo.modelos)),
   ];
 
   for (const modelo of modelos_en_orden) {

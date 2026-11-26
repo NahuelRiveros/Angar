@@ -4,8 +4,8 @@ import { ArrowRight } from "lucide-react";
 import { useBannersVigentes } from "../core/hooks/use_banners.js";
 import { brandConfig } from "./config/brand_config.js";
 import { HOME_TIENDA } from "./config/home_config.js";
-import { tiendaActiva } from "./modulos_activos.js";
-import { pantallasActivas } from "./pantallas_modulos.jsx";
+import { tiendaActiva } from "../core/config/modulos_activos.js";
+import { pantallasActivas } from "../core/app/pantallas_activas.js";
 import BannerCarrusel from "../core/modules/home/banner_carrusel.jsx";
 
 /**

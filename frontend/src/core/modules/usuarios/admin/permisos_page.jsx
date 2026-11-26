@@ -10,6 +10,7 @@ import InputField from "../../../controls/ui/input_field.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import { crearRol, eliminarRol, getPermisos, guardarPermisosRol } from "../../../api/permisos_api.js";
 import { conRequeridos, dependientesDe } from "../../../../../../core/permisos_config.js";
+import BotonAyuda from "../../ayuda/boton_ayuda.jsx";
 
 const BOTON = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const mensajeDe = (error, porDefecto) => error?.response?.data?.mensaje || porDefecto;
@@ -71,7 +72,7 @@ export default function PermisosPage() {
   const rolMovil = roles.find((r) => r.id === rolMovilId) ?? roles.find((r) => r.editable) ?? roles[0];
   return <div className="mx-auto max-w-6xl space-y-4 p-3 sm:p-6">
     <div>
-      <h1 className="kt-display text-2xl font-bold text-(--kt-ink)">Roles y permisos</h1>
+      <div className="flex items-center gap-1"><h1 className="kt-display text-2xl font-bold text-(--kt-ink)">Roles y permisos</h1><BotonAyuda tema="permisos" /></div>
       <p className="text-sm text-(--kt-ink-soft)">Tildá qué puede hacer cada rol. El administrador tiene todo siempre. Los cambios rigen apenas los guardás, sin volver a iniciar sesión.</p>
     </div>
 

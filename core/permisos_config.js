@@ -1,5 +1,8 @@
 import * as rubros from "../proyecto/permisos_rubros.js";
+import { projectModules } from "../proyecto/gate_config.js";
+import { permisosOpcionales } from "./modulos_opcionales.js";
 
+const OPCIONALES = permisosOpcionales(projectModules);
 const PERMISOS_DE_RUBROS = rubros.PERMISOS_DE_RUBROS ?? [];
 // Opcional en proyecto/permisos_rubros.js (PER-37): roles propios del rubro que no usan permisos del
 // personal (como "cliente") y el rol que recibe quien se registra. Sin esto: "cliente".
@@ -40,11 +43,13 @@ export const permisosConfig = {
     ...ROLES_DE_RUBROS.fuera,
   },
   grupos: [
+    ...OPCIONALES.grupos,
     ...PERMISOS_DE_RUBROS.flatMap((rubro) => rubro.grupos),
     { codigo: "contenido", nombre: "Contenido de la tienda" },
     { codigo: "equipo", nombre: "Equipo" },
   ],
   permisos: [
+    ...OPCIONALES.permisos,
     ...PERMISOS_DE_RUBROS.flatMap((rubro) => rubro.permisos),
     { codigo: "contenido.editar", grupo: "contenido", nombre: "Editar banners", descripcion: "Carrusel del inicio, cinta de anuncios e imágenes.", porDefecto: [] },
     { codigo: "usuarios.gestionar", grupo: "equipo", nombre: "Gestionar personal", descripcion: "Altas, bajas, contraseñas y rol de cada persona del equipo.", porDefecto: [] },
@@ -53,6 +58,12 @@ export const permisosConfig = {
 };
 
 export const CODIGOS_PERMISO = permisosConfig.permisos.map((p) => p.codigo);
+
+/**
+ * Los de módulos opcionales apagados: no se usan ni se ven, pero lo tildado se conserva (MOD-03).
+ * Si un rubro usa el mismo código (ej. "pedidos.ver" en un proyecto con pedidos propios), es del rubro.
+ */
+export const CODIGOS_PERMISO_APAGADOS = OPCIONALES.codigosApagados.filter((codigo) => !CODIGOS_PERMISO.includes(codigo));
 
 /** Nombre visible de un rol; los creados en el panel: "repositor_de_gondola" → "Repositor de gondola". */
 export const nombreRol = (codigo) => permisosConfig.nombresRol[codigo]

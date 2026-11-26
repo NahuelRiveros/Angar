@@ -14,7 +14,7 @@ import { suscripcionDelSoftwareActiva } from "../../../../core/suscripcion_softw
 
 import { uploadRouter } from "./upload_router.js";
 
-import { modulosActivos } from "../../proyecto/modulos.js";
+import { modulosActivos } from "../modulos_activos.js";
 
 const router = Router();
 
@@ -62,7 +62,7 @@ router.use("/banners", bannerPromocionRouter);        // ← carrusel y cinta de
 
 router.use("/upload",    uploadRouter);                 // ← subida genérica de imágenes (Cloudinary)
 
-// Rutas de cada módulo de rubro activo (ver su modulo.js).
+// Rutas de cada módulo prendido, opcional o rubro (ver su modulo.js).
 for (const modulo of modulosActivos) {
   for (const [ruta, routerModulo] of modulo.rutas) router.use(ruta, routerModulo);
 }

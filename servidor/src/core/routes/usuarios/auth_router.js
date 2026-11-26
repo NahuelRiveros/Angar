@@ -1,10 +1,11 @@
 import { forgotPasswordController, secureResetPasswordController } from "../../controllers/usuarios/password_recovery_controller.js";
 import { Router } from "express";
-import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import rateLimit from "express-rate-limit";
 import { loginController, googleController, registerController, meController, logoutController } from "../../controllers/usuarios/auth_controller.js";
 import { requireAuth } from "../../middleware/auth_middleware.js";
 import { seedAdmin, seedStaff } from "../../controllers/usuarios/auth_seed_controller.js";
 import { env } from "../../configuracion_servidor/env.js";
+import { ipVisitante } from "../../middleware/ip_visitante.js";
 import { validar } from "../../middleware/validar.js";
 import { esquemaGoogle, esquemaLogin, esquemaRegistro } from "../../services/usuarios/auth_esquemas.js";
 
@@ -16,13 +17,14 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   // En minúsculas: cambiar mayúsculas no tiene que dar 10 intentos nuevos para la misma cuenta.
-  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}:${String(req.body?.identificador ?? "").trim().toLowerCase()}`,
+  keyGenerator: (req) => `${ipVisitante(req)}:${String(req.body?.identificador ?? "").trim().toLowerCase()}`,
   message: { ok: false, codigo: "DEMASIADOS_INTENTOS", mensaje: "Demasiados intentos. Intentá en 15 minutos." },
 });
 
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
+  keyGenerator: (req) => ipVisitante(req),
   standardHeaders: true,
   legacyHeaders: false,
   message: { ok: false, codigo: "DEMASIADOS_INTENTOS", mensaje: "Demasiados intentos de registro. Intentá en 1 hora." },
@@ -31,6 +33,7 @@ const registerLimiter = rateLimit({
 const resetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
+  keyGenerator: (req) => ipVisitante(req),
   standardHeaders: true,
   legacyHeaders: false,
   message: { ok: false, codigo: "DEMASIADOS_INTENTOS", mensaje: "Demasiados intentos de recuperación. Intentá en 1 hora." },

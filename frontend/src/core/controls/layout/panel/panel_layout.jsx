@@ -8,7 +8,7 @@ import { cn } from "../../../utils/cn.js";
 import PanelMenu from "./panel_menu.jsx";
 import PanelUsuario from "./panel_usuario.jsx";
 import { usePanelGrupos } from "./use_panel_grupos.js";
-import { tiendaActiva } from "../../../../proyecto/modulos_activos.js";
+import { tiendaActiva } from "../../../config/modulos_activos.js";
 
 // Un proyecto con tienda vuelve a "la tienda"; uno sin tienda, "al sitio".
 const VOLVER = tiendaActiva ? { icono: Store, texto: "Ver tienda" } : { icono: Globe, texto: "Ver sitio" };
