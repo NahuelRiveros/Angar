@@ -35,9 +35,9 @@
 !docs/specs/cambios/2026-11-modulos-opcionales.md
 !docs/specs/cambios/2026-11-tienda-base.md
 
+# Los package.json son de cada proyecto (COR-22): no van en esta lista. Ver scripts/core_lista.mjs.
+
 # Frontend: esqueleto y core
-!frontend/package.json
-!frontend/package-lock.json
 !frontend/vite.config.js
 !frontend/eslint.config.js
 !frontend/tailwind.config.js
@@ -50,8 +50,6 @@
 !frontend/src/core/
 
 # Servidor: esqueleto, core y sus tests
-!servidor/package.json
-!servidor/package-lock.json
 !servidor/.gitignore
 !servidor/.env.local.example
 !servidor/src/server.js

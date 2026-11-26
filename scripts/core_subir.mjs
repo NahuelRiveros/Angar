@@ -15,7 +15,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { RAIZ, archivosDelCore } from "./core_lista.mjs";
+import { RAIZ, archivosDelCore, fijarPropios } from "./core_lista.mjs";
 
 const REPO_CORE = "https://github.com/NahuelRiveros/CoreSistem.git";
 const GIT_CORE = path.join(RAIZ, ".git-core");
@@ -51,6 +51,9 @@ fs.writeFileSync(lista, archivos.join("\n"));
 gitCore(["read-tree", "--empty"]);
 gitCore(["add", "-f", `--pathspec-from-file=${lista}`]);
 fs.rmSync(lista);
+// Los package.json quedan como en el core (o como estaban, si todavía no hay remoto).
+try { gitCore(["fetch", "-q", "origin"]); } catch { /* sin conexión: abajo se avisa */ }
+fijarPropios(gitCore, (() => { try { gitCore(["rev-parse", "-q", "--verify", "origin/main"]); return "origin/main"; } catch { return "HEAD"; } })());
 
 const hayHistoria = (() => { try { gitCore(["rev-parse", "--verify", "-q", "HEAD"]); return true; } catch { return false; } })();
 const cambios = (hayHistoria ? gitCore(["diff", "--cached", "--name-status", "HEAD"]) : archivos.map((a) => `A\t${a}`).join("\n"))

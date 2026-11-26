@@ -38,6 +38,7 @@ Un rubro puede apoyarse en un módulo opcional prendido. Un módulo opcional nun
 | MOD-16 | Si un rubro declara una pantalla (o `comprar`) con la misma dirección que un módulo, se usa la del rubro. | ✅ `tienda_adaptacion.test.mjs` |
 | MOD-17 | Los módulos se enganchan sin conocerse (`servidor/src/core/opcionales/enganches.js`): `disponibilidad` y `cambioDePedido`, declarados en `enganches` de su modulo.js. Uno desconocido frena el arranque. | ✅ `stock.test.mjs` y `stock.integration.mjs` |
 | MOD-18 | Un rubro suma datos con su propia tabla unida a la del módulo (ej. por `variante_id`); el arranque rechaza una tabla de rubro con el prefijo de un módulo. Un código de permiso que usa un rubro no cuenta como de un módulo apagado. | ✅ `core_modulos.test.mjs` y `catalogo.integration.mjs` |
+| COR-22 | Los `package.json` (y sus lock) son de cada proyecto: `core_subir` no los manda y `core_traer` no los toca. Cada librería que importa el core tiene que estar en el `package.json` del proyecto. | ✅ `core_estructura.test.mjs` |
 
 ## Cómo se agrega un módulo al core
 

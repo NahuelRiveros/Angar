@@ -14,7 +14,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { RAIZ, archivosDelCore } from "./core_lista.mjs";
+import { RAIZ, archivosDelCore, fijarPropios } from "./core_lista.mjs";
 
 const GIT_CORE = path.join(RAIZ, ".git-core");
 const traer = process.argv.includes("--traer");
@@ -76,6 +76,7 @@ fs.writeFileSync(lista, archivos.join("\n"));
 gitCore(["read-tree", "--empty"]);
 gitCore(["add", "-f", `--pathspec-from-file=${lista}`]);
 fs.rmSync(lista);
+fijarPropios(gitCore, "origin/main");
 if (gitCore(["diff", "--cached", "--name-only", "HEAD"])) {
   gitCore(["commit", "-q", "-m", `Cambios de este proyecto sin subir (${git(["rev-parse", "--short", "HEAD"])})`]);
   console.log("Este proyecto tenía cambios del core sin subir: se mezclan con los de CoreSistem.");

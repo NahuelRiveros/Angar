@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { builtinModules } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -79,4 +80,33 @@ test("SIS-53: el home es de cada proyecto: el core lo toma de proyecto/inicio.js
   assert.match(rutas, /import\("\.\.\/\.\.\/\.\.\/proyecto\/inicio\.jsx"\)/);
   assert.equal(existsSync(path.join(raiz, "frontend/src/core/modules/home/home_page.jsx")), false, "el core no tiene home");
   assert.ok(existsSync(path.join(raiz, "plantilla_proyecto/frontend/src/proyecto/inicio.jsx")), "un proyecto nuevo arranca con uno para modificar");
+});
+
+test("COR-22: los package.json son de cada proyecto: no viajan con el core en ninguna dirección", async () => {
+  const { PROPIOS_DEL_PROYECTO, archivosDelCore } = await import("../../scripts/core_lista.mjs");
+  assert.deepEqual(archivosDelCore(PROPIOS_DEL_PROYECTO), []);
+  assert.deepEqual(archivosDelCore(["servidor/src/core/app.js"]), ["servidor/src/core/app.js"]);
+});
+
+test("COR-22: cada librería que usa el core está en el package.json de este proyecto", () => {
+  const IMPORTA = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)["']([^"'\n]+)["']/g;
+  const deNode = new Set(builtinModules);
+  // Solo librerías: "@tanstack/react-query/x" → "@tanstack/react-query". Rutas y "node:" no cuentan.
+  const libreria = (spec) => (/^[./]/.test(spec) || spec.includes(":") ? null : spec.split("/").slice(0, spec.startsWith("@") ? 2 : 1).join("/"));
+  const faltan = [];
+  for (const [lado, carpetas] of [["servidor", ["servidor/src/core", "core"]], ["frontend", ["frontend/src/core", "core"]]]) {
+    const paquete = JSON.parse(readFileSync(path.join(raiz, lado, "package.json"), "utf8"));
+    const tiene = new Set([...Object.keys(paquete.dependencies ?? {}), ...Object.keys(paquete.devDependencies ?? {})]);
+    for (const carpeta of carpetas) {
+      for (const e of readdirSync(path.join(raiz, carpeta), { recursive: true, withFileTypes: true })) {
+        if (!e.isFile() || !/\.(m?js|jsx)$/.test(e.name)) continue;
+        const archivo = path.join(e.parentPath, e.name);
+        for (const [, spec] of readFileSync(archivo, "utf8").matchAll(IMPORTA)) {
+          const nombre = libreria(spec);
+          if (nombre && !deNode.has(nombre) && !tiene.has(nombre)) faltan.push(`${lado}/package.json no tiene "${nombre}" (lo usa ${path.relative(raiz, archivo).split(path.sep).join("/")})`);
+        }
+      }
+    }
+  }
+  assert.deepEqual([...new Set(faltan)], []);
 });
