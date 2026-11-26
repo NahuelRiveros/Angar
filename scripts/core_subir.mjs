@@ -15,9 +15,8 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { RAIZ, archivosDelCore, fijarPropios } from "./core_lista.mjs";
+import { RAIZ, REPO_CORE, archivosDelCore, fijarPropios } from "./core_lista.mjs";
 
-const REPO_CORE = "https://github.com/NahuelRiveros/CoreSistem.git";
 const GIT_CORE = path.join(RAIZ, ".git-core");
 const args = process.argv.slice(2);
 const subir = args.includes("--subir");

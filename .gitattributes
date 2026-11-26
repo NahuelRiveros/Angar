@@ -1,0 +1,16 @@
+# Finales de línea iguales en todas las máquinas (LF). Evita los avisos "LF will be replaced by CRLF"
+# y los choques falsos al traer el core. Es del core: viaja a todos los proyectos.
+* text=auto eol=lf
+
+# Archivos que no son texto: nunca se tocan.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.xlsx binary

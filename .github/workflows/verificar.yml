@@ -42,6 +42,10 @@ jobs:
           cache-dependency-path: |
             servidor/package-lock.json
             frontend/package-lock.json
+      # En CoreSistem no hay proyecto/ (es de cada cliente): se arma uno de prueba con los módulos
+      # prendidos, así cada cambio del core prueba catálogo, stock y pedidos. En un proyecto no hace nada.
+      - name: Proyecto de prueba (solo en el repo del core)
+        run: if [ ! -f proyecto/gate_config.js ]; then node scripts/nuevo_proyecto.mjs --tipo distribuidora; fi
       - run: npm --prefix servidor ci
       # Los tests del servidor también prueban archivos del frontend (menús, permisos),
       # que importan librerías del frontend como lucide-react.
@@ -61,6 +65,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      # En CoreSistem no hay proyecto/ (es de cada cliente): se arma uno de prueba con los módulos
+      # prendidos, así cada cambio del core prueba catálogo, stock y pedidos. En un proyecto no hace nada.
+      - name: Proyecto de prueba (solo en el repo del core)
+        run: if [ ! -f proyecto/gate_config.js ]; then node scripts/nuevo_proyecto.mjs --tipo distribuidora; fi
       - run: npm --prefix frontend ci
       - name: Lint
         run: npm --prefix frontend run lint

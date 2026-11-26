@@ -3,6 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+/** El repo del core en GitHub: de ahí traen y ahí suben todos los proyectos. */
+export const REPO_CORE = "https://github.com/NahuelRiveros/CoreSistem.git";
+
 export const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // Aunque la lista los habilite por error, esto nunca viaja al core (COR-04).

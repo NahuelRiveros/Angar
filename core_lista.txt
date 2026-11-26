@@ -9,6 +9,7 @@
 !README.md
 !core_lista.txt
 !.gitignore
+!.gitattributes
 !.nvmrc
 !core/
 !plantilla_proyecto/

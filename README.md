@@ -21,9 +21,11 @@ registros de `proyecto/` (`modulos_activos.js`, `pantallas_modulos.jsx`, `modulo
 
 ## Arrancar un proyecto nuevo
 
-1. Clonar este repo en una carpeta nueva.
-2. `node scripts/nuevo_proyecto.mjs --tipo <tipo>`: copia `plantilla_proyecto/` a su lugar sin pisar nada y prende
-   los módulos de ese tipo. `--tipos` los muestra; `--con stock` suma un módulo.
+1. Crear en GitHub el repo vacío del proyecto y clonar este (CoreSistem) en una carpeta nueva.
+2. `node scripts/nuevo_proyecto.mjs --tipo <tipo> --repo <url del repo del proyecto>`: copia `plantilla_proyecto/`
+   a su lugar sin pisar nada y prende los módulos de ese tipo. `--tipos` los muestra; `--con stock` suma un módulo.
+   `--repo` deja los push apuntando al repo del proyecto (no al core), arma `.git-core` para traer mejoras del
+   core y prende el control de `.githooks`. Después, el primer `git push -u origin main` va al proyecto.
 3. Buscar `[COMPLETAR]` y llenar los datos del cliente (marca, colores, URLs, `.env`).
 4. `npm --prefix frontend ci` y `npm --prefix servidor ci`.
 5. Copiar `servidor/.env.local.example` a `servidor/.env.local` y `frontend/.env.local.example` a
@@ -48,3 +50,9 @@ qué archivos son del core. Solo viajan archivos ya commiteados, y nunca `proyec
   Si los dos lados cambiaron la misma línea, quedan marcas `<<<<<<<`/`>>>>>>>`: elegir qué queda y correr
   `node scripts/core_traer.mjs --terminar`.
 - Si el core tiene mejoras que el proyecto no trajo, `core_subir` avisa y pide traerlas primero.
+- **¿Cómo está cada proyecto?** `node scripts/core_estado.mjs` revisa las carpetas de al lado y dice, sin tocar
+  nada, cuál está al día, a cuál le faltan mejoras y cuál tiene cambios del core sin subir.
+- Los `package.json` son de cada proyecto (COR-22): no se suben ni se traen. Un test avisa si el core usa una
+  librería que el proyecto no tiene.
+- En GitHub (`.github/workflows/verificar.yml`), el repo del core se prueba con un proyecto de prueba
+  `distribuidora`: cada cambio del core prueba también catálogo, stock y pedidos.
