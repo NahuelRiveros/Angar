@@ -109,13 +109,13 @@ export default function ImageUploadField({ label, tooltip, value, onChange }) {
           <input ref={fileRef} type="file" accept="image/*" onChange={handleFileInput} className="hidden" />
         </div>
 
-        <div className="flex flex-1 flex-col gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           {(urlMode || !value) && (
             <div className="flex items-center gap-1.5">
               <Link size={11} className="shrink-0 text-slate-400" />
               <input
                 value={value} onChange={(e) => onChange(e.target.value)}
-                className="flex-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25"
+                className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25"
                 placeholder="O pegá una URL de imagen…"
               />
             </div>
