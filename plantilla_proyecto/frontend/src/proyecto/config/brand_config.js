@@ -15,10 +15,8 @@ export const clientes = {
     logo: { tipo: "gc-mark", texto: "[COMPLETAR]", ariaLabel: "[COMPLETAR nombre]" },
     // Frases del menú del celular (opcionales; sin ellas se usan textos neutros):
     // menuMovil: { lema: "Arriba de los links", titulo: "Tarjeta de ingreso", texto: "Debajo del título", pie: "Al final" },
-    fuentes: {
-      display: "'Bricolage Grotesque', sans-serif",
-      body: "'Plus Jakarta Sans', sans-serif",
-    },
+    // Tipografías propias (opcional): sin esto, las del estilo elegido en theme_config.js (o las de siempre).
+    // fuentes: { display: "'Bricolage Grotesque', sans-serif", body: "'Plus Jakarta Sans', sans-serif" },
   },
 };
 

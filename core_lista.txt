@@ -62,6 +62,7 @@
 !servidor/tests/core_api.test.mjs
 !servidor/tests/core_modulos.test.mjs
 !servidor/tests/core_consultas.test.mjs
+!servidor/tests/estilos.test.mjs
 !servidor/tests/core_modulos.integration.mjs
 !servidor/tests/fixtures/modulo_prueba/
 !servidor/tests/catalogo.test.mjs

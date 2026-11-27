@@ -24,6 +24,7 @@ registros de `proyecto/` (`modulos_activos.js`, `pantallas_modulos.jsx`, `modulo
 1. Crear en GitHub el repo vacío del proyecto y clonar este (CoreSistem) en una carpeta nueva.
 2. `node scripts/nuevo_proyecto.mjs --tipo <tipo> --repo <url del repo del proyecto>`: copia `plantilla_proyecto/`
    a su lugar sin pisar nada y prende los módulos de ese tipo. `--tipos` los muestra; `--con stock` suma un módulo.
+   `--estilo minimalista|moderno|clasico` elige el diseño ([spec](docs/specs/core/estilos.md)); `--estilos` los muestra.
    `--repo` deja los push apuntando al repo del proyecto (no al core), arma `.git-core` para traer mejoras del
    core y prende el control de `.githooks`. Después, el primer `git push -u origin main` va al proyecto.
 3. Buscar `[COMPLETAR]` y llenar los datos del cliente (marca, colores, URLs, `.env`).

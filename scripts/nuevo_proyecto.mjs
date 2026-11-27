@@ -7,6 +7,7 @@
 //   node scripts/nuevo_proyecto.mjs --tipo ecommerce                → crea el proyecto
 //   node scripts/nuevo_proyecto.mjs --tipo ecommerce --con stock    → además prende stock
 //   node scripts/nuevo_proyecto.mjs --tipo ecommerce --repo <url>   → además lo conecta a git (ver abajo)
+//   node scripts/nuevo_proyecto.mjs --tipo ecommerce --estilo moderno → con ese estilo de diseño (--estilos los muestra)
 // Sin --tipo, todos los módulos quedan apagados.
 //
 // --repo <url del repo del proyecto en GitHub>: para un clon de CoreSistem. Deja `origin` apuntando a ese
@@ -20,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { execFileSync } from "node:child_process";
 import { REPO_CORE } from "./core_lista.mjs";
+import { ESTILOS } from "../core/estilos.js";
 import { MODULOS_OPCIONALES, TIPOS_PROYECTO, conLoQueNecesitan, resolverModulos, textoGateConfig } from "../core/modulos_opcionales.js";
 
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -33,7 +35,7 @@ function salir(mensaje) {
 
 function leerOpciones() {
   try {
-    return parseArgs({ options: { tipo: { type: "string", default: "base" }, con: { type: "string", multiple: true, default: [] }, tipos: { type: "boolean" }, repo: { type: "string" } } }).values;
+    return parseArgs({ options: { tipo: { type: "string", default: "base" }, con: { type: "string", multiple: true, default: [] }, tipos: { type: "boolean" }, repo: { type: "string" }, estilo: { type: "string" }, estilos: { type: "boolean" } } }).values;
   } catch (error) {
     return salir(`${error.message}\nUsá --tipo <tipo>, --con <modulo> o --tipos.`);
   }
@@ -43,6 +45,12 @@ const listaDeTipos = () => Object.entries(TIPOS_PROYECTO)
   .map(([codigo, { nombre, modulos }]) => `  ${codigo.padEnd(18)} ${nombre} (${modulos.join(", ") || "sin módulos"})`).join("\n");
 
 const opciones = leerOpciones();
+if (opciones.estilos) {
+  console.log(`Estilos de diseño:\n${Object.entries(ESTILOS).map(([codigo, e]) => `  ${codigo.padEnd(14)} ${e.descripcion}`).join("\n")}`);
+  process.exit(0);
+}
+if (opciones.estilo && !Object.hasOwn(ESTILOS, opciones.estilo)) salir(`No existe el estilo "${opciones.estilo}". Los que hay: ${Object.keys(ESTILOS).join(", ")}.`);
+const TEMA = path.join("frontend", "src", "proyecto", "config", "theme_config.js");
 if (opciones.tipos) {
   console.log(`Tipos de proyecto:\n${listaDeTipos()}`);
   process.exit(0);
@@ -82,6 +90,7 @@ for (const entrada of fs.readdirSync(plantilla, { recursive: true, withFileTypes
   if (fs.existsSync(destino)) { existentes.push(relativo); continue; }
   fs.mkdirSync(path.dirname(destino), { recursive: true });
   if (relativo === GATE) fs.writeFileSync(destino, textoGateConfig(activos));
+  else if (relativo === TEMA && opciones.estilo) fs.writeFileSync(destino, fs.readFileSync(origen, "utf8").replace("export const estilo = null;", `export const estilo = "${opciones.estilo}";`));
   else fs.copyFileSync(origen, destino);
   copiados.push(relativo);
 }
@@ -108,4 +117,5 @@ if (repo) {
 } else {
   console.log("Git: sin --repo no se tocó. Si es un clon de CoreSistem, conectalo con --repo <url del proyecto>.");
 }
+if (opciones.estilo) console.log(copiados.includes(TEMA) ? `Estilo: ${ESTILOS[opciones.estilo].nombre}.` : `⚠️  ${TEMA} ya existía: poné estilo = "${opciones.estilo}" a mano.`);
 console.log("Siguiente paso: buscar [COMPLETAR] y llenar los datos del cliente.");
