@@ -1,7 +1,7 @@
 import { Op, QueryTypes, fn, col } from "sequelize";
 import { sequelize } from "../../../database/sequelize.js";
-import { ErrorApp, noExiste } from "../../../services/common/errores.js";
-import { contiene, paginar } from "../../../services/common/listados.js";
+import { ErrorApp } from "../../../services/common/errores.js";
+import { contiene, exigirVersion, obtenerOFallar, paginar, quienLoHizo } from "../../../services/common/consultas.js";
 import { cambioDePedido } from "../../enganches.js";
 import { PedHistorial, PedItem, PedPedido } from "../modelos.js";
 import { NOMBRE_ESTADO, siguientes, soloDigitos, transicion } from "../reglas.js";
@@ -41,20 +41,18 @@ export async function listarPedidos({ estado, q, page }) {
 }
 
 /** El historial con el nombre de quien hizo cada cambio (vacío si fue la persona que compró). */
+const QUIEN = quienLoHizo("h.usuario_id");
 const historialDe = (pedido_id) => sequelize.query(`
-  SELECT h.de, h.a, h.motivo, h.creado_en, NULLIF(TRIM(CONCAT(p.nombre, ' ', p.apellido)), '') AS persona
-  FROM ped_historial h
-  LEFT JOIN usuario u ON u.id = h.usuario_id
-  LEFT JOIN persona p ON p.id = u.persona_id
+  SELECT h.de, h.a, h.motivo, h.creado_en, ${QUIEN.columna}
+  FROM ped_historial h ${QUIEN.union}
   WHERE h.pedido_id = :pedido_id
   ORDER BY h.id`, { replacements: { pedido_id }, type: QueryTypes.SELECT });
 
 export async function obtenerPedido(id) {
-  const pedido = await PedPedido.findByPk(id, {
+  const pedido = await obtenerOFallar(PedPedido, id, NO_EXISTE, {
     attributes: { exclude: ["clave_envio"] },
     include: [{ model: PedItem, as: "items", separate: true, order: [["orden", "ASC"], ["id", "ASC"]] }],
   });
-  if (!pedido) throw noExiste(NO_EXISTE);
   const { id: numero, items, ...datos } = pedido.get({ plain: true });
   return {
     ...datos, id: numero, numero, siguientes: siguientes(datos.estado),
@@ -66,9 +64,8 @@ export async function obtenerPedido(id) {
 /** MPE-07 y MPE-08: cambia de estado y lo anota. Si otra persona lo cambió antes, avisa en vez de pisarlo. */
 export async function cambiarEstado(id, { estado, motivo, version }, usuario_id) {
   await sequelize.transaction(async (transaction) => {
-    const pedido = await PedPedido.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
-    if (!pedido) throw noExiste(NO_EXISTE);
-    if (pedido.version !== version) throw new ErrorApp("CAMBIO_SIMULTANEO", "Otra persona cambió este pedido recién. Actualizalo para ver cómo quedó.", 409);
+    const pedido = await obtenerOFallar(PedPedido, id, NO_EXISTE, { transaction, bloquear: true });
+    exigirVersion(pedido, version, "Otra persona cambió este pedido recién. Actualizalo para ver cómo quedó.");
     const paso = transicion(pedido.estado, estado);
     if (!paso) throw new ErrorApp("ESTADO_INVALIDO", `Un pedido ${NOMBRE_ESTADO[pedido.estado]} no puede pasar a ${NOMBRE_ESTADO[estado]}.`, 400);
     if (paso.pideMotivo && !motivo) throw new ErrorApp("DATOS_INVALIDOS", "Escribí el motivo.", 400);

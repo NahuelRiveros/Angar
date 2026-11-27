@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 import { normalizarPaginacion, armarPaginacion } from "./pagination.js";
-import { armarBusquedaTexto } from "./query_helpers.js";
+import { buscarTexto } from "./consultas.js";
 
 /**
  * Factory de operaciones mecánicas de CRUD sobre un modelo Sequelize:
@@ -32,7 +32,7 @@ export function crearCrudService(Model, config = {}) {
     const finalWhere = { ...where };
     if (softDeleteField) finalWhere[softDeleteField] = null;
 
-    const busqueda = q ? armarBusquedaTexto(searchable, q) : null;
+    const busqueda = q ? buscarTexto(searchable, q) : null;
     return busqueda ? { [Op.and]: [finalWhere, busqueda] } : finalWhere;
   }
 

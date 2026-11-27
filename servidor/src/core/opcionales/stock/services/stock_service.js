@@ -1,8 +1,7 @@
-import { Op, QueryTypes, fn, col } from "sequelize";
+import { fn, col } from "sequelize";
 import { sequelize } from "../../../database/sequelize.js";
 import { ErrorApp, noExiste } from "../../../services/common/errores.js";
-import { CON_ACENTO, SIN_ACENTO, patronBusqueda } from "../../../services/common/listados.js";
-import { armarPaginacion, normalizarPaginacion } from "../../../services/common/pagination.js";
+import { obtenerOFallar, paginarSql, patronBusqueda, patronSinAcentos, quienLoHizo, sinAcentosSql } from "../../../services/common/consultas.js";
 import { CatVariante } from "../../catalogo/modelos.js";
 import { cacheCatalogo } from "../../catalogo/services/cache.js";
 import { StkExistencia, StkMovimiento } from "../modelos.js";
@@ -44,8 +43,7 @@ const resumen = (e) => ({ variante_id: e.variante_id, cantidad: e.cantidad, mini
 /** MST-01: empieza a controlar una variante con lo que hay hoy. */
 export async function controlar(variante_id, { cantidad, minimo }, usuario_id) {
   const existencia = await sequelize.transaction(async (transaction) => {
-    const variante = await CatVariante.findOne({ where: { id: variante_id, eliminado_en: null }, transaction, lock: transaction.LOCK.UPDATE });
-    if (!variante) throw noExiste("Esa opción no existe.");
+    await obtenerOFallar(CatVariante, { id: variante_id, eliminado_en: null }, "Esa opción no existe.", { transaction, bloquear: true });
     if (await StkExistencia.findByPk(variante_id, { transaction })) throw new ErrorApp("DUPLICADO", "Esa opción ya controla stock.", 409);
     const nueva = await StkExistencia.create({ variante_id, cantidad: 0, minimo }, { transaction });
     await registrar(nueva, { tipo: "inicio", delta: cantidad, saldo: cantidad, motivo: "Inicio del control de stock", usuario_id }, transaction);
@@ -125,7 +123,6 @@ export async function alCambiarPedido({ pedido_id, de, a, items, usuario_id }, t
 }
 
 // ── Panel ───────────────────────────────────────────────────────────────────
-const SIN_ACENTOS = `lower(translate(p.nombre, '${CON_ACENTO}', '${SIN_ACENTO}'))`;
 // SQL fijo por filtro: lo que escribe la persona va siempre como reemplazo.
 const POR_ESTADO = {
   controlados: "e.variante_id IS NOT NULL",
@@ -136,43 +133,26 @@ const POR_ESTADO = {
 
 /** MST-06: todas las variantes, con su cantidad si la controlan. Lo agotado y lo bajo, primero. */
 export async function listar({ estado, q, page }) {
-  const p = normalizarPaginacion({ page, limit: POR_PAGINA, maxLimit: POR_PAGINA });
   const condiciones = ["v.eliminado_en IS NULL", "p.eliminado_en IS NULL", ...(estado ? [POR_ESTADO[estado]] : [])];
-  const replacements = { limit: p.limit, offset: p.offset };
+  const replacements = {};
   if (q) {
-    condiciones.push(`(${SIN_ACENTOS} LIKE :nombre OR v.codigo ILIKE :codigo)`);
-    replacements.nombre = patronBusqueda(q.toLowerCase().normalize("NFD").replace(/\p{M}/gu, ""));
+    condiciones.push(`(${sinAcentosSql("p.nombre")} LIKE :nombre OR v.codigo ILIKE :codigo)`);
+    replacements.nombre = patronSinAcentos(q);
     replacements.codigo = patronBusqueda(q);
   }
-  const desde = `FROM cat_variante v JOIN cat_producto p ON p.id = v.producto_id LEFT JOIN stk_existencia e ON e.variante_id = v.id WHERE ${condiciones.join(" AND ")}`;
-  const [filas, { total }] = await Promise.all([
-    sequelize.query(`
-      SELECT v.id AS variante_id, p.id AS producto_id, p.nombre AS producto, v.nombre AS opcion, v.codigo, v.disponible,
-             (e.variante_id IS NOT NULL) AS controla, e.cantidad, e.minimo
-      ${desde}
-      ORDER BY CASE WHEN e.cantidad = 0 THEN 0 WHEN e.cantidad <= e.minimo THEN 1 ELSE 2 END, p.nombre, v.orden, v.id
-      LIMIT :limit OFFSET :offset`, { replacements, type: QueryTypes.SELECT }),
-    sequelize.query(`SELECT count(*)::int AS total ${desde}`, { replacements, type: QueryTypes.SELECT, plain: true }),
-  ]);
-  return {
-    items: filas.map((f) => ({ ...f, estado: f.controla ? estadoStock(f) : null })),
-    paginacion: armarPaginacion({ page: p.page, limit: p.limit, total }),
-  };
+  const pagina = await paginarSql({
+    columnas: "v.id AS variante_id, p.id AS producto_id, p.nombre AS producto, v.nombre AS opcion, v.codigo, v.disponible, (e.variante_id IS NOT NULL) AS controla, e.cantidad, e.minimo",
+    desde: `FROM cat_variante v JOIN cat_producto p ON p.id = v.producto_id LEFT JOIN stk_existencia e ON e.variante_id = v.id WHERE ${condiciones.join(" AND ")}`,
+    orden: "CASE WHEN e.cantidad = 0 THEN 0 WHEN e.cantidad <= e.minimo THEN 1 ELSE 2 END, p.nombre, v.orden, v.id",
+    replacements, page, limit: POR_PAGINA,
+  });
+  return { ...pagina, items: pagina.items.map((f) => ({ ...f, estado: f.controla ? estadoStock(f) : null })) };
 }
 
+const QUIEN = quienLoHizo("m.usuario_id");
 /** MST-02: los movimientos de una variante, del más nuevo al más viejo, con quién los hizo. */
-export async function movimientos(variante_id, { page }) {
-  const p = normalizarPaginacion({ page, limit: 20, maxLimit: 20 });
-  const replacements = { variante_id, limit: p.limit, offset: p.offset };
-  const [items, total] = await Promise.all([
-    sequelize.query(`
-      SELECT m.id, m.tipo, m.cantidad, m.saldo, m.motivo, m.pedido_id, m.creado_en, NULLIF(TRIM(CONCAT(pe.nombre, ' ', pe.apellido)), '') AS persona
-      FROM stk_movimiento m
-      LEFT JOIN usuario u ON u.id = m.usuario_id
-      LEFT JOIN persona pe ON pe.id = u.persona_id
-      WHERE m.variante_id = :variante_id
-      ORDER BY m.id DESC LIMIT :limit OFFSET :offset`, { replacements, type: QueryTypes.SELECT }),
-    StkMovimiento.count({ where: { variante_id: { [Op.eq]: variante_id } } }),
-  ]);
-  return { items, paginacion: armarPaginacion({ page: p.page, limit: p.limit, total }) };
-}
+export const movimientos = (variante_id, { page }) => paginarSql({
+  columnas: `m.id, m.tipo, m.cantidad, m.saldo, m.motivo, m.pedido_id, m.creado_en, ${QUIEN.columna}`,
+  desde: `FROM stk_movimiento m ${QUIEN.union} WHERE m.variante_id = :variante_id`,
+  orden: "m.id DESC", replacements: { variante_id }, page, limit: 20,
+});

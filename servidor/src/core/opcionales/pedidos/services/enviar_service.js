@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { UniqueConstraintError } from "sequelize";
 import { sequelize } from "../../../database/sequelize.js";
-import { ErrorApp, noExiste } from "../../../services/common/errores.js";
-import { paginar } from "../../../services/common/listados.js";
+import { ErrorApp } from "../../../services/common/errores.js";
+import { obtenerOFallar, paginar } from "../../../services/common/consultas.js";
 import { CatProducto, CatVariante } from "../../catalogo/modelos.js";
 import { categoriasVisibles } from "../../catalogo/services/categorias_service.js";
 import { PedHistorial, PedItem, PedPedido } from "../modelos.js";
@@ -52,11 +52,10 @@ export async function enviarPedido({ items, clave_envio, ...cliente }, usuario_i
 
 /** MPE-09: lo que ve quien tiene el link. Sin celular, dirección ni motivos internos. */
 export async function seguirPedido(clave) {
-  const pedido = await PedPedido.findOne({
-    where: { clave }, attributes: ["id", "clave", "estado", "nombre", "entrega", "total", "creado_en"],
+  const pedido = await obtenerOFallar(PedPedido, { clave }, "No encontramos ese pedido. Revisá el link.", {
+    attributes: ["id", "clave", "estado", "nombre", "entrega", "total", "creado_en"],
     include: [ITEMS, { model: PedHistorial, as: "historial", separate: true, attributes: ["pedido_id", "a", "creado_en"], order: [["id", "ASC"]] }],
   });
-  if (!pedido) throw noExiste("No encontramos ese pedido. Revisá el link.");
   const { id, nombre, historial, items, ...datos } = pedido.get({ plain: true });
   return {
     ...datos, numero: id, nombre: nombre.split(/\s+/)[0],

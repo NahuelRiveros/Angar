@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 import { sequelize } from "../../../database/sequelize.js";
 import { ErrorApp } from "../../../services/common/errores.js";
-import { buscarPorId, sinRepetir } from "../../../services/common/listados.js";
+import { obtenerOFallar, sinRepetir } from "../../../services/common/consultas.js";
 import { CatCategoria, CatProducto } from "../modelos.js";
 import { slug, slugLibre } from "../reglas.js";
 import { cacheCatalogo } from "./cache.js";
@@ -28,7 +28,7 @@ export async function conSubcategorias(id) {
 
 async function controlarPadre(padre_id, propia, transaction) {
   if (padre_id === null) return;
-  const padre = await buscarPorId(CatCategoria, padre_id, "La categoría de arriba no existe.", { transaction, lock: transaction.LOCK.UPDATE });
+  const padre = await obtenerOFallar(CatCategoria, padre_id, "La categoría de arriba no existe.", { transaction, bloquear: true });
   if (padre.padre_id !== null || padre.id === propia?.id) throw new ErrorApp("NIVELES", "Las categorías tienen dos niveles: elegí una del primero.", 409);
   if (propia && await CatCategoria.count({ where: { padre_id: propia.id }, transaction })) {
     throw new ErrorApp("NIVELES", "Esta categoría tiene subcategorías: no puede estar dentro de otra.", 409);
@@ -47,7 +47,7 @@ export async function crearCategoria(datos) {
 
 export async function actualizarCategoria(id, datos) {
   const categoria = await sinRepetir(() => sequelize.transaction(async (transaction) => {
-    const propia = await buscarPorId(CatCategoria, id, NO_EXISTE, { transaction, lock: transaction.LOCK.UPDATE });
+    const propia = await obtenerOFallar(CatCategoria, id, NO_EXISTE, { transaction, bloquear: true });
     await controlarPadre(datos.padre_id, propia, transaction);
     // La dirección (slug) no cambia: los links compartidos siguen andando.
     return propia.update({ ...datos, actualizado_en: new Date() }, { transaction });
@@ -58,7 +58,7 @@ export async function actualizarCategoria(id, datos) {
 
 export async function eliminarCategoria(id) {
   await sequelize.transaction(async (transaction) => {
-    const categoria = await buscarPorId(CatCategoria, id, NO_EXISTE, { transaction, lock: transaction.LOCK.UPDATE });
+    const categoria = await obtenerOFallar(CatCategoria, id, NO_EXISTE, { transaction, bloquear: true });
     if (await CatCategoria.count({ where: { padre_id: id }, transaction })) throw new ErrorApp("EN_USO", "No se puede borrar: tiene subcategorías.", 409);
     if (await CatProducto.count({ where: { categoria_id: id }, transaction })) {
       throw new ErrorApp("EN_USO", "No se puede borrar: tiene productos (también cuentan los dados de baja). Podés ocultarla.", 409);

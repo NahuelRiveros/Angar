@@ -11,7 +11,7 @@ process.env.JWT_SECRET = "clave-solo-para-tests";
 const { MAX_FOTOS, esquemaCategoria, esquemaEditarProducto, esquemaFiltrosPanel, esquemaFiltrosWeb, esquemaProducto, resumenVariantes, slug, slugLibre } = await import("../src/core/opcionales/catalogo/reglas.js");
 const { catalogoRouter } = await import("../src/core/opcionales/catalogo/catalogo_router.js");
 const { crearCache } = await import("../src/core/services/common/cache_memoria.js");
-const { patronBusqueda } = await import("../src/core/services/common/listados.js");
+const { patronBusqueda } = await import("../src/core/services/common/consultas.js");
 const { permisosOpcionales } = await import("../../core/modulos_opcionales.js");
 
 const producto = (extra) => ({ nombre: "Casco", categoria_id: 1, variantes: [{ precio: 100 }], ...extra });

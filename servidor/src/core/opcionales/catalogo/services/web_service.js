@@ -1,6 +1,6 @@
 import { Op, literal } from "sequelize";
 import { noExiste } from "../../../services/common/errores.js";
-import { contiene, paginar } from "../../../services/common/listados.js";
+import { contiene, paginar } from "../../../services/common/consultas.js";
 import { CatFoto, CatProducto, CatVariante } from "../modelos.js";
 import { resumenVariantes } from "../reglas.js";
 import { cacheCatalogo } from "./cache.js";

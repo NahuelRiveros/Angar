@@ -1,7 +1,7 @@
 import { Op, UniqueConstraintError, literal } from "sequelize";
 import { sequelize } from "../../../database/sequelize.js";
 import { ErrorApp, noExiste } from "../../../services/common/errores.js";
-import { buscarPorId, contiene, paginar, patronBusqueda } from "../../../services/common/listados.js";
+import { contiene, exigirVersion, obtenerOFallar, paginar, patronBusqueda } from "../../../services/common/consultas.js";
 import { disponibilidad } from "../../enganches.js";
 import { CatCategoria, CatFoto, CatProducto, CatVariante } from "../modelos.js";
 import { resumenVariantes, slug, slugLibre } from "../reglas.js";
@@ -44,15 +44,14 @@ export async function listarProductos({ categoria_id, estado, q, page }) {
 }
 
 export async function obtenerProducto(id) {
-  const producto = await CatProducto.findOne({ where: { id, eliminado_en: null }, include: [VARIANTES, FOTOS] });
-  if (!producto) throw noExiste(NO_EXISTE);
+  const producto = await obtenerOFallar(CatProducto, { id, eliminado_en: null }, NO_EXISTE, { include: [VARIANTES, FOTOS] });
   const { fotos, variantes, ...datos } = producto.get({ plain: true });
   // MOD-17: si otro módulo maneja el "hay stock" de una opción, el formulario lo muestra sin casilla.
   const manejadas = await disponibilidad(variantes.map((v) => v.id));
   return { ...datos, fotos: fotos.map((f) => f.url), variantes: variantes.map((v) => ({ ...v, disponible_por: manejadas.get(v.id)?.por ?? null })) };
 }
 
-const verificarCategoria = (id, transaction) => buscarPorId(CatCategoria, id, "La categoría elegida no existe.", { transaction }).catch((error) => {
+const verificarCategoria = (id, transaction) => obtenerOFallar(CatCategoria, id, "La categoría elegida no existe.", { transaction }).catch((error) => {
   throw error instanceof ErrorApp ? new ErrorApp("DATOS_INVALIDOS", error.message, 400) : error;
 });
 
@@ -89,9 +88,8 @@ export async function crearProducto({ variantes, fotos, ...datos }) {
 
 export async function actualizarProducto(id, { variantes, fotos, version, ...datos }) {
   await sequelize.transaction(async (transaction) => {
-    const producto = await CatProducto.findOne({ where: { id, eliminado_en: null }, transaction, lock: transaction.LOCK.UPDATE });
-    if (!producto) throw noExiste(NO_EXISTE);
-    if (producto.version !== version) throw new ErrorApp("CAMBIO_SIMULTANEO", "Otra persona cambió este producto recién. Recargalo para ver cómo quedó.", 409);
+    const producto = await obtenerOFallar(CatProducto, { id, eliminado_en: null }, NO_EXISTE, { transaction, bloquear: true });
+    exigirVersion(producto, version, "Otra persona cambió este producto recién. Recargalo para ver cómo quedó.");
     await verificarCategoria(datos.categoria_id, transaction);
     // MCA-07: la dirección (slug) no cambia al renombrar.
     await producto.update({ ...datos, version: version + 1, actualizado_en: new Date() }, { transaction });

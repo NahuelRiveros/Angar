@@ -1,12 +1,7 @@
+import { datos, hecho } from "../../controllers/common/responder.js";
 import * as web from "./services/web_service.js";
 import * as productos from "./services/productos_service.js";
 import * as categorias from "./services/categorias_service.js";
-
-const datos = (obtener) => async (req, res) => res.json({ ok: true, data: await obtener(req.datos ?? {}) });
-const hecho = (codigo, mensaje, hacer, estado = 200) => async (req, res) => {
-  const data = await hacer(req.datos);
-  return res.status(estado).json({ ok: true, codigo, mensaje, ...(data !== undefined && { data }) });
-};
 
 // ── Web ─────────────────────────────────────────────────────────────────────
 export const categoriasWeb = datos(() => categorias.categoriasVisibles());
