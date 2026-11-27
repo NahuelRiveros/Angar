@@ -1,22 +1,20 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { ArrowLeft, Phone, RotateCw } from "lucide-react";
 import { useAuth } from "../../../auth/auth_context.jsx";
+import ConfirmarConMotivo from "../../../controls/ui/confirmar_con_motivo.jsx";
 import { cumpleAcceso } from "../../../controls/acceso/acceso.js";
-import FormError from "../../../controls/ui/form_error.jsx";
-import Modal from "../../../controls/ui/modal.jsx";
-import TextareaField from "../../../controls/ui/textarea_field.jsx";
 import { useToast } from "../../../controls/toast/use_toast.js";
 import { formatearPrecio } from "../../../utils/dinero.js";
 import { mensajeError } from "../../../utils/errores.js";
-import { BOTON_PELIGRO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "../../../controls/ui/estilos.js";
+import ActionButton from "../../../controls/ui/action_button.jsx";
 import { Encabezado, Pantalla, SegunConsulta, Tarjeta } from "../../../controls/ui/pantalla_panel.jsx";
 import Etiqueta from "../../../controls/ui/etiqueta.jsx";
-import { NOMBRE_ENTREGA, NOMBRE_ESTADO, TONO_ESTADO, fechaHora, textoPaso } from "../estados.js";
+import { NOMBRE_ENTREGA, NOMBRE_ESTADO, TONO_ESTADO, textoPaso } from "../estados.js";
 import { useCambiarEstado, usePedidoPanel } from "../hooks.js";
+import { formatearFechaHora } from "../../../utils/formatear_fecha.js";
 
-const VOLVER = <Link to="/admin/pedidos" className={BOTON_SECUNDARIO}><ArrowLeft size={16} aria-hidden="true" /> Pedidos</Link>;
+const VOLVER = <ActionButton variante="secundario" to="/admin/pedidos"><ArrowLeft size={16} aria-hidden="true" /> Pedidos</ActionButton>;
 
 export default function PedidoPage() {
   const { id } = useParams();
@@ -60,19 +58,19 @@ function Detalle({ pedido, onActualizar }) {
   const otros = pedido.siguientes.filter((s) => s.tipo !== "avanzar");
   return (
     <>
-      <Encabezado titulo={`Pedido #${pedido.numero}`} descripcion={`${fechaHora(pedido.creado_en)} · ${NOMBRE_ENTREGA[pedido.entrega]}`}>{VOLVER}</Encabezado>
+      <Encabezado titulo={`Pedido #${pedido.numero}`} descripcion={`${formatearFechaHora(pedido.creado_en)} · ${NOMBRE_ENTREGA[pedido.entrega]}`}>{VOLVER}</Encabezado>
       <p><Etiqueta tono={TONO_ESTADO[pedido.estado]} grande>{NOMBRE_ESTADO[pedido.estado]}</Etiqueta></p>
       {desactualizado && (
         <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-semibold">{desactualizado}</p>
-          <button type="button" onClick={() => { setDesactualizado(null); onActualizar(); }} className={BOTON_SECUNDARIO}><RotateCw size={16} aria-hidden="true" /> Actualizar</button>
+          <ActionButton variante="secundario" onClick={() => { setDesactualizado(null); onActualizar(); }}><RotateCw size={16} aria-hidden="true" /> Actualizar</ActionButton>
         </div>
       )}
       {puedeGestionar && pedido.siguientes.length > 0 && !desactualizado && (
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          {avanzar && <button type="button" disabled={cambiar.isPending} onClick={() => aplicar(avanzar)} className={BOTON_PRIMARIO}>{textoPaso(avanzar)}</button>}
+          {avanzar && <ActionButton cargando={cambiar.isPending && !conMotivo} disabled={cambiar.isPending} onClick={() => aplicar(avanzar)}>{textoPaso(avanzar)}</ActionButton>}
           {otros.map((paso) => (
-            <button key={paso.estado} type="button" disabled={cambiar.isPending} onClick={() => setConMotivo(paso)} className={paso.tipo === "cancelar" ? BOTON_PELIGRO : BOTON_SECUNDARIO}>{textoPaso(paso)}</button>
+            <ActionButton key={paso.estado} variante={paso.tipo === "cancelar" ? "peligro" : "secundario"} disabled={cambiar.isPending} onClick={() => setConMotivo(paso)}>{textoPaso(paso)}</ActionButton>
           ))}
         </div>
       )}
@@ -108,39 +106,18 @@ function Detalle({ pedido, onActualizar }) {
           {pedido.historial.map((h, i) => (
             <li key={i} className="text-sm">
               <span className="font-semibold">{h.de ? `${NOMBRE_ESTADO[h.de]} → ${NOMBRE_ESTADO[h.a]}` : "Pedido recibido"}</span>
-              <span className="text-slate-600"> · {fechaHora(h.creado_en)} · {h.persona ?? (h.de ? "Sistema" : "Desde la web")}</span>
+              <span className="text-slate-600"> · {formatearFechaHora(h.creado_en)} · {h.persona ?? (h.de ? "Sistema" : "Desde la web")}</span>
               {h.motivo && <span className="block text-slate-700">Motivo: {h.motivo}</span>}
             </li>
           ))}
         </ol>
       </Tarjeta>
-      {conMotivo && <MotivoModal paso={conMotivo} numero={pedido.numero} enviando={cambiar.isPending} onConfirmar={(motivo) => aplicar(conMotivo, motivo)} onClose={() => setConMotivo(null)} />}
+      {conMotivo && <ConfirmarConMotivo titulo={`${textoPaso(conMotivo)} · pedido #${pedido.numero}`} textoConfirmar={textoPaso(conMotivo)} peligro={conMotivo.tipo === "cancelar"}
+        ayuda="Queda en el historial del pedido." onConfirmar={(motivo) => aplicar(conMotivo, motivo)} onClose={() => setConMotivo(null)} />}
     </>
   );
 }
 
 function Dato({ nombre, children }) {
   return <div><dt className="text-slate-500">{nombre}</dt><dd className="font-medium text-slate-900">{children}</dd></div>;
-}
-
-/** MPE-07: volver, cancelar y reabrir piden motivo; queda en el historial. */
-function MotivoModal({ paso, numero, enviando, onConfirmar, onClose }) {
-  const { register, handleSubmit, setError, formState: { errors } } = useForm({ defaultValues: { motivo: "" } });
-  async function enviar({ motivo }) {
-    if (!motivo.trim()) return setError("motivo", { message: "Escribí el motivo." });
-    try { await onConfirmar(motivo.trim()); }
-    catch (error) { setError("root", { message: mensajeError(error, "No se pudo cambiar el estado.") }); }
-  }
-  return (
-    <Modal open onClose={onClose} busy={enviando} title={`${textoPaso(paso)} · pedido #${numero}`}>
-      <form onSubmit={handleSubmit(enviar)} noValidate className="space-y-4">
-        <TextareaField label="Motivo" name="motivo" register={register} error={errors.motivo?.message} rows={3} helperText="Queda en el historial del pedido." />
-        <FormError message={errors.root?.message} />
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onClose} className={BOTON_SECUNDARIO}>Volver</button>
-          <button type="submit" disabled={enviando} className={paso.tipo === "cancelar" ? BOTON_PELIGRO : BOTON_PRIMARIO}>{enviando ? "Guardando…" : textoPaso(paso)}</button>
-        </div>
-      </form>
-    </Modal>
-  );
 }

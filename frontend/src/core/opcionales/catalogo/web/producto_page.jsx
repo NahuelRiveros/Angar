@@ -4,6 +4,7 @@ import { ArrowLeft, MessageCircle } from "lucide-react";
 import { brandConfig } from "../../../../proyecto/config/brand_config.js";
 import { clientConfig } from "../../../../../../proyecto/client_config.js";
 import Precio from "../../../controls/ui/precio.jsx";
+import SelectorOpciones from "../../../controls/ui/selector_opciones.jsx";
 import { BOTON_SECUNDARIO, BOTON_WHATSAPP } from "../../../controls/ui/estilos.js";
 import { Cargando, ErrorReintentar } from "../../../controls/ui/estados_web.jsx";
 import { linkWhatsapp } from "../../../utils/whatsapp.js";
@@ -51,14 +52,8 @@ function Ficha({ producto }) {
           <h1 className="kt-display mt-1 text-3xl font-bold sm:text-4xl">{producto.nombre}</h1>
         </div>
         {con_opciones && (
-          <div role="group" aria-label="Opciones" className="flex flex-wrap gap-2">
-            {variantes.map((v) => (
-              <button key={v.id} type="button" aria-pressed={v.id === variante.id} onClick={() => setElegidaId(v.id)}
-                className={`min-h-11 rounded-xl border px-4 font-semibold focus-visible:ring-4 focus-visible:ring-black/15 focus-visible:outline-none ${v.id === variante.id ? "border-(--kt-teal-700) bg-(--kt-teal-700) text-white" : "border-(--kt-border) bg-white hover:border-(--kt-teal-700)"} ${v.disponible ? "" : "line-through opacity-70"}`}>
-                {v.nombre}{!v.disponible && <span className="sr-only"> (sin stock)</span>}
-              </button>
-            ))}
-          </div>
+          <SelectorOpciones etiqueta="Opciones" valor={variante.id} onCambiar={setElegidaId}
+            opciones={variantes.map((v) => ({ valor: v.id, texto: v.nombre, tachada: !v.disponible }))} />
         )}
         <Precio monto={variante.precio} anterior={variante.precio_anterior} tamano="grande" />
         <p className={`font-semibold ${variante.disponible ? "text-emerald-700" : "text-(--kt-ink-soft)"}`}>{variante.disponible ? "Disponible" : "Sin stock por ahora"}</p>

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { Package, Pencil, Plus, Trash2 } from "lucide-react";
+import ActionButton from "../../../controls/ui/action_button.jsx";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
+import FilaLista, { Lista } from "../../../controls/ui/fila_lista.jsx";
 import Etiqueta from "../../../controls/ui/etiqueta.jsx";
 import Pagination from "../../../controls/ui/pagination.jsx";
 import { useToast } from "../../../controls/toast/use_toast.js";
@@ -9,13 +10,13 @@ import { imagenCloudinary } from "../../../utils/imagen_cloudinary.js";
 import SearchField from "../../../controls/ui/search_field.jsx";
 import { formatearPrecio, tienePrecio } from "../../../utils/dinero.js";
 import { mensajeError } from "../../../utils/errores.js";
-import { BOTON_PELIGRO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO } from "../../../controls/ui/estilos.js";
+import { CAMPO } from "../../../controls/ui/estilos.js";
 import { Encabezado, Pantalla, SegunConsulta } from "../../../controls/ui/pantalla_panel.jsx";
 import { useFiltrosUrl } from "../../../hooks/use_filtros_url.js";
 import { opcionesCategorias } from "../arbol.js";
 import { useCategoriasPanel, useEliminarProducto, useProductosPanel } from "../hooks.js";
 
-const NUEVO = <Link to="/admin/catalogo/productos/nuevo" className={BOTON_PRIMARIO}><Plus size={16} aria-hidden="true" /> Nuevo producto</Link>;
+const NUEVO = <ActionButton to="/admin/catalogo/productos/nuevo"><Plus size={16} aria-hidden="true" /> Nuevo producto</ActionButton>;
 
 export default function ProductosPage() {
   const toast = useToast();
@@ -49,9 +50,7 @@ export default function ProductosPage() {
         descripcionVacio={hayFiltros ? "Probá con otra búsqueda." : "Cargá el primero con su foto y precio."} accionVacio={hayFiltros ? null : NUEVO}>
         {() => (
           <>
-            <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-              {consulta.data.items.map((p) => <Fila key={p.id} producto={p} onBorrar={() => setABorrar(p)} />)}
-            </ul>
+            <Lista>{consulta.data.items.map((p) => <Fila key={p.id} producto={p} onBorrar={() => setABorrar(p)} />)}</Lista>
             {consulta.data.paginacion.totalPages > 1 && <Pagination page={consulta.data.paginacion.page} pages={consulta.data.paginacion.totalPages} total={consulta.data.paginacion.total} onChange={(page) => cambiar({ page: String(page) })} />}
           </>
         )}
@@ -65,19 +64,12 @@ function Fila({ producto: p, onBorrar }) {
   const precio = tienePrecio(p.precio) ? `${p.desde ? "Desde " : ""}${formatearPrecio(p.precio)}` : "Consultar precio";
   const marcas = [!p.activo && "Oculto", p.categoria_oculta && "Categoría oculta", !p.disponible && "Sin stock", p.destacado && "Destacado"].filter(Boolean);
   return (
-    <li className="flex items-center gap-3 px-3 py-3 sm:px-4">
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-        {p.foto ? <img src={imagenCloudinary(p.foto, 120)} alt="" loading="lazy" className="h-full w-full object-contain" /> : <Package size={24} aria-hidden="true" className="text-slate-400" />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block font-semibold text-slate-900">{p.nombre}</span>
-        <span className="block text-sm text-slate-600">{[p.categoria, precio, p.opciones > 1 && `${p.opciones} opciones`].filter(Boolean).join(" · ")}</span>
-        {marcas.length > 0 && <span className="mt-1 flex flex-wrap gap-1">{marcas.map((m) => <Etiqueta key={m}>{m}</Etiqueta>)}</span>}
-      </span>
-      <span className="flex shrink-0 flex-col gap-2 sm:flex-row">
-        <Link to={`/admin/catalogo/productos/${p.id}`} aria-label={`Editar ${p.nombre}`} className={BOTON_SECUNDARIO}><Pencil size={16} aria-hidden="true" /></Link>
-        <button type="button" onClick={onBorrar} aria-label={`Dar de baja ${p.nombre}`} className={BOTON_PELIGRO}><Trash2 size={16} aria-hidden="true" /></button>
-      </span>
-    </li>
+    <FilaLista imagen={p.foto ? imagenCloudinary(p.foto, 120) : null} icono={Package} titulo={p.nombre}
+      subtitulo={[p.categoria, precio, p.opciones > 1 && `${p.opciones} opciones`].filter(Boolean).join(" · ")}
+      etiquetas={marcas.length > 0 && marcas.map((m) => <Etiqueta key={m}>{m}</Etiqueta>)}
+      acciones={<>
+        <ActionButton variante="secundario" to={`/admin/catalogo/productos/${p.id}`} aria-label={`Editar ${p.nombre}`}><Pencil size={16} aria-hidden="true" /></ActionButton>
+        <ActionButton variante="peligro" onClick={onBorrar} aria-label={`Dar de baja ${p.nombre}`}><Trash2 size={16} aria-hidden="true" /></ActionButton>
+      </>} />
   );
 }

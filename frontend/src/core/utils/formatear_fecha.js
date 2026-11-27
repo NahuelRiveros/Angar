@@ -8,3 +8,6 @@ export function formatearFechaAR(fecha) {
 
   return `${dia}/${mes}/${anio}`;
 }
+
+/** "25/11, 10:30 p. m.": fecha corta con hora, en la zona del navegador. */
+export const formatearFechaHora = (fecha) => new Date(fecha).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });

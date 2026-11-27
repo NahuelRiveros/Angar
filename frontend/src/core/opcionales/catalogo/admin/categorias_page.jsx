@@ -2,12 +2,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { CornerDownRight, FolderTree, Pencil, Plus, Trash2 } from "lucide-react";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
-import FormError from "../../../controls/ui/form_error.jsx";
+import Formulario from "../../../controls/ui/formulario.jsx";
 import InputField from "../../../controls/ui/input_field.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import { useToast } from "../../../controls/toast/use_toast.js";
-import { mensajeError, mostrarErrores } from "../../../utils/errores.js";
+import { mensajeError } from "../../../utils/errores.js";
 import { BOTON_PELIGRO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "../../../controls/ui/estilos.js";
 import { Casilla, Encabezado, Pantalla, SegunConsulta } from "../../../controls/ui/pantalla_panel.jsx";
 import { arbolCategorias } from "../arbol.js";
@@ -52,29 +52,25 @@ export default function CategoriasPage() {
 function CategoriaModal({ categoria, arbol, onClose }) {
   const toast = useToast();
   const guardar = useGuardarCategoria();
-  const { register, handleSubmit, setError, formState: { errors } } = useForm({
+  const form = useForm({
     defaultValues: { nombre: categoria.nombre ?? "", padre_id: categoria.padre_id ? String(categoria.padre_id) : "", orden: categoria.orden ?? 0, activo: categoria.activo ?? true },
   });
+  const { register, formState: { errors } } = form;
   const tieneHijas = arbol.some((c) => c.id === categoria.id && c.hijas.length > 0);
   const padres = arbol.filter((c) => c.id !== categoria.id).map((c) => ({ value: c.id, label: c.nombre }));
 
   async function enviar(valores) {
-    try { toast.success((await guardar.mutateAsync({ ...valores, id: categoria.id })).mensaje); onClose(); }
-    catch (error) { mostrarErrores(error, setError, "No se pudo guardar."); }
+    toast.success((await guardar.mutateAsync({ ...valores, id: categoria.id })).mensaje);
+    onClose();
   }
   return (
     <Modal open onClose={onClose} busy={guardar.isPending} title={categoria.id ? "Editar categoría" : "Nueva categoría"}>
-      <form onSubmit={handleSubmit(enviar)} noValidate className="space-y-4">
+      <Formulario form={form} onEnviar={enviar} cancelar={onClose}>
         <InputField label="Nombre" name="nombre" register={register} error={errors.nombre?.message} autoComplete="off" />
         {!tieneHijas && padres.length > 0 && <SelectField label="Dentro de (opcional)" name="padre_id" register={register} error={errors.padre_id?.message} placeholder="Ninguna: es del primer nivel" options={padres} />}
         <InputField label="Orden" name="orden" type="number" min={0} register={register} error={errors.orden?.message} helperText="Los números más chicos van primero." />
         <Casilla name="activo" register={register} label="Se ve en la web" ayuda="Si la ocultás, sus productos tampoco se ven." />
-        <FormError message={errors.root?.message} />
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onClose} className={BOTON_SECUNDARIO}>Cancelar</button>
-          <button type="submit" disabled={guardar.isPending} className={BOTON_PRIMARIO}>{guardar.isPending ? "Guardando…" : "Guardar"}</button>
-        </div>
-      </form>
+      </Formulario>
     </Modal>
   );
 }

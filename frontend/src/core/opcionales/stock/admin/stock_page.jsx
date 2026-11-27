@@ -2,14 +2,16 @@ import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { ArrowDownUp, Boxes, History, PowerOff, SlidersHorizontal } from "lucide-react";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
-import FormError from "../../../controls/ui/form_error.jsx";
+import Formulario from "../../../controls/ui/formulario.jsx";
 import InputField from "../../../controls/ui/input_field.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
 import Etiqueta from "../../../controls/ui/etiqueta.jsx";
 import Pagination from "../../../controls/ui/pagination.jsx";
+import Pestanas from "../../../controls/ui/pestanas.jsx";
+import { formatearFechaHora } from "../../../utils/formatear_fecha.js";
 import { useToast } from "../../../controls/toast/use_toast.js";
 import SearchField from "../../../controls/ui/search_field.jsx";
-import { mensajeError, mostrarErrores } from "../../../utils/errores.js";
+import { mensajeError } from "../../../utils/errores.js";
 import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from "../../../controls/ui/estilos.js";
 import { Encabezado, Pantalla, SegunConsulta } from "../../../controls/ui/pantalla_panel.jsx";
 import { useFiltrosUrl } from "../../../hooks/use_filtros_url.js";
@@ -40,14 +42,7 @@ export default function StockPage() {
     <Pantalla>
       <Encabezado titulo="Stock" descripcion="Lo agotado y lo que está en el mínimo aparece primero." />
       <SearchField value={filtros.q ?? ""} onSearch={(q) => cambiar({ q })} label="Buscar en el stock" placeholder="Producto o código" />
-      <nav aria-label="Filtros" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <div className="flex w-max gap-2">
-          {FILTROS.map(([valor, texto]) => (
-            <button key={valor} type="button" aria-pressed={(filtros.estado ?? "") === valor} onClick={() => cambiar({ estado: valor })}
-              className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${(filtros.estado ?? "") === valor ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}>{texto}</button>
-          ))}
-        </div>
-      </nav>
+      <Pestanas etiqueta="Filtros" opciones={FILTROS.map(([valor, texto]) => ({ valor, texto }))} valor={filtros.estado ?? ""} onCambiar={(estado) => cambiar({ estado })} />
       <SegunConsulta consulta={consulta} vacia={consulta.data?.items.length === 0} icono={Boxes}
         tituloVacio={hayFiltros ? "Nada coincide" : "Todavía no hay productos"} descripcionVacio={hayFiltros ? "Probá con otra búsqueda o filtro." : "Cargá productos en el catálogo y después elegí cuáles controlan stock."}>
         {() => (
@@ -105,24 +100,12 @@ function Fila({ fila, onAbrir }) {
   );
 }
 
-/** Un formulario chico en un modal: guarda, avisa y cierra; los errores quedan en su campo. */
+/** Un formulario chico en un modal: guarda, avisa y cierra (los errores los muestra <Formulario>). */
 function useFormModal(accion, valores, onClose) {
   const toast = useToast();
   const form = useForm({ defaultValues: valores });
-  const enviar = form.handleSubmit(async (datos) => {
-    try { toast.success((await accion.mutateAsync(datos)).mensaje); onClose(); }
-    catch (error) { mostrarErrores(error, form.setError, "No se pudo guardar."); }
-  });
-  return { ...form, enviar };
-}
-
-function Botones({ onClose, enviando, texto }) {
-  return (
-    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <button type="button" onClick={onClose} className={BOTON_SECUNDARIO}>Cancelar</button>
-      <button type="submit" disabled={enviando} className={BOTON_PRIMARIO}>{enviando ? "Guardando…" : texto}</button>
-    </div>
-  );
+  const guardar = async (datos) => { toast.success((await accion.mutateAsync(datos)).mensaje); onClose(); };
+  return { form, guardar };
 }
 
 const AYUDA_TIPO = { entrada: "Llegó mercadería: se suma.", salida: "Rotura, pérdida o venta en el local: se resta.", ajuste: "Contaste: queda exactamente este número." };
@@ -130,11 +113,12 @@ const AYUDA_TIPO = { entrada: "Llegó mercadería: se suma.", salida: "Rotura, p
 /** MST-02 y MST-03. */
 function MoverModal({ fila, onClose }) {
   const mover = useMover();
-  const { register, control, enviar, formState: { errors } } = useFormModal(mover, { variante_id: fila.variante_id, tipo: "entrada", cantidad: "", motivo: "" }, onClose);
+  const { form, guardar } = useFormModal(mover, { variante_id: fila.variante_id, tipo: "entrada", cantidad: "", motivo: "" }, onClose);
+  const { register, control, formState: { errors } } = form;
   const tipo = useWatch({ control, name: "tipo" });
   return (
     <Modal open onClose={onClose} busy={mover.isPending} title={`Mover stock · ${nombreDe(fila)}`}>
-      <form onSubmit={enviar} noValidate className="space-y-4">
+      <Formulario form={form} onEnviar={guardar} textoGuardar="Guardar movimiento" cancelar={onClose}>
         <p className="text-sm text-slate-600">Hoy hay <strong className="text-slate-900">{fila.cantidad}</strong>.</p>
         <fieldset>
           <legend className="mb-2 font-semibold text-slate-800">Movimiento</legend>
@@ -149,9 +133,7 @@ function MoverModal({ fila, onClose }) {
         </fieldset>
         <InputField label={tipo === "ajuste" ? "Cantidad contada" : "Cantidad"} name="cantidad" type="number" min={0} step="1" inputMode="numeric" register={register} error={errors.cantidad?.message} />
         <InputField label={tipo === "entrada" ? "Motivo (opcional)" : "Motivo"} name="motivo" register={register} error={errors.motivo?.message} autoComplete="off" />
-        <FormError message={errors.root?.message} />
-        <Botones onClose={onClose} enviando={mover.isPending} texto="Guardar movimiento" />
-      </form>
+      </Formulario>
     </Modal>
   );
 }
@@ -159,30 +141,27 @@ function MoverModal({ fila, onClose }) {
 /** MST-01. */
 function ControlarModal({ fila, onClose }) {
   const controlar = useControlar();
-  const { register, enviar, formState: { errors } } = useFormModal(controlar, { variante_id: fila.variante_id, cantidad: "", minimo: 0 }, onClose);
+  const { form, guardar } = useFormModal(controlar, { variante_id: fila.variante_id, cantidad: "", minimo: 0 }, onClose);
+  const { register, formState: { errors } } = form;
   return (
     <Modal open onClose={onClose} busy={controlar.isPending} title={`Controlar stock · ${nombreDe(fila)}`}>
-      <form onSubmit={enviar} noValidate className="space-y-4">
+      <Formulario form={form} onEnviar={guardar} textoGuardar="Empezar a controlar" cancelar={onClose}>
         <p className="text-sm text-slate-600">Desde ahora, la web muestra «Sin stock» cuando llegue a 0 y los pedidos confirmados descuentan.</p>
         <InputField label="¿Cuántas hay hoy?" name="cantidad" type="number" min={0} step="1" inputMode="numeric" register={register} error={errors.cantidad?.message} />
         <InputField label="Mínimo" name="minimo" type="number" min={0} step="1" inputMode="numeric" register={register} error={errors.minimo?.message} helperText="Con esa cantidad o menos aparece en «Para reponer». 0: sin mínimo." />
-        <FormError message={errors.root?.message} />
-        <Botones onClose={onClose} enviando={controlar.isPending} texto="Empezar a controlar" />
-      </form>
+      </Formulario>
     </Modal>
   );
 }
 
 function MinimoModal({ fila, onClose }) {
   const minimo = useCambiarMinimo();
-  const { register, enviar, formState: { errors } } = useFormModal(minimo, { variante_id: fila.variante_id, minimo: fila.minimo }, onClose);
+  const { form, guardar } = useFormModal(minimo, { variante_id: fila.variante_id, minimo: fila.minimo }, onClose);
   return (
     <Modal open onClose={onClose} busy={minimo.isPending} title={`Mínimo · ${nombreDe(fila)}`}>
-      <form onSubmit={enviar} noValidate className="space-y-4">
-        <InputField label="Mínimo" name="minimo" type="number" min={0} step="1" inputMode="numeric" register={register} error={errors.minimo?.message} helperText="Con esa cantidad o menos aparece en «Para reponer». 0: sin mínimo." />
-        <FormError message={errors.root?.message} />
-        <Botones onClose={onClose} enviando={minimo.isPending} texto="Guardar" />
-      </form>
+      <Formulario form={form} onEnviar={guardar} cancelar={onClose}>
+        <InputField label="Mínimo" name="minimo" type="number" min={0} step="1" inputMode="numeric" register={form.register} error={form.formState.errors.minimo?.message} helperText="Con esa cantidad o menos aparece en «Para reponer». 0: sin mínimo." />
+      </Formulario>
     </Modal>
   );
 }
@@ -201,7 +180,7 @@ function HistorialModal({ fila, onClose }) {
                 <li key={m.id} className="flex items-start justify-between gap-3 py-2 text-sm">
                   <span className="min-w-0">
                     <span className="font-semibold text-slate-900">{TIPO[m.tipo]}</span>
-                    <span className="text-slate-600"> · {new Date(m.creado_en).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}{m.persona && ` · ${m.persona}`}</span>
+                    <span className="text-slate-600"> · {formatearFechaHora(m.creado_en)}{m.persona && ` · ${m.persona}`}</span>
                     {m.motivo && <span className="block text-slate-700">{m.motivo}</span>}
                   </span>
                   <span className="shrink-0 text-right tabular-nums">

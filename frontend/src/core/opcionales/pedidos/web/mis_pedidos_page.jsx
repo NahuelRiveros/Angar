@@ -6,8 +6,9 @@ import { BOTON_PRIMARIO } from "../../../controls/ui/estilos.js";
 import { Cargando, ErrorReintentar } from "../../../controls/ui/estados_web.jsx";
 import { useFiltrosUrl } from "../../../hooks/use_filtros_url.js";
 import Etiqueta from "../../../controls/ui/etiqueta.jsx";
-import { NOMBRE_ESTADO, TONO_ESTADO, fechaHora } from "../estados.js";
+import { NOMBRE_ESTADO, TONO_ESTADO } from "../estados.js";
 import { useMisPedidos } from "../hooks.js";
+import { formatearFechaHora } from "../../../utils/formatear_fecha.js";
 
 /** MPE-06: los pedidos que hizo quien ingresó. */
 export default function MisPedidosPage() {
@@ -36,7 +37,7 @@ export default function MisPedidosPage() {
                             <span className="font-bold">Pedido #{p.numero}</span>
                             <Etiqueta tono={TONO_ESTADO[p.estado]}>{NOMBRE_ESTADO[p.estado]}</Etiqueta>
                           </span>
-                          <span className="block truncate text-sm text-(--kt-ink-soft)">{fechaHora(p.creado_en)} · {p.unidades} {p.unidades === 1 ? "unidad" : "unidades"}: {p.resumen.join(", ")}</span>
+                          <span className="block truncate text-sm text-(--kt-ink-soft)">{formatearFechaHora(p.creado_en)} · {p.unidades} {p.unidades === 1 ? "unidad" : "unidades"}: {p.resumen.join(", ")}</span>
                         </span>
                         <span className="font-bold tabular-nums">{formatearPrecio(p.total)}</span>
                         <ChevronRight size={18} aria-hidden="true" className="text-slate-400" />

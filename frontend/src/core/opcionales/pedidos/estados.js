@@ -16,4 +16,3 @@ export function textoPaso({ estado, tipo }) {
   return `Volver a ${NOMBRE_ESTADO[estado]}`;
 }
 
-export const fechaHora = (fecha) => new Date(fecha).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });

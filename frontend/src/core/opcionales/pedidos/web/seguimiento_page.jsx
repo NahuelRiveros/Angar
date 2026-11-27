@@ -6,9 +6,11 @@ import { clientConfig } from "../../../../../../proyecto/client_config.js";
 import { formatearPrecio } from "../../../utils/dinero.js";
 import { BOTON_SECUNDARIO, BOTON_WHATSAPP } from "../../../controls/ui/estilos.js";
 import { Cargando, ErrorReintentar } from "../../../controls/ui/estados_web.jsx";
+import Pasos from "../../../controls/ui/pasos.jsx";
 import { linkWhatsapp } from "../../../utils/whatsapp.js";
-import { NOMBRE_ENTREGA, NOMBRE_ESTADO, PASOS, fechaHora } from "../estados.js";
+import { NOMBRE_ENTREGA, NOMBRE_ESTADO, PASOS } from "../estados.js";
 import { useSeguimiento } from "../hooks.js";
+import { formatearFechaHora } from "../../../utils/formatear_fecha.js";
 
 /** MPE-09: lo ve quien tiene el link. */
 export default function SeguimientoPage() {
@@ -45,12 +47,13 @@ function Pedido({ pedido, nuevo }) {
         </div>
       )}
       <header>
-        <p className="text-(--kt-ink-soft)">{fechaHora(pedido.creado_en)} · {NOMBRE_ENTREGA[pedido.entrega]}</p>
+        <p className="text-(--kt-ink-soft)">{formatearFechaHora(pedido.creado_en)} · {NOMBRE_ENTREGA[pedido.entrega]}</p>
         <h1 className="kt-display text-3xl font-bold sm:text-4xl">Pedido #{pedido.numero}</h1>
       </header>
       {pedido.estado === "cancelado"
         ? <p className="flex items-center gap-2 rounded-2xl bg-slate-100 p-4 font-semibold"><CircleX size={20} aria-hidden="true" /> Este pedido fue cancelado. Si tenés dudas, escribinos.</p>
-        : <Pasos pedido={pedido} />}
+        : <Pasos pasos={PASOS.map((clave) => ({ clave, texto: NOMBRE_ESTADO[clave] }))} actual={pedido.estado}
+          fechas={Object.fromEntries(pedido.historial.map((h) => [h.estado, h.creado_en]))} />}
       <section aria-label="Lo que pediste">
         <ul className="divide-y divide-(--kt-border) border-y border-(--kt-border)">
           {pedido.items.map((item, i) => (
@@ -71,28 +74,6 @@ function Pedido({ pedido, nuevo }) {
         <CopiarLink link={link} />
       </div>
     </div>
-  );
-}
-
-/** Recibido → Confirmado → Listo → Entregado, con la fecha de cada paso al que llegó. */
-function Pasos({ pedido }) {
-  const actual = PASOS.indexOf(pedido.estado);
-  const fechas = Object.fromEntries(pedido.historial.map((h) => [h.estado, h.creado_en]));
-  return (
-    <ol className="grid grid-cols-4 gap-1" aria-label={`Estado: ${NOMBRE_ESTADO[pedido.estado]}`}>
-      {PASOS.map((paso, i) => {
-        const hecho = i <= actual;
-        return (
-          <li key={paso} aria-current={i === actual ? "step" : undefined} className="text-center">
-            <span className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border-2 ${hecho ? "border-(--kt-teal-700) bg-(--kt-teal-700) text-white" : "border-slate-300 bg-white text-slate-400"}`}>
-              {hecho ? <Check size={20} aria-hidden="true" /> : i + 1}
-            </span>
-            <span className={`mt-1 block text-sm ${i === actual ? "font-bold" : hecho ? "" : "text-(--kt-ink-soft)"}`}>{NOMBRE_ESTADO[paso]}</span>
-            {hecho && fechas[paso] && <span className="block text-xs text-(--kt-ink-soft)">{fechaHora(fechas[paso])}</span>}
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 
