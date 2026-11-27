@@ -1,8 +1,8 @@
 import { RotateCw } from "lucide-react";
-import AdminSpinner from "../../controls/ui/admin_spinner.jsx";
-import AdminEmptyState from "../../controls/ui/admin_empty_state.jsx";
-import ErrorBanner from "../../controls/ui/error_banner.jsx";
-import { mensajeError } from "./errores.js";
+import AdminSpinner from "./admin_spinner.jsx";
+import AdminEmptyState from "./admin_empty_state.jsx";
+import ErrorBanner from "./error_banner.jsx";
+import { mensajeError } from "../../utils/errores.js";
 import { BOTON_SECUNDARIO } from "./estilos.js";
 
 export function Pantalla({ children }) {

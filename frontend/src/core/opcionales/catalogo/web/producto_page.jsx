@@ -3,10 +3,10 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import { brandConfig } from "../../../../proyecto/config/brand_config.js";
 import { clientConfig } from "../../../../../../proyecto/client_config.js";
-import { formatearPrecio, tienePrecio } from "../../comun/dinero.js";
-import { BOTON_SECUNDARIO, BOTON_WHATSAPP } from "../../comun/estilos.js";
-import { Cargando, ErrorReintentar } from "../../comun/piezas_web.jsx";
-import { linkWhatsapp } from "../../comun/whatsapp.js";
+import Precio from "../../../controls/ui/precio.jsx";
+import { BOTON_SECUNDARIO, BOTON_WHATSAPP } from "../../../controls/ui/estilos.js";
+import { Cargando, ErrorReintentar } from "../../../controls/ui/estados_web.jsx";
+import { linkWhatsapp } from "../../../utils/whatsapp.js";
 import { compra } from "../compra.js";
 import { useProducto } from "../hooks.js";
 import Galeria from "./galeria.jsx";
@@ -60,7 +60,7 @@ function Ficha({ producto }) {
             ))}
           </div>
         )}
-        <Precio variante={variante} />
+        <Precio monto={variante.precio} anterior={variante.precio_anterior} tamano="grande" />
         <p className={`font-semibold ${variante.disponible ? "text-emerald-700" : "text-(--kt-ink-soft)"}`}>{variante.disponible ? "Disponible" : "Sin stock por ahora"}</p>
         {compra && <compra.Ficha producto={producto} variante={variante} />}
         {clientConfig.whatsapp && (
@@ -72,16 +72,6 @@ function Ficha({ producto }) {
         {variante.codigo && <p className="text-sm text-(--kt-ink-soft)">Código: {variante.codigo}</p>}
       </div>
     </div>
-  );
-}
-
-function Precio({ variante }) {
-  if (!tienePrecio(variante.precio)) return <p className="text-xl font-semibold text-(--kt-ink-soft)">Consultar precio</p>;
-  return (
-    <p>
-      {tienePrecio(variante.precio_anterior) && <span className="block text-(--kt-ink-soft) line-through">{formatearPrecio(variante.precio_anterior)}</span>}
-      <span className="text-3xl font-extrabold tabular-nums">{formatearPrecio(variante.precio)}</span>
-    </p>
   );
 }
 

@@ -3,10 +3,10 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Check, CircleX, Copy, MessageCircle, PartyPopper } from "lucide-react";
 import { brandConfig } from "../../../../proyecto/config/brand_config.js";
 import { clientConfig } from "../../../../../../proyecto/client_config.js";
-import { formatearPrecio } from "../../comun/dinero.js";
-import { BOTON_SECUNDARIO, BOTON_WHATSAPP } from "../../comun/estilos.js";
-import { Cargando, ErrorReintentar } from "../../comun/piezas_web.jsx";
-import { linkWhatsapp } from "../../comun/whatsapp.js";
+import { formatearPrecio } from "../../../utils/dinero.js";
+import { BOTON_SECUNDARIO, BOTON_WHATSAPP } from "../../../controls/ui/estilos.js";
+import { Cargando, ErrorReintentar } from "../../../controls/ui/estados_web.jsx";
+import { linkWhatsapp } from "../../../utils/whatsapp.js";
 import { NOMBRE_ENTREGA, NOMBRE_ESTADO, PASOS, fechaHora } from "../estados.js";
 import { useSeguimiento } from "../hooks.js";
 

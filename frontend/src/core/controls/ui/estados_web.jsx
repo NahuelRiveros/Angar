@@ -1,5 +1,5 @@
 import { RotateCw } from "lucide-react";
-import { mensajeError } from "./errores.js";
+import { mensajeError } from "../../utils/errores.js";
 import { BOTON_SECUNDARIO } from "./estilos.js";
 
 export function Cargando({ texto = "Cargando", className = "h-96" }) {

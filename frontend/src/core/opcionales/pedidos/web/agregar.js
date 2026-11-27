@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { tienePrecio } from "../../comun/dinero.js";
+import { tienePrecio } from "../../../utils/dinero.js";
 
 // Lo que comparten la ficha y la tarjeta al agregar al carrito.
 export const lineaDe = (producto, variante) => ({

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, ImagePlus, X } from "lucide-react";
 import { subirImagen } from "../../../api/upload_api.js";
 import { imagenCloudinary } from "../../../utils/imagen_cloudinary.js";
-import { mensajeError } from "../../comun/errores.js";
-import { BOTON_SECUNDARIO, CAMPO } from "../../comun/estilos.js";
+import { mensajeError } from "../../../utils/errores.js";
+import { BOTON_SECUNDARIO, CAMPO } from "../../../controls/ui/estilos.js";
 
 const MAX_FOTOS = 5;
 const MAX_MB = 5;

@@ -7,9 +7,9 @@ import InputField from "../../../controls/ui/input_field.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
 import SelectField from "../../../controls/ui/select_field.jsx";
 import { useToast } from "../../../controls/toast/use_toast.js";
-import { mensajeError, mostrarErrores } from "../../comun/errores.js";
-import { BOTON_PELIGRO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "../../comun/estilos.js";
-import { Casilla, Encabezado, Pantalla, SegunConsulta } from "../../comun/piezas_panel.jsx";
+import { mensajeError, mostrarErrores } from "../../../utils/errores.js";
+import { BOTON_PELIGRO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "../../../controls/ui/estilos.js";
+import { Casilla, Encabezado, Pantalla, SegunConsulta } from "../../../controls/ui/pantalla_panel.jsx";
 import { arbolCategorias } from "../arbol.js";
 import { useCategoriasPanel, useEliminarCategoria, useGuardarCategoria } from "../hooks.js";
 

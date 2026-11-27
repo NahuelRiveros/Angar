@@ -1,8 +1,8 @@
 import { useFieldArray } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
 import InputField from "../../../controls/ui/input_field.jsx";
-import { BOTON_PELIGRO, BOTON_SECUNDARIO } from "../../comun/estilos.js";
-import { Casilla, Tarjeta } from "../../comun/piezas_panel.jsx";
+import { BOTON_PELIGRO, BOTON_SECUNDARIO } from "../../../controls/ui/estilos.js";
+import { Casilla, Tarjeta } from "../../../controls/ui/pantalla_panel.jsx";
 import { VARIANTE_VACIA } from "./variantes_valores.js";
 
 const MAX_VARIANTES = 50;

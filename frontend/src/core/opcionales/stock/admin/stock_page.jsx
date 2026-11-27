@@ -5,17 +5,18 @@ import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
 import FormError from "../../../controls/ui/form_error.jsx";
 import InputField from "../../../controls/ui/input_field.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
+import Etiqueta from "../../../controls/ui/etiqueta.jsx";
 import Pagination from "../../../controls/ui/pagination.jsx";
 import { useToast } from "../../../controls/toast/use_toast.js";
-import Buscador from "../../comun/buscador.jsx";
-import { mensajeError, mostrarErrores } from "../../comun/errores.js";
-import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from "../../comun/estilos.js";
-import { Encabezado, Pantalla, SegunConsulta } from "../../comun/piezas_panel.jsx";
-import { useFiltrosUrl } from "../../comun/use_filtros_url.js";
+import SearchField from "../../../controls/ui/search_field.jsx";
+import { mensajeError, mostrarErrores } from "../../../utils/errores.js";
+import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from "../../../controls/ui/estilos.js";
+import { Encabezado, Pantalla, SegunConsulta } from "../../../controls/ui/pantalla_panel.jsx";
+import { useFiltrosUrl } from "../../../hooks/use_filtros_url.js";
 import { useCambiarMinimo, useControlar, useDejarDeControlar, useMovimientos, useMover, useStock } from "../hooks.js";
 
 const FILTROS = [["", "Todo"], ["reponer", "Para reponer"], ["agotado", "Agotado"], ["controlados", "Con control"], ["sin_control", "Sin control"]];
-const MARCA = { agotado: ["Agotado", "bg-rose-100 text-rose-800"], bajo: ["Bajo", "bg-amber-100 text-amber-900"], ok: ["OK", "bg-emerald-100 text-emerald-800"] };
+const MARCA = { agotado: ["Agotado", "peligro"], bajo: ["Bajo", "aviso"], ok: ["OK", "exito"] };
 const TIPO = { inicio: "Inicio", entrada: "Entrada", salida: "Salida", ajuste: "Ajuste", pedido: "Pedido", devolucion: "Devolución" };
 const nombreDe = (fila) => (fila.opcion ? `${fila.producto} (${fila.opcion})` : fila.producto);
 
@@ -38,7 +39,7 @@ export default function StockPage() {
   return (
     <Pantalla>
       <Encabezado titulo="Stock" descripcion="Lo agotado y lo que está en el mínimo aparece primero." />
-      <Buscador valor={filtros.q} onBuscar={(q) => cambiar({ q })} etiqueta="Buscar en el stock" placeholder="Producto o código" />
+      <SearchField value={filtros.q ?? ""} onSearch={(q) => cambiar({ q })} label="Buscar en el stock" placeholder="Producto o código" />
       <nav aria-label="Filtros" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="flex w-max gap-2">
           {FILTROS.map(([valor, texto]) => (
@@ -70,7 +71,7 @@ export default function StockPage() {
 }
 
 function Fila({ fila, onAbrir }) {
-  const [marca, color] = MARCA[fila.estado] ?? [];
+  const [marca, tono] = MARCA[fila.estado] ?? [];
   const nombre = nombreDe(fila);
   return (
     <li className="grid gap-3 px-3 py-3 sm:flex sm:items-center sm:px-4">
@@ -86,7 +87,7 @@ function Fila({ fila, onAbrir }) {
         {fila.controla && (
           <span className="flex shrink-0 items-center gap-2">
             <span className="text-2xl font-extrabold tabular-nums text-slate-900">{fila.cantidad}</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${color}`}>{marca}</span>
+            <Etiqueta tono={tono}>{marca}</Etiqueta>
           </span>
         )}
       </div>

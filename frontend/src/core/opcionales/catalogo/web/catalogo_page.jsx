@@ -1,9 +1,9 @@
 import { PackageSearch } from "lucide-react";
 import Pagination from "../../../controls/ui/pagination.jsx";
-import Buscador from "../../comun/buscador.jsx";
-import { BOTON_SECUNDARIO } from "../../comun/estilos.js";
-import { Cargando, ErrorReintentar } from "../../comun/piezas_web.jsx";
-import { useFiltrosUrl } from "../../comun/use_filtros_url.js";
+import SearchField from "../../../controls/ui/search_field.jsx";
+import { BOTON_SECUNDARIO } from "../../../controls/ui/estilos.js";
+import { Cargando, ErrorReintentar } from "../../../controls/ui/estados_web.jsx";
+import { useFiltrosUrl } from "../../../hooks/use_filtros_url.js";
 import { useCategorias, useProductos } from "../hooks.js";
 import FiltroCategorias from "./filtro_categorias.jsx";
 import Tarjeta from "./tarjeta.jsx";
@@ -19,7 +19,7 @@ export default function CatalogoPage() {
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="kt-display text-3xl font-bold sm:text-4xl">Catálogo</h1>
-          <div className="w-full sm:max-w-xs"><Buscador valor={filtros.q} onBuscar={(q) => cambiar({ q })} etiqueta="Buscar productos" placeholder="Buscar por nombre o código" /></div>
+          <div className="w-full sm:max-w-xs"><SearchField value={filtros.q ?? ""} onSearch={(q) => cambiar({ q })} label="Buscar productos" placeholder="Buscar por nombre o código" /></div>
         </div>
         <FiltroCategorias categorias={categorias.data} elegida={filtros.categoria} onElegir={(categoria) => cambiar({ categoria })} />
         {consulta.isPending ? <Cargando texto="Cargando los productos" />

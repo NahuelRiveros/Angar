@@ -7,8 +7,8 @@ import { useAuth } from "../../../auth/auth_context.jsx";
 import FormError from "../../../controls/ui/form_error.jsx";
 import InputField from "../../../controls/ui/input_field.jsx";
 import TextareaField from "../../../controls/ui/textarea_field.jsx";
-import { mostrarErrores } from "../../comun/errores.js";
-import { BOTON_COMPRA } from "../../comun/estilos.js";
+import { mostrarErrores } from "../../../utils/errores.js";
+import { BOTON_COMPRA } from "../../../controls/ui/estilos.js";
 import { NOMBRE_ENTREGA } from "../estados.js";
 import { tienda } from "../opciones.js";
 

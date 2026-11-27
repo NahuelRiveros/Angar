@@ -1,6 +1,6 @@
 import ProductCard from "../../../controls/catalog/product_card.jsx";
 import { imagenCloudinary } from "../../../utils/imagen_cloudinary.js";
-import { formatearPrecio, tienePrecio } from "../../comun/dinero.js";
+import { formatearPrecio, tienePrecio } from "../../../utils/dinero.js";
 import { compra } from "../compra.js";
 
 const sinCompra = () => ({});

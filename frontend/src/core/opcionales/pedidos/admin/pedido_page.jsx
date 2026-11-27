@@ -8,11 +8,12 @@ import FormError from "../../../controls/ui/form_error.jsx";
 import Modal from "../../../controls/ui/modal.jsx";
 import TextareaField from "../../../controls/ui/textarea_field.jsx";
 import { useToast } from "../../../controls/toast/use_toast.js";
-import { formatearPrecio } from "../../comun/dinero.js";
-import { mensajeError } from "../../comun/errores.js";
-import { BOTON_PELIGRO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "../../comun/estilos.js";
-import { Encabezado, Pantalla, SegunConsulta, Tarjeta } from "../../comun/piezas_panel.jsx";
-import { COLOR_ESTADO, NOMBRE_ENTREGA, NOMBRE_ESTADO, fechaHora, textoPaso } from "../estados.js";
+import { formatearPrecio } from "../../../utils/dinero.js";
+import { mensajeError } from "../../../utils/errores.js";
+import { BOTON_PELIGRO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "../../../controls/ui/estilos.js";
+import { Encabezado, Pantalla, SegunConsulta, Tarjeta } from "../../../controls/ui/pantalla_panel.jsx";
+import Etiqueta from "../../../controls/ui/etiqueta.jsx";
+import { NOMBRE_ENTREGA, NOMBRE_ESTADO, TONO_ESTADO, fechaHora, textoPaso } from "../estados.js";
 import { useCambiarEstado, usePedidoPanel } from "../hooks.js";
 
 const VOLVER = <Link to="/admin/pedidos" className={BOTON_SECUNDARIO}><ArrowLeft size={16} aria-hidden="true" /> Pedidos</Link>;
@@ -60,7 +61,7 @@ function Detalle({ pedido, onActualizar }) {
   return (
     <>
       <Encabezado titulo={`Pedido #${pedido.numero}`} descripcion={`${fechaHora(pedido.creado_en)} · ${NOMBRE_ENTREGA[pedido.entrega]}`}>{VOLVER}</Encabezado>
-      <p><span className={`rounded-full px-3 py-1 text-sm font-bold ${COLOR_ESTADO[pedido.estado]}`}>{NOMBRE_ESTADO[pedido.estado]}</span></p>
+      <p><Etiqueta tono={TONO_ESTADO[pedido.estado]} grande>{NOMBRE_ESTADO[pedido.estado]}</Etiqueta></p>
       {desactualizado && (
         <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-semibold">{desactualizado}</p>

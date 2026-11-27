@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ShoppingBag } from "lucide-react";
 import QuantityInput from "../../../controls/ui/quantity_input.jsx";
-import { BOTON_COMPRA, BOTON_SECUNDARIO } from "../../comun/estilos.js";
+import { BOTON_COMPRA, BOTON_SECUNDARIO } from "../../../controls/ui/estilos.js";
 import { MAX_CANTIDAD, agregar, useCarrito } from "../carrito.js";
 import { lineaDe, sePuedeComprar, useAviso } from "./agregar.js";
 

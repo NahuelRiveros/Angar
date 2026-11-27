@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { brandConfig } from "../../../../proyecto/config/brand_config.js";
-import { BOTON_COMPRA } from "../../comun/estilos.js";
+import { BOTON_COMPRA } from "../../../controls/ui/estilos.js";
 import { useDestacados } from "../hooks.js";
 import Tarjeta from "./tarjeta.jsx";
 

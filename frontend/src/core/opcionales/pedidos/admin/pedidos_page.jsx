@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { ChevronRight, ReceiptText, Store, Truck } from "lucide-react";
 import Pagination from "../../../controls/ui/pagination.jsx";
-import Buscador from "../../comun/buscador.jsx";
-import { formatearPrecio } from "../../comun/dinero.js";
-import { Encabezado, Pantalla, SegunConsulta } from "../../comun/piezas_panel.jsx";
-import { useFiltrosUrl } from "../../comun/use_filtros_url.js";
-import { COLOR_ESTADO, NOMBRE_ESTADO, fechaHora } from "../estados.js";
+import SearchField from "../../../controls/ui/search_field.jsx";
+import { formatearPrecio } from "../../../utils/dinero.js";
+import { Encabezado, Pantalla, SegunConsulta } from "../../../controls/ui/pantalla_panel.jsx";
+import { useFiltrosUrl } from "../../../hooks/use_filtros_url.js";
+import Etiqueta from "../../../controls/ui/etiqueta.jsx";
+import { NOMBRE_ESTADO, TONO_ESTADO, fechaHora } from "../estados.js";
 import { usePedidosPanel } from "../hooks.js";
 
 const PESTANIAS = ["recibido", "confirmado", "listo", "entregado", "cancelado"];
@@ -19,7 +20,7 @@ export default function PedidosPage() {
   return (
     <Pantalla>
       <Encabezado titulo="Pedidos" descripcion="Los que llegan de la web, del más nuevo al más viejo." />
-      <Buscador valor={filtros.q} onBuscar={(q) => cambiar({ q })} etiqueta="Buscar pedidos" placeholder="Número, nombre o celular" />
+      <SearchField value={filtros.q ?? ""} onSearch={(q) => cambiar({ q })} label="Buscar pedidos" placeholder="Número, nombre o celular" />
       <nav aria-label="Estados" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="flex w-max gap-2">
           <Pestania activa={!filtros.estado} onClick={() => cambiar({ estado: "" })} texto="Todos" cantidad={Object.values(porEstado).reduce((a, b) => a + b, 0)} />
@@ -59,7 +60,7 @@ function Fila({ pedido: p }) {
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-bold text-slate-900">#{p.numero}</span>
             <span className="truncate font-semibold text-slate-900">{p.nombre}</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${COLOR_ESTADO[p.estado]}`}>{NOMBRE_ESTADO[p.estado]}</span>
+            <Etiqueta tono={TONO_ESTADO[p.estado]}>{NOMBRE_ESTADO[p.estado]}</Etiqueta>
           </span>
           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-slate-600">
             <span>{fechaHora(p.creado_en)}</span><span aria-hidden="true">·</span>

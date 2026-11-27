@@ -2,15 +2,16 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Package, Pencil, Plus, Trash2 } from "lucide-react";
 import ConfirmDialog from "../../../controls/ui/confirm_dialog.jsx";
+import Etiqueta from "../../../controls/ui/etiqueta.jsx";
 import Pagination from "../../../controls/ui/pagination.jsx";
 import { useToast } from "../../../controls/toast/use_toast.js";
 import { imagenCloudinary } from "../../../utils/imagen_cloudinary.js";
-import Buscador from "../../comun/buscador.jsx";
-import { formatearPrecio, tienePrecio } from "../../comun/dinero.js";
-import { mensajeError } from "../../comun/errores.js";
-import { BOTON_PELIGRO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO } from "../../comun/estilos.js";
-import { Encabezado, Pantalla, SegunConsulta } from "../../comun/piezas_panel.jsx";
-import { useFiltrosUrl } from "../../comun/use_filtros_url.js";
+import SearchField from "../../../controls/ui/search_field.jsx";
+import { formatearPrecio, tienePrecio } from "../../../utils/dinero.js";
+import { mensajeError } from "../../../utils/errores.js";
+import { BOTON_PELIGRO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO } from "../../../controls/ui/estilos.js";
+import { Encabezado, Pantalla, SegunConsulta } from "../../../controls/ui/pantalla_panel.jsx";
+import { useFiltrosUrl } from "../../../hooks/use_filtros_url.js";
 import { opcionesCategorias } from "../arbol.js";
 import { useCategoriasPanel, useEliminarProducto, useProductosPanel } from "../hooks.js";
 
@@ -35,7 +36,7 @@ export default function ProductosPage() {
     <Pantalla>
       <Encabezado titulo="Productos" descripcion="Lo que se ve en el catálogo de la web.">{NUEVO}</Encabezado>
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-        <Buscador valor={filtros.q} onBuscar={(q) => cambiar({ q })} etiqueta="Buscar productos" placeholder="Nombre o código" />
+        <SearchField value={filtros.q ?? ""} onSearch={(q) => cambiar({ q })} label="Buscar productos" placeholder="Nombre o código" />
         <select aria-label="Categoría" value={filtros.categoria_id ?? ""} onChange={(e) => cambiar({ categoria_id: e.target.value })} className={`${CAMPO} sm:max-w-60`}>
           <option value="">Todas las categorías</option>
           {opcionesCategorias(categorias.data).map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -71,7 +72,7 @@ function Fila({ producto: p, onBorrar }) {
       <span className="min-w-0 flex-1">
         <span className="block font-semibold text-slate-900">{p.nombre}</span>
         <span className="block text-sm text-slate-600">{[p.categoria, precio, p.opciones > 1 && `${p.opciones} opciones`].filter(Boolean).join(" · ")}</span>
-        {marcas.length > 0 && <span className="mt-1 flex flex-wrap gap-1">{marcas.map((m) => <span key={m} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{m}</span>)}</span>}
+        {marcas.length > 0 && <span className="mt-1 flex flex-wrap gap-1">{marcas.map((m) => <Etiqueta key={m}>{m}</Etiqueta>)}</span>}
       </span>
       <span className="flex shrink-0 flex-col gap-2 sm:flex-row">
         <Link to={`/admin/catalogo/productos/${p.id}`} aria-label={`Editar ${p.nombre}`} className={BOTON_SECUNDARIO}><Pencil size={16} aria-hidden="true" /></Link>
