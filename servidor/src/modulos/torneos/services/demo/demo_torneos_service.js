@@ -111,7 +111,7 @@ async function cuentaDemo({ crear }) {
   if (!persona && !crear) return null;
   if (!persona) {
     // Contraseña al azar que no se guarda en ningún lado: nadie entra con esta cuenta.
-    const r = await registrarCliente({ ...CUENTA, password: `${randomBytes(18).toString("base64url")}aA1!` });
+    await registrarCliente({ ...CUENTA, password: `${randomBytes(18).toString("base64url")}aA1!` });
     return cuentaDemo({ crear: false });
   }
   assert.equal(persona.apellido, CUENTA.apellido, "El email demo pertenece a otra persona: no se toca.");

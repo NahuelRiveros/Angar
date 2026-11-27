@@ -1,30 +1,28 @@
 ---
 name: api-endpoint
-description: Crea o modifica endpoints REST de DistribuCG con autorización, validación, servicios y pruebas compatibles con el backend Express existente.
+description: Crea o modifica endpoints REST (rutas, controllers y services) con permisos, validación Zod, consultas reutilizables del core y pruebas, siguiendo la ficha del servidor.
 ---
 
 # Endpoint REST
 
-Leer CLAUDE.md y un router/controller/service cercano.
-Para distribuidora usar servidor/src/modulos/eccomerce_distribuidora/{routes,controllers,services}/
-y registrar la ruta en `rutas` de su modulo.js. Las rutas del core van en servidor/src/core/routes/index.js.
+Leer CLAUDE.md y la ficha docs/specs/core/servidor.md. Ejemplo completo: servidor/src/core/opcionales/pedidos/.
+Rutas del rubro en servidor/src/modulos/<rubro>/ (registradas en `rutas` de su modulo.js); las del core, en
+servidor/src/core/routes/index.js.
 
-- Ruta: requireAuth/optionalAuth, requirePermiso (no por rol) y validar({ body, params }) con esquemas Zod en español. Controller delgado sin try/catch; el service lanza ErrorApp (ver servidor/src/core/*/_scaffold y banners).
-  Catálogo público depende de clientConfig; gestión de pedidos de orderConfig.managementRoles.
-  Poner rutas fijas antes de /:id.
-- Validar body, query y params con utilidades existentes, sin asumir Zod ni req.datos.
-- Servicio: negocio y acceso a datos; allowlist de campos, atributos explícitos, SQL parametrizado,
-  paginación y orden permitido. Evitar N+1.
-- Operaciones de dinero, carrito o varias tablas: conservar transacciones, locks e idempotencia.
-  Verificar acceso al recurso aunque su id exista.
-- Controlador: adaptar HTTP y conservar { ok, data, mensaje, codigo, ... }.
-  Mantener el manejo de errores existente; no eliminar try/catch sin revisar app.js.
-- Si falta estructura de datos, concretar el cambio necesario antes de salir del alcance autorizado.
+- Ruta: `requireAuth` / `optionalAuth`, `requirePermiso("x.y")` (por permiso, no por rol) y
+  `validar({ body, params, query })` con esquemas Zod y mensajes en español. Rutas fijas antes de `/:id`.
+- Controller: una línea por ruta con `datos(...)` o `hecho(codigo, mensaje, ...)` de
+  controllers/common/responder.js. **Sin try/catch** ni `res.status(500)`: el manejador central responde.
+  Lo validado llega en `req.datos` (nunca leer `req.body` crudo).
+- Service: reglas y datos. Errores esperados con `ErrorApp`. Reutilizar services/common/consultas.js:
+  `obtenerOFallar` (con `bloquear` dentro de una transacción), `exigirVersion`, `buscarTexto` / `contiene`
+  (sin acentos y sin comodines), `paginar` / `paginarSql`, `quienLoHizo`, `sinRepetir`.
+- SQL escrito a mano: los datos van siempre en `replacements` (`:nombre`); en el texto, solo nombres fijos.
+- Plata, stock o varias tablas: transacción, bloqueo de fila y, si se reintenta, clave de idempotencia.
+  Verificar que el recurso sea de quien lo pide aunque el id exista.
+- Tablas nuevas del rubro con su propio prefijo (nunca cat_, ped_, stk_…), unidas por id a las del módulo.
 
-Probar caso válido, entradas inválidas y permisos relevantes (401/403/propietario).
-Usar node:test y el patrón de servidor HTTP efímero de tests/checkout.integration.mjs;
-no asumir Supertest. Integración solo sobre su schema temporal local.
-Ejecutar desde la raíz npm --prefix servidor test y, si corresponde y está disponible
-PostgreSQL local, npm --prefix servidor run test:integration.
-Para nuevos archivos de tests, incluirlos en el script o ejecutarlos explícitamente.
-Informar método, ruta, permisos, entrada, respuesta y errores.
+Probar caso válido, entradas inválidas y permisos (401 / 403 / de otro dueño) con node:test y un servidor
+HTTP efímero (`.use(manejarErrores)` de core/app.js); integración en un schema temporal de PostgreSQL local.
+Correr npm --prefix servidor test y, si cambia la base, npm --prefix servidor run test:integration.
+Informar método, ruta, permiso, entrada, respuesta y errores.

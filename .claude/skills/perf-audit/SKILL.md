@@ -1,6 +1,6 @@
 ---
 name: perf-audit
-description: Analiza lentitud o consumo de recursos en DistribuCG, desde consultas PostgreSQL y polling hasta renders y tamaño del frontend.
+description: Analiza lentitud o consumo de recursos del proyecto, desde consultas PostgreSQL y polling hasta renders y tamaño del frontend.
 ---
 
 # Auditoría de rendimiento

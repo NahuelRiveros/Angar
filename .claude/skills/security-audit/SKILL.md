@@ -1,6 +1,6 @@
 ---
 name: security-audit
-description: Audita seguridad de DistribuCG cuando se solicita una revisión de permisos, datos, autenticación, dependencias o exposición de información; informa hallazgos sin modificar código.
+description: Audita seguridad del proyecto cuando se solicita una revisión de permisos, datos, autenticación, dependencias o exposición de información; informa hallazgos sin modificar código.
 ---
 
 # Auditoría de seguridad
@@ -13,7 +13,7 @@ Priorizar:
 - Roles, propietario del recurso y módulo habilitado, incluso en exportaciones e importaciones.
 - JWT, versión de contraseña, revocación de roles, recuperación y rate limits.
 - Precios/IVA/cantidades en servidor, transacciones, saldo e idempotencia de pedidos/cobros.
-  Los cobros de distribuidora son manuales; no presumir webhooks de una pasarela.
+  Si el proyecto cobra a mano (sin pasarela de pago), no presumir webhooks.
 - Datos sensibles en respuestas/logs, HTML no confiable, URLs y redirects externos.
 - CORS, headers y límites/tipos de archivos importados o subidos.
 - Seguimiento de archivos sensibles en git sin imprimir sus valores; reportar ruta y tipo,

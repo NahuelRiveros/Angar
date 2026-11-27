@@ -1,24 +1,24 @@
 ---
 name: react-component
-description: Crea o modifica componentes y pantallas React de DistribuCG respetando controles compartidos, configuración de marca, datos y accesibilidad.
+description: Crea o modifica componentes y pantallas React (tienda o panel) usando el kit del core, los colores del tema y TanStack Query, con los estados de carga, error y vacío y pensando en el celular.
 ---
 
 # Componente o pantalla
 
-Leer CLAUDE.md y frontend/CLAUDE.md. Buscar primero en frontend/src/core/controls/.
-- Primitiva reusable sin negocio: controls/ui/.
-- Pantalla o componente del rubro: modules/eccomerce_distribuidora/ y su subárea.
-- API de distribuidora: modules/eccomerce_distribuidora/api/ usando api/http.js.
-- Hooks compartidos: hooks/; respetar hooks y adapters existentes del módulo/carrito.
+Leer CLAUDE.md y la ficha del kit: docs/specs/core/componentes.md. **Si la pieza está en el kit, se usa esa.**
 
-Usar JavaScript/JSX, archivos snake_case y componentes PascalCase.
-Para consultas/mutaciones usar TanStack Query cuando encaje con el patrón existente,
-invalidando los datos afectados. No duplicar la persistencia del carrito.
-Hooks antes de returns; estados cargando, vacío, error recuperable y guardado pendiente.
-Formularios con React Hook Form/Zod cuando corresponda; errores visibles junto a la acción.
-Reutilizar modal, confirm_dialog, campos y data_grid. Mantener tokens y configuración de marca.
-Comprobar labels, teclado, foco y comportamiento móvil.
+- Kit: frontend/src/core/controls/ui/ (ActionButton, Formulario, FilaLista, Pestanas, SelectorOpciones,
+  ConfirmarConMotivo, Pasos, Etiqueta, Precio, SearchField, campos, Modal, Pagination, SegunConsulta…),
+  utils/ (formatearPrecio, linkWhatsapp, formatearFechaHora, mostrarErrores) y hooks/ (useFiltrosUrl).
+- Lo que sirve a dos o más proyectos va al kit; lo de un solo negocio, al rubro (frontend/src/modules/<rubro>/).
+- Colores: solo variables del tema (`bg-(--kt-teal-700)`, `text-(--kt-ink-soft)`) o grises `slate-*`. Nunca
+  `bg-[#…]` ni colores en `style`: lo frena tests/core_kit.test.mjs. Ver docs/specs/core/estilos.md.
+- Datos: API en `api.js` con http.js y hooks de TanStack Query en `hooks.js`; nada de fetch en el componente.
+  Invalidar lo afectado al guardar. Sin consultas periódicas.
+- Siempre los tres estados: cargando, error con reintentar y vacío. Formularios con `Formulario` (React Hook
+  Form + Zod): errores del servidor en su campo y un envío a la vez.
+- JavaScript/JSX (nunca TypeScript), archivos snake_case, componentes PascalCase, textos en español rioplatense.
+- Accesibilidad y celular: labels, foco, tocables de 44 px, sin desborde en 320 px de ancho.
 
-Verificar lint/build del frontend según el cambio. Para comportamiento significativo,
-extender tests/browser/ con Playwright y API simulada; no inventar renderizar(), MSW o Vitest.
-No agregar pruebas que solo reproduzcan texto o estructura de una edición menor.
+Verificar lint y build. Para comportamiento nuevo, Playwright con API simulada en tests/browser/
+(sin Vitest, MSW ni Testing Library). Si cambia algo visual, capturas en escritorio y celular.

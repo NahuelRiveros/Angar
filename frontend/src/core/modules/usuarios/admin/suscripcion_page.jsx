@@ -7,6 +7,9 @@ import {
 import { useState } from "react";
 import { getEstadoSuscripcion } from "../../../api/suscripcion_api";
 import { formatearFechaAR } from "../../../utils/formatear_fecha";
+import { formatearPrecio } from "../../../utils/dinero.js";
+import { linkWhatsapp } from "../../../utils/whatsapp.js";
+import { claseBoton } from "../../../controls/ui/estilos.js";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -15,11 +18,7 @@ function fmtFecha(val) {
   return formatearFechaAR(String(val).slice(0, 10)) || "—";
 }
 
-function money(v) {
-  return Number(v || 0).toLocaleString("es-AR", {
-    style: "currency", currency: "ARS", maximumFractionDigits: 0,
-  });
-}
+const money = (v) => formatearPrecio(v || 0);
 
 // Número de WhatsApp de Nahuel (soporte)
 const WA_SOPORTE = "543704081082";
@@ -73,7 +72,7 @@ export default function SuscripcionPage() {
 
   // Mensaje pre-armado para WhatsApp
   const mesActual = new Date().toLocaleDateString("es-AR", { month: "long", year: "numeric" });
-  const waTexto   = encodeURIComponent(
+  const waTexto   = (
     `Hola Nahuel! 👋 Te mando el comprobante del pago mensual del sistema.\n\n` +
     `🏋️ Gimnasio: ${estado?.cliente_nombre || ""}\n` +
     `📋 Plan: ${estado?.plan_nombre || "Plan Mensual"}\n` +
@@ -81,7 +80,7 @@ export default function SuscripcionPage() {
     `📅 Período: ${mesActual}\n\n` +
     `Adjunto el comprobante de transferencia.`
   );
-  const waUrl = `https://wa.me/${WA_SOPORTE}?text=${waTexto}`;
+  const waUrl = linkWhatsapp(WA_SOPORTE, waTexto);
 
   function copiarMonto() {
     navigator.clipboard.writeText(String(estado?.precio || ""));
@@ -222,7 +221,7 @@ export default function SuscripcionPage() {
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 flex items-center justify-center gap-2.5 rounded-xl bg-[#25D366] px-5 py-3.5 font-bold text-white shadow-md shadow-green-500/20 hover:bg-[#20bf5b] active:scale-95 transition"
+              className={`${claseBoton("whatsapp", "grande")} mt-2 w-full shadow-md shadow-green-500/20 active:scale-95`}
             >
               <MessageCircle size={18} />
               Enviar comprobante por WhatsApp

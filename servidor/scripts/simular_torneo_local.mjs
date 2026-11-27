@@ -50,7 +50,7 @@ async function buscarCuenta(d) {
 async function crearCuenta(d) {
   const existente = await buscarCuenta(d);
   if (existente) return existente;
-  const r = await registrarCliente({ nombre: d.nombre, apellido: d.apellido, email: d.email, nombre_usuario: d.codigo, password: PASSWORD_DEMO });
+  await registrarCliente({ nombre: d.nombre, apellido: d.apellido, email: d.email, nombre_usuario: d.codigo, password: PASSWORD_DEMO });
   return buscarCuenta(d);
 }
 

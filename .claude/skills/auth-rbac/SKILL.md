@@ -1,6 +1,6 @@
 ---
 name: auth-rbac
-description: Modifica login, registro, recuperación de contraseña, sesión y autorización por rol o propietario en DistribuCG.
+description: Modifica login, registro, recuperación de contraseña, sesión y autorización por rol o propietario.
 ---
 
 # Autenticación y permisos

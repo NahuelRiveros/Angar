@@ -50,6 +50,8 @@ jobs:
       # Los tests del servidor también prueban archivos del frontend (menús, permisos),
       # que importan librerías del frontend como lucide-react.
       - run: npm --prefix frontend ci
+      - name: Lint del servidor
+        run: npx --prefix frontend eslint -c servidor/eslint.config.mjs servidor
       - name: Tests del servidor
         run: npm --prefix servidor test
       - name: Integración con PostgreSQL

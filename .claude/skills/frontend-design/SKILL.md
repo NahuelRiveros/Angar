@@ -4,6 +4,12 @@ description: Create distinctive, production-grade frontend interfaces with high 
 license: Complete terms in LICENSE.txt
 ---
 
+> **En los proyectos de este core:** las pantallas de la tienda y el panel se arman con el kit
+> (docs/specs/core/componentes.md) y el aspecto lo dan el estilo elegido y la marca del cliente
+> (docs/specs/core/estilos.md, theme_config.js): no se inventan colores ni tipografías por pantalla, y lo
+> que se ve tiene que cumplir el contraste del estilo. Lo de abajo vale para piezas únicas (una portada,
+> una sección de marca del rubro, una landing) y, dentro de ellas, usando las variables del tema.
+
 This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
 
 The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.

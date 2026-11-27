@@ -18,6 +18,8 @@ const args = new Set(process.argv.slice(2));
 const PASOS = [
   { nombre: "Tests del servidor", cmd: "npm --prefix servidor test", modos: ["rapido", "normal", "completo"] },
   { nombre: "Lint del frontend", cmd: "npm --prefix frontend run lint", modos: ["rapido", "normal", "completo"] },
+  // Con el ESLint del frontend: el package.json del servidor es de cada proyecto (COR-22).
+  { nombre: "Lint del servidor", cmd: "npx --prefix frontend eslint -c servidor/eslint.config.mjs servidor", modos: ["rapido", "normal", "completo"] },
   { nombre: "Build del frontend", cmd: "npm --prefix frontend run build", modos: ["normal", "completo"] },
   { nombre: "Integración (PostgreSQL local)", cmd: "npm --prefix servidor run test:integration", modos: ["completo"] },
   { nombre: "Navegador (Playwright)", cmd: "npm --prefix frontend run test:e2e -- --reporter=list", modos: ["completo"] },

@@ -6,21 +6,20 @@
  *   - Devuelve los datos; si algo esperado falla ("no existe", "ya existe"), LANZA un ErrorApp con su
  *     código, mensaje en español y estado HTTP. Nunca devuelve { ok: false }.
  *   - Lo que toca dinero, stock o varias tablas va en `sequelize.transaction`.
+ *   - Las consultas que se repiten salen de common/consultas.js (obtenerOFallar, exigirVersion,
+ *     buscarTexto, paginar, sinRepetir…): ficha docs/specs/core/servidor.md.
  *
  * Cómo usarla: copiá a `services/<dominio>/mi_entidad_service.js`, cambiá el import por el modelo
  * real (de models/index.js) y reemplazá "Entidad".
  */
 import { Entidad } from "../../models/_scaffold/entidad_model_scaffold.js"; // TODO: from "../../models/index.js"
-import { ErrorApp, noExiste } from "../common/errores.js";
+import { ErrorApp } from "../common/errores.js";
+import { obtenerOFallar } from "../common/consultas.js";
 
 const CAMPOS = ["id", "nombre", "orden"];
 const activas = { fecha_baja: null };
 
-async function buscar(id) {
-  const entidad = await Entidad.findOne({ where: { id, ...activas } });
-  if (!entidad) throw noExiste("La entidad no existe.");
-  return entidad;
-}
+const buscar = (id) => obtenerOFallar(Entidad, { id, ...activas }, "La entidad no existe.");
 
 async function verificarNombreLibre(nombre, excluirId = null) {
   const otra = await Entidad.findOne({ where: { nombre, ...activas } });

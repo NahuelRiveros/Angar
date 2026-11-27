@@ -52,6 +52,7 @@
 
 # Servidor: esqueleto, core y sus tests
 !servidor/.gitignore
+!servidor/eslint.config.mjs
 !servidor/.env.local.example
 !servidor/src/server.js
 !servidor/src/core/
@@ -63,6 +64,7 @@
 !servidor/tests/core_modulos.test.mjs
 !servidor/tests/core_consultas.test.mjs
 !servidor/tests/estilos.test.mjs
+!servidor/tests/core_kit.test.mjs
 !servidor/tests/core_modulos.integration.mjs
 !servidor/tests/fixtures/modulo_prueba/
 !servidor/tests/catalogo.test.mjs
